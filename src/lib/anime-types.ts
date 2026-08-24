@@ -32,7 +32,6 @@ export interface AnimeCardData {
   status?: string;
   score?: string;
   genreList?: Genre[];
-  sourceLabel?: string;
 }
 
 export interface HomeData {
@@ -70,7 +69,6 @@ export interface AnimeDetail {
   genreList: Genre[];
   episodeList: EpisodeListItem[];
   recommendedAnimeList?: AnimeCardData[];
-  sourceLabel?: string;
 }
 
 export interface DownloadFormatGroup {

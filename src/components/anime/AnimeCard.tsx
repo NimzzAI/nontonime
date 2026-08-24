@@ -31,14 +31,7 @@ export function AnimeCard({ anime }: { anime: AnimeCardData }) {
         <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-card-foreground">
           {anime.title}
         </h3>
-        <div className="flex items-center justify-between gap-2">
-          {meta ? <p className="text-xs font-medium text-muted-foreground">{meta}</p> : null}
-          {anime.sourceLabel ? (
-            <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
-              {anime.sourceLabel}
-            </span>
-          ) : null}
-        </div>
+        {meta ? <p className="text-xs font-medium text-muted-foreground">{meta}</p> : null}
       </div>
     </Link>
   );

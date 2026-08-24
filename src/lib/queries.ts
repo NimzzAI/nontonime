@@ -1,7 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
 import { fetchAnimeApi } from "./anime.functions";
-import { scrapeAnimeDetail, scrapeEpisode, scrapeSearch } from "./scrapers/scrape.functions";
-import { decodeDirectStream, isScrapedId } from "./scrapers/id-codec";
 import type {
   AnimeDetail,
   AnimeListData,
@@ -44,17 +42,6 @@ export const searchQuery = (term: string) =>
     ...common,
   });
 
-// Sumber cadangan (scrape langsung) — dipakai halaman Cari saat API utama kosong,
-// mis. buat anime lama yang tidak ada di database API utama.
-export const fallbackSearchQuery = (term: string, enabled: boolean) =>
-  queryOptions({
-    queryKey: ["search-fallback", term],
-    queryFn: () => scrapeSearch({ data: { query: term } }) as unknown as Promise<ApiEnvelope<AnimeListData>>,
-    enabled: enabled && term.trim().length > 0,
-    staleTime: 5 * 60 * 1000,
-    retry: 0,
-  });
-
 export const genreListQuery = () =>
   queryOptions({
     queryKey: ["genres"],
@@ -79,20 +66,14 @@ export const scheduleQuery = () =>
 export const animeDetailQuery = (animeId: string) =>
   queryOptions({
     queryKey: ["anime", animeId],
-    queryFn: () =>
-      isScrapedId(animeId)
-        ? (scrapeAnimeDetail({ data: { id: animeId } }) as unknown as Promise<ApiEnvelope<AnimeDetail>>)
-        : get<AnimeDetail>(`/anime/${animeId}`),
+    queryFn: () => get<AnimeDetail>(`/anime/${animeId}`),
     ...common,
   });
 
 export const episodeQuery = (episodeId: string) =>
   queryOptions({
     queryKey: ["episode", episodeId],
-    queryFn: () =>
-      isScrapedId(episodeId)
-        ? (scrapeEpisode({ data: { id: episodeId } }) as unknown as Promise<ApiEnvelope<EpisodeDetail>>)
-        : get<EpisodeDetail>(`/episode/${episodeId}`),
+    queryFn: () => get<EpisodeDetail>(`/episode/${episodeId}`),
     staleTime: 0,
     retry: 1,
   });
@@ -100,11 +81,7 @@ export const episodeQuery = (episodeId: string) =>
 export const streamQuery = (serverId: string | null) =>
   queryOptions({
     queryKey: ["server", serverId],
-    queryFn: async () => {
-      const direct = serverId ? decodeDirectStream(serverId) : null;
-      if (direct) return { ok: true, data: { url: direct } } as ApiEnvelope<{ url: string }>;
-      return get<{ url: string }>(`/server/${serverId}`);
-    },
+    queryFn: () => get<{ url: string }>(`/server/${serverId}`),
     enabled: Boolean(serverId),
     staleTime: 0,
     gcTime: 0,

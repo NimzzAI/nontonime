@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { AnimeGrid } from "@/components/anime/AnimeGrid";
 import { ErrorState, LoadingState, SectionTitle } from "@/components/anime/StateViews";
-import { fallbackSearchQuery, searchQuery } from "@/lib/queries";
+import { searchQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/cari")({
   validateSearch: (search: Record<string, unknown>) => ({ q: String(search['q'] ?? "") }),
@@ -23,9 +23,6 @@ function SearchPage() {
   const navigate = useNavigate();
   const [term, setTerm] = useState(q);
   const { data, isPending, error, refetch } = useQuery(searchQuery(q));
-
-  const primaryEmpty = Boolean(q) && !isPending && !error && (data?.data.animeList.length ?? 0) === 0;
-  const fallback = useQuery(fallbackSearchQuery(q, primaryEmpty));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
@@ -57,22 +54,10 @@ function SearchPage() {
       {q && isPending ? <LoadingState label="Mencari anime" /> : null}
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
       {q && data && data.data.animeList.length > 0 ? <AnimeGrid items={data.data.animeList} /> : null}
-
-      {primaryEmpty ? (
-        fallback.isPending ? (
-          <LoadingState label="Tidak ada di database utama, mencoba sumber cadangan" />
-        ) : fallback.data && fallback.data.data.animeList.length > 0 ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Tidak ada di database utama — menampilkan hasil dari sumber cadangan (biasanya anime lama).
-            </p>
-            <AnimeGrid items={fallback.data.data.animeList} />
-          </div>
-        ) : (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Tidak ditemukan, baik di database utama maupun sumber cadangan.
-          </p>
-        )
+      {q && data && data.data.animeList.length === 0 ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">
+          Tidak ditemukan anime dengan judul "{q}".
+        </p>
       ) : null}
     </div>
   );

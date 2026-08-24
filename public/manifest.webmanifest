@@ -1,0 +1,19 @@
+{
+  "name": "Nontonime — Nonton Anime Subtitle Indonesia",
+  "short_name": "Nontonime",
+  "description": "Katalog dan pemutar anime subtitle Indonesia, dengan riwayat tontonan dan watchlist tersimpan di perangkat.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fbfaf8",
+  "theme_color": "#d94f3b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

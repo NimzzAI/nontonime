@@ -178,12 +178,6 @@ function AnimeDetailPage() {
               {anime.status}
             </span>
           ) : null}
-          {anime.sourceLabel ? (
-            <span className="glass absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-foreground">
-              <i className="fa-solid fa-plug-circle-bolt text-primary" />
-              Sumber cadangan: {anime.sourceLabel}
-            </span>
-          ) : null}
         </div>
         <div className="relative -mt-14 space-y-1 px-4 sm:-mt-16">
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground drop-shadow-sm sm:text-4xl">
