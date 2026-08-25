@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { AnimeGrid } from "@/components/anime/AnimeGrid";
 import { ErrorState, LoadingState, SectionTitle } from "@/components/anime/StateViews";
 import { homeQuery } from "@/lib/queries";
+import { readHistory, type HistoryItem } from "@/lib/history";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,6 +28,14 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const { data, isPending, error, refetch } = useQuery(homeQuery());
+  const [continueItems, setContinueItems] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    const sync = () => setContinueItems(readHistory().slice(0, 10));
+    sync();
+    window.addEventListener("history-updated", sync);
+    return () => window.removeEventListener("history-updated", sync);
+  }, []);
 
   return (
     <div className="mx-auto max-w-7xl space-y-10 px-4 py-8">
@@ -68,6 +78,35 @@ function HomePage() {
           </div>
         </div>
       </section>
+
+      {continueItems.length > 0 ? (
+        <section className="space-y-4">
+          <SectionTitle title="Lanjutkan Nonton" icon="fa-solid fa-clock-rotate-left" />
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {continueItems.map((item) => (
+              <Link
+                key={item.episodeId}
+                to="/watch/$episodeId"
+                params={{ episodeId: item.episodeId }}
+                className="group w-32 shrink-0 space-y-2"
+              >
+                <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border bg-muted">
+                  <img
+                    src={item.poster}
+                    alt={item.animeTitle}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/0 transition-colors group-hover:bg-background/30">
+                    <i className="fa-solid fa-play text-lg text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                  </div>
+                </div>
+                <p className="line-clamp-2 text-xs font-medium text-card-foreground">{item.animeTitle}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {isPending ? <LoadingState /> : null}
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}

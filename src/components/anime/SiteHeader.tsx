@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -11,18 +11,12 @@ const NAV = [
   { to: "/riwayat", label: "Riwayat", icon: "fa-solid fa-clock-rotate-left" },
 ] as const;
 
-export function SiteHeader() {
-  const navigate = useNavigate();
-  const [term, setTerm] = useState("");
-  const [open, setOpen] = useState(false);
+// Item yang sudah ada di bottom tab bar mobile (Home/Jadwal/History/Download/Profil)
+// jadi tidak perlu diulang di menu hamburger — cukup sisanya saja.
+const MORE_LINKS = NAV.filter((item) => !["/", "/jadwal", "/riwayat"].includes(item.to));
 
-  function submit(event: React.FormEvent) {
-    event.preventDefault();
-    const q = term.trim();
-    if (!q) return;
-    navigate({ to: "/cari", search: { q } });
-    setOpen(false);
-  }
+export function SiteHeader() {
+  const [open, setOpen] = useState(false);
 
   return (
     <>
@@ -50,51 +44,39 @@ export function SiteHeader() {
             ))}
           </nav>
 
-          <form onSubmit={submit} className="ml-auto hidden items-center md:flex">
-            <div className="relative">
-              <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" />
-              <input
-                value={term}
-                onChange={(event) => setTerm(event.target.value)}
-                placeholder="Cari anime"
-                className="h-9 w-56 rounded-full border border-border bg-card pl-9 pr-3 text-sm text-card-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
-          </form>
-
-          <div className="ml-auto flex items-center gap-2 md:ml-2">
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              to="/cari"
+              search={{ q: "" }}
+              aria-label="Cari anime"
+              className="press-soft inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-card-foreground transition-colors hover:bg-accent"
+            >
+              <i className="fa-solid fa-magnifying-glass text-sm" />
+            </Link>
             <ThemeToggle />
             <button
               onClick={() => setOpen((value) => !value)}
-              aria-label="Menu"
+              aria-label="Menu lainnya"
               className="press-soft inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-card-foreground transition-colors hover:bg-accent lg:hidden"
             >
-              <i className={open ? "fa-solid fa-xmark" : "fa-solid fa-bars"} />
+              <i className={open ? "fa-solid fa-xmark" : "fa-solid fa-ellipsis-vertical"} />
             </button>
           </div>
         </div>
 
         {open ? (
           <div className="border-t border-border bg-background px-4 py-3 lg:hidden">
-            <form onSubmit={submit} className="mb-3 md:hidden">
-              <div className="relative">
-                <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" />
-                <input
-                  value={term}
-                  onChange={(event) => setTerm(event.target.value)}
-                  placeholder="Cari anime"
-                  className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-3 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
-                />
-              </div>
-            </form>
-            <div className="grid grid-cols-2 gap-2">
-              {NAV.map((item) => (
+            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Lainnya
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {MORE_LINKS.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
                   search={("search" in item ? item.search : {}) as never}
                   onClick={() => setOpen(false)}
-                  className="press-soft flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground transition-colors hover:bg-accent"
+                  className="press-soft flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card px-2 py-3 text-xs font-medium text-card-foreground transition-colors hover:bg-accent"
                 >
                   <i className={`${item.icon} text-primary`} />
                   {item.label}

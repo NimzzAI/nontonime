@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { AnimeGrid } from "@/components/anime/AnimeGrid";
+import { AnimeListRow } from "@/components/anime/AnimeListRow";
 import { ErrorState, LoadingState, SectionTitle } from "@/components/anime/StateViews";
 import { searchQuery } from "@/lib/queries";
 
@@ -25,7 +25,7 @@ function SearchPage() {
   const { data, isPending, error, refetch } = useQuery(searchQuery(q));
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
       <SectionTitle title="Cari Anime" icon="fa-solid fa-magnifying-glass" />
       <form
         onSubmit={(event) => {
@@ -38,9 +38,9 @@ function SearchPage() {
           value={term}
           onChange={(event) => setTerm(event.target.value)}
           placeholder="Ketik judul anime"
-          className="h-11 flex-1 rounded-md border border-border bg-card px-4 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+          className="h-11 flex-1 rounded-full border border-border bg-card px-4 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
         />
-        <button className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
+        <button className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
           <i className="fa-solid fa-magnifying-glass" />
           Cari
         </button>
@@ -53,7 +53,20 @@ function SearchPage() {
       ) : null}
       {q && isPending ? <LoadingState label="Mencari anime" /> : null}
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
-      {q && data && data.data.animeList.length > 0 ? <AnimeGrid items={data.data.animeList} /> : null}
+
+      {q && data && data.data.animeList.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Hasil Pencarian ({data.data.animeList.length})
+          </p>
+          <div className="space-y-2">
+            {data.data.animeList.map((anime) => (
+              <AnimeListRow key={anime.animeId} anime={anime} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {q && data && data.data.animeList.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
           Tidak ditemukan anime dengan judul "{q}".

@@ -31,7 +31,7 @@ function GenrePage() {
               to="/genre/$genreId"
               params={{ genreId: genre.genreId }}
               search={{ page: 1 }}
-              className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-card-foreground transition-colors hover:border-primary hover:text-primary"
+              className="press-soft rounded-full border border-border bg-card px-4 py-3 text-center text-sm font-medium text-card-foreground transition-colors hover:bg-accent"
             >
               {genre.title}
             </Link>
