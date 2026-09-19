@@ -10,7 +10,6 @@ export function ShareButton({ title, text }: { title: string; text?: string }) {
         await navigator.share({ title, text, url });
         return;
       } catch {
-        // pengguna membatalkan share sheet — tidak perlu fallback
         return;
       }
     }
@@ -19,7 +18,7 @@ export function ShareButton({ title, text }: { title: string; text?: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // clipboard tidak tersedia, biarkan saja
+      return;
     }
   }
 

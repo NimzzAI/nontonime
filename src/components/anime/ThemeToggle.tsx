@@ -20,7 +20,7 @@ export function ThemeToggle() {
     <button
       onClick={toggle}
       aria-label="Ganti tema"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-card-foreground transition-colors hover:border-primary"
+      className="press-soft inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-card-foreground transition-colors hover:border-primary"
     >
       <i className={theme === "dark" ? "fa-solid fa-moon" : "fa-solid fa-sun"} />
     </button>

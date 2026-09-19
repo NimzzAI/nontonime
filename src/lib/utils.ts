@@ -5,6 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function isDirectVideoUrl(url: string) {
+  return /\.(m3u8|mp4)(\?|$)/i.test(url);
+}
+
+export function isDownloadableUrl(url: string) {
+  return /\.mp4(\?|$)/i.test(url);
+}
+
 export function formatViews(views: number | string) {
   const n = typeof views === "string" ? parseFloat(views.replace(/[^\d.]/g, "")) : views;
   if (!Number.isFinite(n)) return String(views);

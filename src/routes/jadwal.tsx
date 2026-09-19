@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorState, LoadingState, SectionTitle } from "@/components/anime/StateViews";
+import { SCHEDULE_DAYS } from "@/lib/anime-types";
 import { scheduleQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,11 @@ export const Route = createFileRoute("/jadwal")({
   component: SchedulePage,
 });
 
-const TODAY = new Intl.DateTimeFormat("id-ID", { weekday: "long" }).format(new Date());
+function titleCase(day: string) {
+  return day.charAt(0) + day.slice(1).toLowerCase();
+}
+
+const TODAY = new Intl.DateTimeFormat("id-ID", { weekday: "long" }).format(new Date()).toUpperCase();
 
 function SchedulePage() {
   const { data, isPending, error, refetch } = useQuery(scheduleQuery());
@@ -27,40 +32,44 @@ function SchedulePage() {
       {isPending ? <LoadingState /> : null}
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
       {data
-        ? data.data.map((day) => {
-            const isToday = day.day.toLowerCase() === TODAY.toLowerCase();
+        ? SCHEDULE_DAYS.map((day) => {
+            const items = data[day] ?? [];
+            const isToday = day === TODAY;
             return (
-              <section key={day.day} className="space-y-3">
+              <section key={day} className="space-y-3">
                 <div className="flex items-baseline gap-2">
                   <h3 className="font-display text-base font-bold tracking-tight text-foreground">
-                    {day.day}
+                    {titleCase(day)}
                     {isToday ? <span className="ml-1.5 text-primary">(Hari Ini)</span> : null}
                   </h3>
-                  <span className="text-xs text-muted-foreground">{day.anime_list.length} Anime</span>
+                  <span className="text-xs text-muted-foreground">{items.length} Anime</span>
                 </div>
                 <div
                   className={cn(
-                    "divide-y divide-border overflow-hidden rounded-xl border bg-card shadow-sm",
+                    "divide-y divide-border overflow-hidden rounded-2xl border bg-card shadow-sm",
                     isToday ? "border-primary/40" : "border-border",
                   )}
                 >
-                  {day.anime_list.map((anime) => (
-                    <Link
-                      key={anime.slug}
-                      to="/anime/$animeId"
-                      params={{ animeId: anime.slug }}
-                      className="flex items-center gap-3 p-3 transition-colors hover:bg-accent"
-                    >
-                      <img
-                        src={anime.poster}
-                        alt={anime.title}
-                        loading="lazy"
-                        className="h-16 w-12 shrink-0 rounded-lg object-cover"
-                      />
-                      <span className="line-clamp-2 text-sm font-medium text-card-foreground">{anime.title}</span>
-                      <i className="fa-solid fa-chevron-right ml-auto shrink-0 text-xs text-muted-foreground" />
-                    </Link>
-                  ))}
+                  {items.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">Belum ada jadwal untuk hari ini.</p>
+                  ) : (
+                    items.map((anime) => (
+                      <Link
+                        key={anime.id}
+                        to="/anime/$animeId"
+                        params={{ animeId: anime.id }}
+                        className="flex items-center gap-3 p-3 transition-colors hover:bg-accent"
+                      >
+                        <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                          {anime.poster ? (
+                            <img src={anime.poster} alt={anime.title} loading="lazy" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <span className="line-clamp-2 text-sm font-medium text-card-foreground">{anime.title}</span>
+                        <i className="fa-solid fa-chevron-right ml-auto shrink-0 text-xs text-muted-foreground" />
+                      </Link>
+                    ))
+                  )}
                 </div>
               </section>
             );

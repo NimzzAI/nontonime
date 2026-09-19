@@ -4,23 +4,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
-
 @theme inline {
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -42,6 +28,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -64,26 +52,28 @@
 }
 
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.985 0.006 90);
-  --foreground: oklch(0.21 0.02 260);
+  --radius: 1rem;
+  --background: oklch(0.975 0.01 85);
+  --foreground: oklch(0.2 0.03 280);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 260);
+  --card-foreground: oklch(0.2 0.03 280);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 260);
-  --primary: oklch(0.62 0.19 25);
+  --popover-foreground: oklch(0.2 0.03 280);
+  --primary: oklch(0.64 0.16 55);
   --primary-foreground: oklch(0.99 0.005 90);
-  --secondary: oklch(0.95 0.015 60);
-  --secondary-foreground: oklch(0.28 0.03 260);
-  --muted: oklch(0.955 0.008 90);
-  --muted-foreground: oklch(0.52 0.02 260);
-  --accent: oklch(0.93 0.03 60);
-  --accent-foreground: oklch(0.25 0.03 260);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.9 0.01 90);
-  --input: oklch(0.9 0.01 90);
-  --ring: oklch(0.62 0.19 25);
+  --secondary: oklch(0.93 0.045 20);
+  --secondary-foreground: oklch(0.32 0.06 20);
+  --muted: oklch(0.94 0.012 85);
+  --muted-foreground: oklch(0.5 0.02 280);
+  --accent: oklch(0.92 0.03 60);
+  --accent-foreground: oklch(0.25 0.03 280);
+  --highlight: oklch(0.66 0.16 15);
+  --highlight-foreground: oklch(0.99 0.005 90);
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.98 0.005 90);
+  --border: oklch(0.9 0.014 85);
+  --input: oklch(0.9 0.014 85);
+  --ring: oklch(0.64 0.16 55);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -100,25 +90,27 @@
 }
 
 .dark {
-  --background: oklch(0.16 0.02 265);
-  --foreground: oklch(0.96 0.005 250);
-  --card: oklch(0.21 0.024 265);
-  --card-foreground: oklch(0.96 0.005 250);
-  --popover: oklch(0.21 0.024 265);
-  --popover-foreground: oklch(0.96 0.005 250);
-  --primary: oklch(0.68 0.18 28);
-  --primary-foreground: oklch(0.15 0.02 265);
-  --secondary: oklch(0.27 0.03 265);
-  --secondary-foreground: oklch(0.96 0.005 250);
-  --muted: oklch(0.27 0.03 265);
-  --muted-foreground: oklch(0.7 0.02 260);
-  --accent: oklch(0.3 0.04 265);
-  --accent-foreground: oklch(0.96 0.005 250);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.68 0.18 28);
+  --background: oklch(0.16 0.03 282);
+  --foreground: oklch(0.95 0.014 90);
+  --card: oklch(0.208 0.032 282);
+  --card-foreground: oklch(0.95 0.014 90);
+  --popover: oklch(0.208 0.032 282);
+  --popover-foreground: oklch(0.95 0.014 90);
+  --primary: oklch(0.8 0.15 75);
+  --primary-foreground: oklch(0.2 0.045 75);
+  --secondary: oklch(0.3 0.05 300);
+  --secondary-foreground: oklch(0.95 0.014 90);
+  --muted: oklch(0.26 0.03 282);
+  --muted-foreground: oklch(0.7 0.02 280);
+  --accent: oklch(0.3 0.045 282);
+  --accent-foreground: oklch(0.95 0.014 90);
+  --highlight: oklch(0.72 0.14 18);
+  --highlight-foreground: oklch(0.18 0.03 18);
+  --destructive: oklch(0.7 0.19 22);
+  --destructive-foreground: oklch(0.98 0.005 90);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.8 0.15 75);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -148,14 +140,15 @@
 
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
 }
 
 @layer utilities {
   .glass {
-    background-color: color-mix(in oklch, var(--color-background) 85%, transparent);
-    backdrop-filter: blur(8px);
+    background-color: color-mix(in oklch, var(--color-background) 78%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
   .press-soft {
     transition: transform 0.15s ease, opacity 0.15s ease;
@@ -163,5 +156,33 @@
   .press-soft:active {
     transform: scale(0.97);
     opacity: 0.9;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .edge-fade {
+    mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 24px,
+      black calc(100% - 24px),
+      transparent
+    );
+  }
+  .text-shadow-soft {
+    text-shadow: 0 2px 16px color-mix(in oklch, var(--color-background) 70%, transparent);
+  }
+  .card-lift {
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+  }
+  @media (hover: hover) {
+    .card-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 34px -18px color-mix(in oklch, var(--color-foreground) 30%, transparent);
+    }
   }
 }

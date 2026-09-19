@@ -2,11 +2,15 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { AnimeListRow } from "@/components/anime/AnimeListRow";
-import { ErrorState, LoadingState, SectionTitle } from "@/components/anime/StateViews";
+import { Pagination } from "@/components/anime/Pagination";
+import { ErrorState, GridSkeleton, SectionTitle } from "@/components/anime/StateViews";
 import { searchQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/cari")({
-  validateSearch: (search: Record<string, unknown>) => ({ q: String(search['q'] ?? "") }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: String(search["q"] ?? ""),
+    page: Number(search["page"] ?? 1) || 1,
+  }),
   head: () => ({
     meta: [
       { title: "Cari Anime — Nontonime" },
@@ -19,10 +23,10 @@ export const Route = createFileRoute("/cari")({
 });
 
 function SearchPage() {
-  const { q } = Route.useSearch();
+  const { q, page } = Route.useSearch();
   const navigate = useNavigate();
   const [term, setTerm] = useState(q);
-  const { data, isPending, error, refetch } = useQuery(searchQuery(q));
+  const { data, isPending, error, refetch } = useQuery(searchQuery(q, page));
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -30,7 +34,7 @@ function SearchPage() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          navigate({ to: "/cari", search: { q: term.trim() } });
+          navigate({ to: "/cari", search: { q: term.trim(), page: 1 } });
         }}
         className="flex gap-2"
       >
@@ -51,23 +55,28 @@ function SearchPage() {
           Masukkan kata kunci untuk mulai mencari.
         </p>
       ) : null}
-      {q && isPending ? <LoadingState label="Mencari anime" /> : null}
+      {q && isPending ? <GridSkeleton count={6} /> : null}
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
 
-      {q && data && data.data.animeList.length > 0 ? (
+      {q && data && data.items.length > 0 ? (
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Hasil Pencarian ({data.data.animeList.length})
+            Hasil Pencarian
           </p>
           <div className="space-y-2">
-            {data.data.animeList.map((anime) => (
-              <AnimeListRow key={anime.animeId} anime={anime} />
+            {data.items.map((anime) => (
+              <AnimeListRow key={anime.id} anime={anime} />
             ))}
           </div>
+          <Pagination
+            page={page}
+            hasNext={data.hasNext}
+            onChange={(next) => navigate({ to: "/cari", search: { q, page: next } })}
+          />
         </div>
       ) : null}
 
-      {q && data && data.data.animeList.length === 0 ? (
+      {q && data && data.items.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
           Tidak ditemukan anime dengan judul "{q}".
         </p>

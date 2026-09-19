@@ -1,124 +1,83 @@
-export interface ApiEnvelope<T> {
-  ok?: boolean;
-  status?: string;
-  statusCode?: number;
-  message?: string;
-  data: T;
-  pagination?: Pagination | null;
-}
-
-export interface Pagination {
-  currentPage: number;
-  hasPrevPage: boolean;
-  prevPage: number | null;
-  hasNextPage: boolean;
-  nextPage: number | null;
-  totalPages: number;
-}
-
-export interface Genre {
+export interface AnimeSummary {
+  id: string;
   title: string;
-  genreId: string;
+  synonyms: string | null;
+  type: string | null;
+  status: string | null;
+  day: string | null;
+  year: string | number | null;
+  views: number | null;
+  favorites: number | null;
+  genres: string[];
+  poster: string | null;
+  cover: string | null;
+  airedStart: string | null;
+  synopsis: string | null;
 }
 
-export interface AnimeCardData {
+export interface EpisodeSummary {
+  id: string;
+  number: number;
   title: string;
-  poster: string;
-  animeId: string;
-  episodes?: number | null;
-  releaseDay?: string;
-  latestReleaseDate?: string;
-  lastReleaseDate?: string;
-  status?: string;
-  score?: string;
-  genreList?: Genre[];
+  views: number;
+  releaseDate: string | null;
+  image: string | null;
+  isNew: boolean;
 }
 
-export interface HomeData {
-  ongoing: { animeList: AnimeCardData[] };
-  completed: { animeList: AnimeCardData[] };
+export interface AnimeDetail extends AnimeSummary {
+  studio: string;
+  airedEnd: string | null;
+  totalEpisodes: number;
+  episodes: EpisodeSummary[];
 }
 
-export interface AnimeListData {
-  animeList: AnimeCardData[];
+export interface HomeSections {
+  today: AnimeSummary[];
+  popular: AnimeSummary[];
+  new: AnimeSummary[];
+  hot: AnimeSummary[];
+  slider: AnimeSummary[];
+  waiting: AnimeSummary[];
 }
 
-export interface EpisodeListItem {
-  title: string;
-  eps: number;
-  date?: string;
-  episodeId: string;
-  views?: number | string | null;
+export interface GenreItem {
+  id: string;
+  name: string;
+  group: string | null;
+  image: string | null;
 }
 
-export interface AnimeDetail {
-  title: string;
-  poster: string;
-  japanese: string;
-  score: string;
-  producers: string;
-  type: string;
-  status: string;
-  episodes: number | null;
-  duration: string;
-  aired: string;
-  studios: string;
-  views?: number | string | null;
-  batch: { batchId: string; title?: string } | null;
-  synopsis: { paragraphs: string[] };
-  genreList: Genre[];
-  episodeList: EpisodeListItem[];
-  recommendedAnimeList?: AnimeCardData[];
+export interface ListResult {
+  items: AnimeSummary[];
+  page: number;
+  hasNext: boolean;
 }
 
-export interface DownloadFormatGroup {
-  formats: {
-    title: string;
-    qualities: { title: string; size: string; urls: { title: string; url: string }[] }[];
-  }[];
-}
+export type ScheduleMap = Record<string, AnimeSummary[]>;
 
-export interface ServerItem {
-  title: string;
+export interface StreamServer {
+  id: string;
+  name: string;
+  quality: string;
+  type: string | null;
+  fileSizeMb: number | null;
+  url: string;
   serverId: string;
 }
 
-export interface QualityGroup {
-  title: string;
-  serverList: ServerItem[];
+export interface StreamResult {
+  episode: {
+    id: string;
+    title: string;
+    number: number;
+    views: number;
+    releaseDate: string | null;
+    nextEpisodeId: string | null;
+  };
+  servers: StreamServer[];
 }
 
-export interface EpisodeDetail {
-  title: string;
-  animeId: string;
-  releaseTime?: string;
-  defaultStreamingUrl?: string;
-  hasPrevEpisode: boolean;
-  prevEpisode: { episodeId: string } | null;
-  hasNextEpisode: boolean;
-  nextEpisode: { episodeId: string } | null;
-  server: { qualities: QualityGroup[] };
-  downloadUrl?: DownloadFormatGroup | null;
-  info?: Record<string, unknown>;
-}
+export const SCHEDULE_DAYS = ["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU"] as const;
 
-export interface ScheduleDay {
-  day: string;
-  anime_list: { title: string; slug: string; poster: string }[];
-}
-
-export interface BatchDetail {
-  title: string;
-  animeId: string;
-  poster: string;
-  japanese?: string;
-  type?: string;
-  score?: string;
-  episodes?: number | null;
-  duration?: string;
-  studios?: string;
-  producers?: string;
-  aired?: string;
-  genreList?: Genre[];
-  downloadUrl: DownloadFormatGroup;
-}
+export type ScheduleDay = (typeof SCHEDULE_DAYS)[number];

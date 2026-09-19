@@ -1,61 +1,75 @@
 import { Link } from "@tanstack/react-router";
 import { cn, formatViews } from "@/lib/utils";
-import type { EpisodeListItem } from "@/lib/anime-types";
+import type { EpisodeSummary } from "@/lib/anime-types";
 import { EpisodeDownloadButton } from "./EpisodeDownloadButton";
 
 export function EpisodeList({
   episodes,
+  animeId,
   activeEpisodeId,
-  batchId,
 }: {
-  episodes: EpisodeListItem[];
+  episodes: EpisodeSummary[];
+  animeId: string;
   activeEpisodeId?: string;
-  batchId?: string | null;
 }) {
   if (episodes.length === 0) {
     return <p className="text-sm text-muted-foreground">Belum ada episode tersedia.</p>;
   }
 
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      {episodes.map((episode) => {
-        const isActive = episode.episodeId === activeEpisodeId;
-        return (
-          <li
-            key={episode.episodeId}
-            className={cn("flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3", isActive && "bg-accent/60")}
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="text-sm font-semibold text-card-foreground">Episode {episode.eps}</span>
-              {episode.views ? (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  <i className="fa-solid fa-eye" />
-                  {formatViews(episode.views)}
-                </span>
-              ) : null}
-            </div>
-
-            {episode.date ? <span className="shrink-0 text-xs text-muted-foreground">{episode.date}</span> : null}
-
-            <div className="flex shrink-0 items-center gap-2">
+    <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      {[...episodes]
+        .sort((a, b) => b.number - a.number)
+        .map((episode) => {
+          const isActive = episode.id === activeEpisodeId;
+          return (
+            <li
+              key={episode.id}
+              className={cn("flex items-center gap-3 p-3", isActive && "bg-accent/60")}
+            >
               <Link
                 to="/watch/$episodeId"
-                params={{ episodeId: episode.episodeId }}
-                className={cn(
-                  "press-soft inline-flex h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-border bg-card text-card-foreground hover:bg-accent",
-                )}
+                params={{ episodeId: episode.id }}
+                search={{ a: animeId }}
+                className="relative h-16 w-28 shrink-0 overflow-hidden rounded-xl bg-muted"
               >
-                <i className="fa-solid fa-play text-[10px]" />
-                {isActive ? "Ditonton" : "Tonton"}
+                {episode.image ? (
+                  <img src={episode.image} alt={episode.title} loading="lazy" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <i className="fa-solid fa-play text-sm" />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors hover:bg-black/30">
+                  <i className="fa-solid fa-play text-xs text-white opacity-0 transition-opacity hover:opacity-100" />
+                </div>
+                {episode.isNew ? (
+                  <span className="absolute left-1 top-1 rounded bg-highlight px-1.5 py-0.5 text-[9px] font-bold text-highlight-foreground">
+                    BARU
+                  </span>
+                ) : null}
               </Link>
-              <EpisodeDownloadButton episode={episode} batchId={batchId} />
-            </div>
-          </li>
-        );
-      })}
+
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="truncate text-sm font-semibold text-card-foreground">
+                  Episode {episode.number}
+                  {episode.title && episode.title !== `Episode ${episode.number}` ? ` — ${episode.title}` : ""}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  {episode.views ? (
+                    <span className="inline-flex items-center gap-1">
+                      <i className="fa-solid fa-eye" />
+                      {formatViews(episode.views)}
+                    </span>
+                  ) : null}
+                  {episode.releaseDate ? <span>{episode.releaseDate}</span> : null}
+                </div>
+              </div>
+
+              <EpisodeDownloadButton episode={episode} animeId={animeId} />
+            </li>
+          );
+        })}
     </ul>
   );
 }

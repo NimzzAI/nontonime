@@ -37,7 +37,7 @@ function NativePlayer({ src }: { src: string }) {
 
 export function VideoPlayer({ src }: { src: string | null }) {
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-black">
+    <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border bg-black shadow-lg">
       {!src ? (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
           <i className="fa-solid fa-circle-notch fa-spin text-2xl text-primary" />

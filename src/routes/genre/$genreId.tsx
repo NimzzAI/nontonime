@@ -2,13 +2,16 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AnimeGrid } from "@/components/anime/AnimeGrid";
 import { Pagination } from "@/components/anime/Pagination";
-import { ErrorState, LoadingState, SectionTitle } from "@/components/anime/StateViews";
+import { ErrorState, GridSkeleton, SectionTitle } from "@/components/anime/StateViews";
 import { genreAnimeQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/genre/$genreId")({
-  validateSearch: (search: Record<string, unknown>) => ({ page: Number(search['page'] ?? 1) || 1 }),
-  head: ({ params }) => {
-    const name = params.genreId.replace(/-/g, " ");
+  validateSearch: (search: Record<string, unknown>) => ({
+    page: Number(search["page"] ?? 1) || 1,
+    name: search["name"] ? String(search["name"]) : undefined,
+  }),
+  head: ({ params, search }) => {
+    const name = search.name ?? `#${params.genreId}`;
     return {
       meta: [
         { title: `Anime Genre ${name} — Nontonime` },
@@ -23,23 +26,22 @@ export const Route = createFileRoute("/genre/$genreId")({
 
 function GenreDetailPage() {
   const { genreId } = Route.useParams();
-  const { page } = Route.useSearch();
+  const { page, name } = Route.useSearch();
   const navigate = useNavigate();
   const { data, isPending, error, refetch } = useQuery(genreAnimeQuery(genreId, page));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-      <SectionTitle title={`Genre: ${genreId.replace(/-/g, " ")}`} icon="fa-solid fa-tag" />
-      {isPending ? <LoadingState /> : null}
+      <SectionTitle title={`Genre: ${name ?? `#${genreId}`}`} icon="fa-solid fa-tag" />
+      {isPending ? <GridSkeleton /> : null}
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
       {data ? (
         <>
-          <AnimeGrid items={data.data.animeList} />
+          <AnimeGrid items={data.items} />
           <Pagination
             page={page}
-            totalPages={data.pagination?.totalPages}
-            hasNext={data.pagination?.hasNextPage}
-            onChange={(next) => navigate({ to: "/genre/$genreId", params: { genreId }, search: { page: next } })}
+            hasNext={data.hasNext}
+            onChange={(next) => navigate({ to: "/genre/$genreId", params: { genreId }, search: { page: next, name } })}
           />
         </>
       ) : null}

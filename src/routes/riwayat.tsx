@@ -70,7 +70,7 @@ function HistoryPage() {
       </p>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card px-6 py-14 text-center">
+        <div className="rounded-2xl border border-border bg-card px-6 py-14 text-center">
           <i className="fa-solid fa-film text-2xl text-muted-foreground" />
           <p className="mt-3 text-sm text-muted-foreground">Belum ada riwayat tontonan.</p>
           <Link to="/" className="mt-4 inline-block text-sm font-medium text-primary hover:underline">
@@ -82,7 +82,7 @@ function HistoryPage() {
           {groups.map(([label, group]) => (
             <section key={label} className="space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</h3>
-              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+              <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 {group.map((item) => (
                   <li key={item.episodeId} className="flex items-center gap-3 p-3">
                     <img src={item.poster} alt={item.animeTitle} className="h-16 w-12 shrink-0 rounded-lg object-cover" />
@@ -97,6 +97,7 @@ function HistoryPage() {
                       <Link
                         to="/watch/$episodeId"
                         params={{ episodeId: item.episodeId }}
+                        search={{ a: item.animeId }}
                         aria-label="Lanjutkan menonton"
                         className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
                       >

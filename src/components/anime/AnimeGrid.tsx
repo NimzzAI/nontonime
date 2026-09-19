@@ -1,14 +1,15 @@
-import type { AnimeCardData } from "@/lib/anime-types";
+import type { AnimeSummary } from "@/lib/anime-types";
 import { AnimeCard } from "./AnimeCard";
+import { EmptyState } from "./StateViews";
 
-export function AnimeGrid({ items }: { items: AnimeCardData[] }) {
+export function AnimeGrid({ items }: { items: AnimeSummary[] }) {
   if (items.length === 0) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">Tidak ada anime untuk ditampilkan.</p>;
+    return <EmptyState icon="fa-solid fa-ghost" message="Tidak ada anime untuk ditampilkan di sini." />;
   }
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
       {items.map((anime) => (
-        <AnimeCard key={anime.animeId} anime={anime} />
+        <AnimeCard key={anime.id} anime={anime} />
       ))}
     </div>
   );

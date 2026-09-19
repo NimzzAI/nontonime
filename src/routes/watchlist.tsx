@@ -30,7 +30,7 @@ function WatchlistPage() {
       <SectionTitle title="Watchlist" icon="fa-solid fa-bookmark" />
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card px-6 py-14 text-center">
+        <div className="rounded-2xl border border-border bg-card px-6 py-14 text-center">
           <i className="fa-solid fa-bookmark text-2xl text-muted-foreground" />
           <p className="mt-3 text-sm text-muted-foreground">
             Belum ada anime yang disimpan. Buka halaman detail anime lalu tekan tombol simpan.
@@ -46,7 +46,7 @@ function WatchlistPage() {
               <Link
                 to="/anime/$animeId"
                 params={{ animeId: item.animeId }}
-                className="block overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                className="block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="aspect-[2/3] overflow-hidden bg-muted">
                   <img src={item.poster} alt={item.title} loading="lazy" className="h-full w-full object-cover" />

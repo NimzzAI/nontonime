@@ -92,7 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: siteConfig.name },
       { name: "twitter:description", content: siteConfig.description },
       { name: "twitter:image", content: `${siteConfig.siteUrl}${siteConfig.ogImage}` },
-      { name: "theme-color", content: "#d94f3b" },
+      { name: "theme-color", content: "#1c1a2b" },
     ],
     links: [
       {
@@ -105,7 +105,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Manrope:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
       {
         rel: "stylesheet",
@@ -147,7 +147,6 @@ function RootComponent() {
       <div className="flex min-h-screen flex-col bg-background">
         <SiteHeader />
         <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
         </main>
         <SiteFooter />

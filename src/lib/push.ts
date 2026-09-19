@@ -33,10 +33,6 @@ export async function requestNotificationPermission() {
   return Notification.requestPermission();
 }
 
-// Membuat PushSubscription asli lewat browser Push API (VAPID) — bukan Firebase Cloud
-// Messaging. Kunci publik VAPID dibaca dari VITE_VAPID_PUBLIC_KEY (lihat .env.example).
-// TODO: kirim subscription ini ke server buat disimpan, supaya bisa dipakai ngirim push
-// beneran nanti (butuh database + cron cek episode baru — belum ada di project ini).
 export async function subscribeToPush() {
   const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
   if (!vapidKey) return null;
@@ -60,8 +56,6 @@ export async function unsubscribeFromPush() {
   await subscription?.unsubscribe();
 }
 
-// Notifikasi lokal langsung (muncul di bar notifikasi HP) tanpa perlu round-trip ke
-// server — dipakai buat konfirmasi aksi (subscribe berhasil) dan tombol uji coba.
 export async function showLocalNotification(title: string, options?: NotificationOptions) {
   if (!isPushSupported() || Notification.permission !== "granted") return false;
   const registration = await registerServiceWorker();

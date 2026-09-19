@@ -50,7 +50,7 @@ function NotificationCard() {
   }
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card p-4">
+    <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-card-foreground">Notifikasi</p>
@@ -139,7 +139,7 @@ function StatsRow() {
   ];
 
   return (
-    <div className="grid grid-cols-3 divide-x divide-border rounded-xl border border-border bg-card">
+    <div className="grid grid-cols-3 divide-x divide-border rounded-2xl border border-border bg-card">
       {items.map((item) => (
         <div key={item.label} className="flex flex-col items-center gap-0.5 px-2 py-4 text-center">
           <span className="font-display text-xl font-bold text-foreground">{item.value}</span>
@@ -155,7 +155,7 @@ function ProfilPage() {
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
       <SectionTitle title="Profil" icon="fa-solid fa-circle-user" />
 
-      <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-secondary text-2xl text-secondary-foreground">
           <i className="fa-solid fa-circle-user" />
         </div>
@@ -167,7 +167,7 @@ function ProfilPage() {
 
       <StatsRow />
 
-      <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
         <div>
           <p className="text-sm font-medium text-card-foreground">Tema Tampilan</p>
           <p className="text-xs text-muted-foreground">Ganti antara mode terang dan gelap.</p>
@@ -177,7 +177,7 @@ function ProfilPage() {
 
       <NotificationCard />
 
-      <div className="divide-y divide-border rounded-xl border border-border bg-card">
+      <div className="divide-y divide-border rounded-2xl border border-border bg-card">
         <Link
           to="/watchlist"
           className="flex items-center justify-between px-4 py-3 text-sm font-medium text-card-foreground"

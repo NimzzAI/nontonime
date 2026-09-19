@@ -1,28 +1,73 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { ErrorState, LoadingState } from "@/components/anime/StateViews";
-import { batchQuery } from "@/lib/queries";
+import { ServerList } from "@/components/anime/ServerList";
+import { animeDetailQuery, streamQuery } from "@/lib/queries";
+import { cn } from "@/lib/utils";
+import type { EpisodeSummary } from "@/lib/anime-types";
 
 export const Route = createFileRoute("/download/$batchId")({
   head: ({ params }) => {
-    const name = params.batchId.replace(/-sub-indo$/, "").replace(/-/g, " ");
+    const name = params.batchId.replace(/-/g, " ");
     return {
       meta: [
-        { title: `Download Batch ${name} — Nontonime` },
-        { name: "description", content: `Link batch download ${name} subtitle Indonesia per resolusi.` },
-        { property: "og:title", content: `Download Batch ${name} — Nontonime` },
-        { property: "og:description", content: `Link batch download ${name} subtitle Indonesia.` },
+        { title: `Unduh Semua Episode ${name} — Nontonime` },
+        { name: "description", content: `Tautan unduhan per episode ${name} subtitle Indonesia per resolusi.` },
+        { property: "og:title", content: `Unduh Semua Episode ${name} — Nontonime` },
+        { property: "og:description", content: `Tautan unduhan per episode ${name} subtitle Indonesia.` },
       ],
     };
   },
   component: BatchPage,
 });
 
+function EpisodeDownloadRow({ episode, animeId }: { episode: EpisodeSummary; animeId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isPending, isError } = useQuery({ ...streamQuery(episode.id), enabled: open });
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <button
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+            {episode.image ? (
+              <img src={episode.image} alt={episode.title} loading="lazy" className="h-full w-full object-cover" />
+            ) : null}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-card-foreground">Episode {episode.number}</p>
+            {episode.releaseDate ? <p className="text-xs text-muted-foreground">{episode.releaseDate}</p> : null}
+          </div>
+        </div>
+        <i className={cn("fa-solid fa-chevron-down shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open ? (
+        <div className="mt-3 border-t border-border pt-3">
+          {isPending ? (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <i className="fa-solid fa-circle-notch fa-spin" />
+              Memuat pilihan unduhan
+            </p>
+          ) : isError ? (
+            <p className="text-xs text-muted-foreground">Gagal memuat server. Coba lagi.</p>
+          ) : (
+            <ServerList servers={data?.servers ?? []} episodeId={episode.id} animeId={animeId} />
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function BatchPage() {
   const { batchId } = Route.useParams();
-  const { data, isPending, error, refetch } = useQuery(batchQuery(batchId));
+  const { data, isPending, error, refetch } = useQuery(animeDetailQuery(batchId));
 
-  if (isPending) return <LoadingState label="Memuat data batch" />;
+  if (isPending) return <LoadingState label="Memuat daftar episode" />;
   if (error)
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
@@ -30,59 +75,36 @@ function BatchPage() {
       </div>
     );
 
-  const batch = data.data;
+  const anime = data;
+  const episodes = [...anime.episodes].sort((a, b) => a.number - b.number);
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
       <div className="flex flex-wrap items-start gap-4">
-        <img src={batch.poster} alt={batch.title} className="w-28 rounded-lg border border-border object-cover" />
+        {anime.poster ? (
+          <img src={anime.poster} alt={anime.title} className="w-28 rounded-2xl border border-border object-cover" />
+        ) : null}
         <div className="space-y-2">
-          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">{batch.title}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">{anime.title}</h1>
           <p className="text-sm text-muted-foreground">
-            {[batch.type, batch.episodes ? `${batch.episodes} episode` : null, batch.duration]
-              .filter(Boolean)
-              .join(" · ")}
+            {[anime.type, `${episodes.length} episode`].filter(Boolean).join(" · ")}
           </p>
-          {batch.animeId ? (
-            <Link
-              to="/anime/$animeId"
-              params={{ animeId: batch.animeId }}
-              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-            >
-              <i className="fa-solid fa-arrow-left" />
-              Kembali ke detail anime
-            </Link>
-          ) : null}
+          <Link
+            to="/anime/$animeId"
+            params={{ animeId: batchId }}
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
+            <i className="fa-solid fa-arrow-left" />
+            Kembali ke detail anime
+          </Link>
         </div>
       </div>
 
-      {batch.downloadUrl?.formats?.map((format) => (
-        <section key={format.title} className="space-y-4">
-          <h2 className="font-display text-lg font-semibold text-foreground">{format.title}</h2>
-          {format.qualities.map((quality) => (
-            <div key={quality.title} className="rounded-xl border border-border bg-card p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-semibold text-card-foreground">{quality.title}</span>
-                <span className="text-xs text-muted-foreground">{quality.size}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {quality.urls.map((link) => (
-                  <a
-                    key={link.url}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-card-foreground transition-colors hover:border-primary hover:text-primary"
-                  >
-                    <i className="fa-solid fa-arrow-up-right-from-square text-xs" />
-                    {link.title}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
-        </section>
-      ))}
+      <div className="space-y-3">
+        {episodes.map((episode) => (
+          <EpisodeDownloadRow key={episode.id} episode={episode} animeId={batchId} />
+        ))}
+      </div>
     </div>
   );
 }

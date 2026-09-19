@@ -11,8 +11,6 @@ const NAV = [
   { to: "/riwayat", label: "Riwayat", icon: "fa-solid fa-clock-rotate-left" },
 ] as const;
 
-// Item yang sudah ada di bottom tab bar mobile (Home/Jadwal/History/Download/Profil)
-// jadi tidak perlu diulang di menu hamburger — cukup sisanya saja.
 const MORE_LINKS = NAV.filter((item) => !["/", "/jadwal", "/riwayat"].includes(item.to));
 
 export function SiteHeader() {
@@ -25,8 +23,8 @@ export function SiteHeader() {
       ) : null}
       <header className="glass sticky top-0 z-40 border-b border-border">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4">
-          <Link to="/" className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
-            <img src="/logo.svg" alt="Nontonime" className="h-7 w-7 rounded-lg" />
+          <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
+            <img src="/logo.svg" alt="Nontonime" className="h-8 w-8 rounded-xl" />
             Nontonime
           </Link>
 
@@ -47,7 +45,7 @@ export function SiteHeader() {
           <div className="ml-auto flex items-center gap-2">
             <Link
               to="/cari"
-              search={{ q: "" }}
+              search={{ q: "", page: 1 }}
               aria-label="Cari anime"
               className="press-soft inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-card-foreground transition-colors hover:bg-accent"
             >
@@ -76,7 +74,7 @@ export function SiteHeader() {
                   to={item.to}
                   search={("search" in item ? item.search : {}) as never}
                   onClick={() => setOpen(false)}
-                  className="press-soft flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card px-2 py-3 text-xs font-medium text-card-foreground transition-colors hover:bg-accent"
+                  className="press-soft flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-card px-2 py-3 text-xs font-medium text-card-foreground transition-colors hover:bg-accent"
                 >
                   <i className={`${item.icon} text-primary`} />
                   {item.label}
