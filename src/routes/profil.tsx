@@ -84,7 +84,9 @@ function NotificationCard() {
 
       {subs.length > 0 ? (
         <div className="space-y-2 border-t border-border pt-3">
-          <p className="text-xs font-medium text-muted-foreground">Anime yang di-subscribe ({subs.length})</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            Anime yang di-subscribe ({subs.length})
+          </p>
           <ul className="space-y-1.5">
             {subs.map((item) => (
               <li key={item.animeId} className="flex items-center justify-between gap-2">
@@ -161,7 +163,9 @@ function ProfilPage() {
         </div>
         <div>
           <p className="text-sm font-semibold text-card-foreground">Tamu</p>
-          <p className="text-xs text-muted-foreground">Belum ada sistem akun di {siteConfig.name}.</p>
+          <p className="text-xs text-muted-foreground">
+            Belum ada sistem akun di {siteConfig.name}.
+          </p>
         </div>
       </div>
 

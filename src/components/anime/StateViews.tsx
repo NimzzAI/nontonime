@@ -38,7 +38,9 @@ export function RowSkeleton({ count = 6 }: { count?: number }) {
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const message =
-    error instanceof Error && error.message ? error.message : "Terjadi kesalahan saat mengambil data.";
+    error instanceof Error && error.message
+      ? error.message
+      : "Terjadi kesalahan saat mengambil data.";
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-14 text-center shadow-sm">
       <i className="fa-solid fa-triangle-exclamation text-2xl text-destructive" />

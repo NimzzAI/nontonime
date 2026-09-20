@@ -1,7 +1,8 @@
-import { getRequestHeader } from "@tanstack/react-start/server";
 import type {
   AnimeDetail,
   AnimeSummary,
+  BatchDetail,
+  DirectoryGroup,
   EpisodeSummary,
   GenreItem,
   HomeSections,
@@ -10,261 +11,681 @@ import type {
   StreamResult,
 } from "./anime-types";
 
-const BASE_URL = "https://animeinweb.com";
-const API_BASE = "https://animeinweb.com/api/proxy";
-const PROXY_SECRET = "animein-secure-proxy-key-123";
+const SANKA_API_BASE = "https://www.sankavollerei.web.id/anime";
 
-const WINDOW_MS = 60_000;
-const MAX_REQUESTS = 60;
-const buckets = new Map<string, { count: number; resetAt: number }>();
+// Cache in-memory with 5-minute TTL to reduce duplicate external latency
+interface CacheEntry<T> {
+  data: T;
+  expires: number;
+}
+const cache = new Map<string, CacheEntry<unknown>>();
 
-function clientKey() {
-  const forwarded = getRequestHeader("x-forwarded-for") ?? "";
-  return getRequestHeader("cf-connecting-ip") ?? forwarded.split(",")[0]?.trim() ?? "anonymous";
+async function fetchJson<T>(url: string, ttlMs = 5 * 60 * 1000): Promise<T> {
+  const cached = cache.get(url);
+  if (cached && Date.now() < cached.expires) {
+    return cached.data as T;
+  }
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`API fetch error ${res.status}: ${res.statusText} at ${url}`);
+  }
+
+  const json = await res.json();
+  cache.set(url, { data: json, expires: Date.now() + ttlMs });
+  return json as T;
 }
 
-function checkRateLimit() {
-  const key = clientKey();
-  const now = Date.now();
-  const bucket = buckets.get(key);
-  if (!bucket || bucket.resetAt < now) {
-    buckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return;
-  }
-  bucket.count += 1;
-  if (bucket.count > MAX_REQUESTS) {
-    throw new Error("Terlalu banyak permintaan. Coba lagi dalam satu menit.");
-  }
+// -------------------------------------------------------------
+// HOME
+// -------------------------------------------------------------
+interface ApiHomeResponse {
+  status: string;
+  data: {
+    ongoing: {
+      animeList: {
+        title: string;
+        poster: string;
+        episodes?: number | string;
+        releaseDay?: string;
+        latestReleaseDate?: string;
+        animeId: string;
+      }[];
+    };
+    completed: {
+      animeList: {
+        title: string;
+        poster: string;
+        episodes?: number | string;
+        score?: string;
+        lastReleaseDate?: string;
+        animeId: string;
+      }[];
+    };
+  };
 }
 
-async function proxyGet<T>(path: string): Promise<T> {
-  checkRateLimit();
-
-  let response: Response;
+export async function getHome(dayFilter?: string | null): Promise<HomeSections> {
   try {
-    response = await fetch(`${API_BASE}${path}`, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Referer: `${BASE_URL}/`,
-        Origin: BASE_URL,
-        "x-proxy-secret": PROXY_SECRET,
-        Accept: "application/json, text/plain, */*",
-      },
-      signal: AbortSignal.timeout(15_000),
-    });
-  } catch {
-    throw new Error("Sumber data sedang tidak dapat dihubungi.");
+    const json = await fetchJson<ApiHomeResponse>(`${SANKA_API_BASE}/home`);
+    const ongoingRaw = json.data?.ongoing?.animeList ?? [];
+    const completedRaw = json.data?.completed?.animeList ?? [];
+
+    const ongoing: AnimeSummary[] = ongoingRaw.map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      episodes:
+        typeof a.episodes === "number" ? a.episodes : parseInt(String(a.episodes || 0), 10) || null,
+      status: "Ongoing",
+      type: "TV",
+      releaseDay: a.releaseDay ?? null,
+      day: a.releaseDay ?? null,
+      latestReleaseDate: a.latestReleaseDate ?? null,
+      genres: [],
+    }));
+
+    const completed: AnimeSummary[] = completedRaw.map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      episodes:
+        typeof a.episodes === "number" ? a.episodes : parseInt(String(a.episodes || 0), 10) || null,
+      score: a.score ?? null,
+      status: "Completed",
+      type: "TV",
+      latestReleaseDate: a.lastReleaseDate ?? null,
+      genres: [],
+    }));
+
+    // Hero slider selects the top ongoing anime with high visual impact
+    const slider = ongoing.slice(0, 7);
+
+    let today = ongoing;
+    if (dayFilter) {
+      today = ongoing.filter(
+        (a) => a.releaseDay?.toLowerCase().trim() === dayFilter.toLowerCase().trim(),
+      );
+    }
+
+    return {
+      slider: slider.length > 0 ? slider : ongoing.slice(0, 5),
+      today: today.length > 0 ? today : ongoing,
+      hot: ongoing.slice(0, 10),
+      popular: completed.slice(0, 10),
+      new: ongoing.slice(0, 12),
+      waiting: completed.slice(0, 8),
+    };
+  } catch (error) {
+    console.error("Error in getHome:", error);
+    return {
+      slider: [],
+      today: [],
+      hot: [],
+      popular: [],
+      new: [],
+      waiting: [],
+    };
+  }
+}
+
+// -------------------------------------------------------------
+// ONGOING (LATEST)
+// -------------------------------------------------------------
+interface ApiOngoingResponse {
+  status: string;
+  data: {
+    animeList: {
+      title: string;
+      poster: string;
+      episodes?: number;
+      releaseDay?: string;
+      latestReleaseDate?: string;
+      animeId: string;
+    }[];
+  };
+  pagination: {
+    currentPage: number;
+    hasPrevPage: boolean;
+    prevPage: number | null;
+    hasNextPage: boolean;
+    nextPage: number | null;
+    totalPages: number;
+  } | null;
+}
+
+export async function getLatest(page = 1): Promise<ListResult> {
+  const safePage = Math.max(1, page);
+  try {
+    const json = await fetchJson<ApiOngoingResponse>(
+      `${SANKA_API_BASE}/ongoing-anime?page=${safePage}`,
+    );
+    const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      episodes: a.episodes ?? null,
+      status: "Ongoing",
+      type: "TV",
+      releaseDay: a.releaseDay ?? null,
+      day: a.releaseDay ?? null,
+      latestReleaseDate: a.latestReleaseDate ?? null,
+      genres: [],
+    }));
+
+    return {
+      items,
+      page: safePage,
+      hasNext: Boolean(json.pagination?.hasNextPage),
+      totalPages: json.pagination?.totalPages ?? 1,
+      pagination: json.pagination,
+    };
+  } catch (error) {
+    console.error("Error in getLatest:", error);
+    return { items: [], page: safePage, hasNext: false };
+  }
+}
+
+// -------------------------------------------------------------
+// COMPLETED (POPULAR)
+// -------------------------------------------------------------
+interface ApiCompletedResponse {
+  status: string;
+  data: {
+    animeList: {
+      title: string;
+      poster: string;
+      episodes?: number;
+      score?: string;
+      lastReleaseDate?: string;
+      animeId: string;
+    }[];
+  };
+  pagination: {
+    currentPage: number;
+    hasPrevPage: boolean;
+    prevPage: number | null;
+    hasNextPage: boolean;
+    nextPage: number | null;
+    totalPages: number;
+  } | null;
+}
+
+export async function getPopular(page = 1): Promise<ListResult> {
+  const safePage = Math.max(1, page);
+  try {
+    const json = await fetchJson<ApiCompletedResponse>(
+      `${SANKA_API_BASE}/complete-anime?page=${safePage}`,
+    );
+    const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      episodes: a.episodes ?? null,
+      score: a.score ?? null,
+      status: "Completed",
+      type: "TV",
+      latestReleaseDate: a.lastReleaseDate ?? null,
+      genres: [],
+    }));
+
+    return {
+      items,
+      page: safePage,
+      hasNext: Boolean(json.pagination?.hasNextPage),
+      totalPages: json.pagination?.totalPages ?? 1,
+      pagination: json.pagination,
+    };
+  } catch (error) {
+    console.error("Error in getPopular:", error);
+    return { items: [], page: safePage, hasNext: false };
+  }
+}
+
+// -------------------------------------------------------------
+// SEARCH
+// -------------------------------------------------------------
+interface ApiSearchResponse {
+  status: string;
+  data: {
+    animeList: {
+      title: string;
+      poster: string;
+      status?: string;
+      score?: string;
+      animeId: string;
+      genreList?: { title: string; genreId: string }[];
+    }[];
+  };
+}
+
+export async function search(keyword: string, _page = 1): Promise<ListResult> {
+  if (!keyword || !keyword.trim()) {
+    return { items: [], page: 1, hasNext: false };
   }
 
-  if (!response.ok) {
-    throw new Error("Sumber data sedang bermasalah. Coba lagi nanti.");
+  try {
+    const json = await fetchJson<ApiSearchResponse>(
+      `${SANKA_API_BASE}/search/${encodeURIComponent(keyword.trim())}`,
+    );
+    const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      status: a.status ?? null,
+      score: a.score ?? null,
+      type: "TV",
+      genres: (a.genreList ?? []).map((g) => g.title),
+    }));
+
+    return {
+      items,
+      page: 1,
+      hasNext: false,
+      totalPages: 1,
+    };
+  } catch (error) {
+    console.error("Error in search:", error);
+    return { items: [], page: 1, hasNext: false };
   }
-
-  return (await response.json()) as T;
 }
 
-function toNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const n = typeof value === "string" ? parseFloat(value) : Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function parseGenres(value: unknown): string[] {
-  if (!value) return [];
-  if (Array.isArray(value)) return value.map(String);
-  return String(value)
-    .split(",")
-    .map((g) => g.trim())
-    .filter(Boolean);
-}
-
-function cleanId(input: string): string {
-  let s = String(input ?? "").trim();
-  s = s.replace(/^https?:\/\/animeinweb\.com\/anime\//i, "");
-  s = s.replace(/^https?:\/\/animeinweb\.com\/watch\//i, "");
-  s = s.split("/")[0]?.split("?")[0]?.trim() ?? "";
-  return s;
-}
-
-type RawAnimeItem = Record<string, unknown>;
-
-function mapAnimeSummary(item: RawAnimeItem | null | undefined): AnimeSummary | null {
-  if (!item) return null;
-  return {
-    id: String(item["id"] ?? ""),
-    title: String(item["title"] ?? ""),
-    synonyms: (item["synonyms"] as string) ?? null,
-    type: (item["type"] as string) ?? null,
-    status: (item["status"] as string) ?? null,
-    day: (item["day"] as string) ?? null,
-    year: (item["year"] as string | number) ?? null,
-    views: toNumber(item["views"]),
-    favorites: toNumber(item["favorites"]),
-    genres: parseGenres(item["genre"] ?? item["genres"]),
-    poster: (item["image_poster"] as string) ?? (item["poster"] as string) ?? null,
-    cover: (item["image_cover"] as string) ?? (item["cover"] as string) ?? null,
-    airedStart: (item["aired_start"] as string) ?? null,
-    synopsis: (item["synopsis"] as string) ?? null,
+// -------------------------------------------------------------
+// GENRES
+// -------------------------------------------------------------
+interface ApiGenreResponse {
+  status: string;
+  data: {
+    genreList: {
+      title: string;
+      genreId: string;
+    }[];
   };
-}
-
-function mapEpisodeImage(raw: unknown): string | null {
-  if (!raw) return null;
-  const value = String(raw);
-  if (value.startsWith("http")) return value;
-  return `https://xyz-api.animein.net/${value.replace(/^\/+/, "")}`;
-}
-
-function mapEpisode(item: RawAnimeItem): EpisodeSummary {
-  return {
-    id: String(item["id"] ?? ""),
-    number: Number(item["index"] ?? 0),
-    title: String(item["title"] ?? ""),
-    views: toNumber(item["views"]) ?? 0,
-    releaseDate: (item["key_time"] as string) ?? null,
-    image: mapEpisodeImage(item["image"]),
-    isNew: item["is_new"] === "1",
-  };
-}
-
-export async function getHome(day: string | null = null): Promise<HomeSections> {
-  const currentDay = day ? day.toUpperCase() : "KAMIS";
-  const res = await proxyGet<{ data?: Record<string, RawAnimeItem[]> }>(
-    `/3/2/home/data?day=${encodeURIComponent(currentDay)}&limit=20`,
-  );
-  const data = res.data ?? {};
-  const map = (key: string) => (data[key] ?? []).map(mapAnimeSummary).filter(Boolean) as AnimeSummary[];
-
-  return {
-    today: map("today"),
-    popular: map("popular"),
-    new: map("new"),
-    hot: map("hot"),
-    slider: map("slider"),
-    waiting: map("waiting"),
-  };
-}
-
-async function explore(params: string, page: number): Promise<ListResult> {
-  const p = Math.max(0, page);
-  const res = await proxyGet<{ data?: { movie?: RawAnimeItem[] } }>(
-    `/3/2/explore/movie?page=${p}${params}`,
-  );
-  const movies = res.data?.movie ?? [];
-  const items = movies.map(mapAnimeSummary).filter(Boolean) as AnimeSummary[];
-  return { items, page, hasNext: items.length > 0 };
-}
-
-export function search(keyword: string, page = 0): Promise<ListResult> {
-  if (!keyword.trim()) return Promise.resolve({ items: [], page, hasNext: false });
-  return explore(`&sort=views&keyword=${encodeURIComponent(keyword)}`, page);
-}
-
-export function getLatest(page = 0): Promise<ListResult> {
-  return explore("&sort=latest&keyword=", page);
-}
-
-export function getPopular(page = 0): Promise<ListResult> {
-  return explore("&sort=views&keyword=", page);
 }
 
 export async function getGenres(): Promise<GenreItem[]> {
-  const res = await proxyGet<{ data?: { genre?: RawAnimeItem[] } }>("/3/2/explore/genre");
-  const genres = res.data?.genre ?? [];
-  return genres.map((g) => ({
-    id: String(g["id"] ?? ""),
-    name: String(g["name"] ?? ""),
-    group: (g["group"] as string) ?? null,
-    image: (g["image"] as string) ?? null,
-  }));
+  try {
+    const json = await fetchJson<ApiGenreResponse>(`${SANKA_API_BASE}/genre`);
+    return (json.data?.genreList ?? []).map((g) => ({
+      id: g.genreId,
+      name: g.title,
+    }));
+  } catch (error) {
+    console.error("Error in getGenres:", error);
+    return [];
+  }
 }
 
-export function getByGenre(genreId: string, page = 0, sort = "views"): Promise<ListResult> {
-  return explore(`&sort=${encodeURIComponent(sort)}&id_genre=${encodeURIComponent(genreId)}`, page);
+// -------------------------------------------------------------
+// BY GENRE
+// -------------------------------------------------------------
+interface ApiByGenreResponse {
+  status: string;
+  data: {
+    animeList: {
+      title: string;
+      poster: string;
+      studios?: string;
+      score?: string;
+      episodes?: number;
+      season?: string;
+      animeId: string;
+      synopsis?: {
+        paragraphs?: string[];
+      };
+      genreList?: { title: string; genreId: string }[];
+    }[];
+  };
+  pagination: {
+    currentPage: number;
+    hasPrevPage: boolean;
+    prevPage: number | null;
+    hasNextPage: boolean;
+    nextPage: number | null;
+    totalPages: number;
+  } | null;
+}
+
+export async function getByGenre(genreId: string, page = 1, _sort = "views"): Promise<ListResult> {
+  const safePage = Math.max(1, page);
+  try {
+    const json = await fetchJson<ApiByGenreResponse>(
+      `${SANKA_API_BASE}/genre/${encodeURIComponent(genreId)}?page=${safePage}`,
+    );
+
+    const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      score: a.score ?? null,
+      episodes: a.episodes ?? null,
+      studios: a.studios ?? null,
+      genres: (a.genreList ?? []).map((g) => g.title),
+      synopsis: a.synopsis?.paragraphs?.join("\n\n") ?? null,
+      type: "TV",
+    }));
+
+    return {
+      items,
+      page: safePage,
+      hasNext: Boolean(json.pagination?.hasNextPage),
+      totalPages: json.pagination?.totalPages ?? 1,
+      pagination: json.pagination,
+    };
+  } catch (error) {
+    console.error("Error in getByGenre:", error);
+    return { items: [], page: safePage, hasNext: false };
+  }
+}
+
+// -------------------------------------------------------------
+// SCHEDULE
+// -------------------------------------------------------------
+interface ApiScheduleResponse {
+  status: string;
+  data: {
+    day: string;
+    anime_list: {
+      title: string;
+      slug: string;
+      url: string;
+      poster: string;
+    }[];
+  }[];
 }
 
 export async function getSchedule(): Promise<ScheduleMap> {
-  const days = ["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU"];
-  const entries = await Promise.all(
-    days.map(async (day) => {
-      try {
-        const res = await proxyGet<{ data?: { today?: RawAnimeItem[] } }>(
-          `/3/2/home/data?day=${encodeURIComponent(day)}&limit=50`,
-        );
-        const items = (res.data?.today ?? []).map(mapAnimeSummary).filter(Boolean) as AnimeSummary[];
-        return [day, items] as const;
-      } catch {
-        return [day, [] as AnimeSummary[]] as const;
-      }
-    }),
-  );
-  return Object.fromEntries(entries);
+  try {
+    const json = await fetchJson<ApiScheduleResponse>(`${SANKA_API_BASE}/schedule`);
+    const map: ScheduleMap = {};
+
+    for (const item of json.data ?? []) {
+      const dayName = item.day;
+      map[dayName] = (item.anime_list ?? []).map((a) => ({
+        id: a.slug,
+        title: a.title,
+        poster: a.poster,
+        releaseDay: dayName,
+        day: dayName,
+        status: "Ongoing",
+        genres: [],
+      }));
+    }
+
+    return map;
+  } catch (error) {
+    console.error("Error in getSchedule:", error);
+    return {};
+  }
 }
 
-export async function getEpisodes(animeIdOrUrl: string): Promise<EpisodeSummary[]> {
-  const id = cleanId(animeIdOrUrl);
-  if (!id) return [];
-  const res = await proxyGet<{ data?: { episode?: RawAnimeItem[] } }>(
-    `/3/2/movie/episode/${encodeURIComponent(id)}?page=0`,
-  );
-  const eps = res.data?.episode ?? [];
-  return eps.map(mapEpisode);
-}
-
-export async function getDetail(animeIdOrUrl: string): Promise<AnimeDetail> {
-  const id = cleanId(animeIdOrUrl);
-  if (!id) throw new Error("ID anime tidak valid.");
-
-  const res = await proxyGet<{ data?: { movie?: RawAnimeItem } }>(
-    `/3/2/movie/detail/${encodeURIComponent(id)}`,
-  );
-  const movie = res.data?.movie;
-  if (!movie) throw new Error("Anime tidak ditemukan.");
-
-  const summary = mapAnimeSummary(movie);
-  if (!summary) throw new Error("Anime tidak ditemukan.");
-
-  const episodes = await getEpisodes(id);
-
-  return {
-    ...summary,
-    studio: (movie["studio"] as string) ?? "-",
-    airedEnd: (movie["aired_end"] as string) ?? null,
-    totalEpisodes: episodes.length,
-    episodes,
+// -------------------------------------------------------------
+// DIRECTORY / UNLIMITED
+// -------------------------------------------------------------
+interface ApiUnlimitedResponse {
+  status: string;
+  data: {
+    list: DirectoryGroup[];
   };
 }
 
-export async function getStream(episodeIdOrUrl: string): Promise<StreamResult> {
-  const epId = cleanId(episodeIdOrUrl);
-  if (!epId) throw new Error("ID episode tidak valid.");
+export async function getDirectory(): Promise<DirectoryGroup[]> {
+  try {
+    const json = await fetchJson<ApiUnlimitedResponse>(`${SANKA_API_BASE}/unlimited`);
+    return json.data?.list ?? [];
+  } catch (error) {
+    console.error("Error in getDirectory:", error);
+    return [];
+  }
+}
 
-  const res = await proxyGet<{ data?: Record<string, unknown> }>(
-    `/3/2/episode/streamnew/${encodeURIComponent(epId)}`,
-  );
-  const d = res.data ?? {};
-  const episodeInfo = (d["episode"] as RawAnimeItem) ?? {};
-  const nextEpisode = (d["episode_next"] as RawAnimeItem) ?? null;
-  const servers = ((d["server"] as RawAnimeItem[]) ?? []).map((s) => ({
-    id: String(s["id"] ?? ""),
-    name: String(s["name"] ?? ""),
-    quality: String(s["quality"] ?? ""),
-    type: (s["type"] as string) ?? null,
-    fileSizeMb: toNumber(s["key_file_size"]),
-    url: String(s["link"] ?? ""),
-    serverId: String(s["server_id"] ?? s["id"] ?? ""),
-  }));
-
-  return {
-    episode: {
-      id: String(episodeInfo["id"] ?? epId),
-      title: String(episodeInfo["title"] ?? ""),
-      number: Number(episodeInfo["index"] ?? 0),
-      views: toNumber(episodeInfo["views"]) ?? 0,
-      releaseDate: (episodeInfo["key_time"] as string) ?? null,
-      nextEpisodeId: nextEpisode ? String(nextEpisode["id"] ?? "") : null,
-    },
-    servers,
+// -------------------------------------------------------------
+// ANIME DETAIL
+// -------------------------------------------------------------
+interface ApiDetailResponse {
+  status: string;
+  data: {
+    title: string;
+    poster: string;
+    japanese?: string;
+    score?: string;
+    producers?: string;
+    type?: string;
+    status?: string;
+    episodes?: number;
+    duration?: string;
+    aired?: string;
+    studios?: string;
+    batch?: {
+      title: string;
+      batchId: string;
+      href?: string;
+      otakudesuUrl?: string;
+    } | null;
+    synopsis?: {
+      paragraphs?: string[];
+    };
+    genreList?: { title: string; genreId: string }[];
+    episodeList?: {
+      title: string;
+      eps: number;
+      date?: string;
+      episodeId: string;
+      href?: string;
+    }[];
+    recommendedAnimeList?: {
+      title: string;
+      poster: string;
+      animeId: string;
+    }[];
   };
+}
+
+export async function getDetail(id: string): Promise<AnimeDetail> {
+  try {
+    const json = await fetchJson<ApiDetailResponse>(
+      `${SANKA_API_BASE}/anime/${encodeURIComponent(id)}`,
+    );
+    const d = json.data;
+
+    const episodes: EpisodeSummary[] = (d.episodeList ?? []).map((ep) => ({
+      id: ep.episodeId,
+      number: ep.eps || 0,
+      title: ep.title,
+      releaseDate: ep.date ?? null,
+    }));
+
+    const recommended: AnimeSummary[] = (d.recommendedAnimeList ?? []).map((r) => ({
+      id: r.animeId,
+      title: r.title,
+      poster: r.poster,
+      genres: [],
+    }));
+
+    const synopsisText = d.synopsis?.paragraphs?.join("\n\n") || null;
+
+    return {
+      id,
+      title: d.title,
+      poster: d.poster,
+      japanese: d.japanese ?? null,
+      score: d.score ?? null,
+      producers: d.producers ?? null,
+      type: d.type ?? "TV",
+      status: d.status ?? "Unknown",
+      episodes,
+      totalEpisodes: d.episodes ?? episodes.length,
+      duration: d.duration ?? null,
+      aired: d.aired ?? null,
+      studio: d.studios ?? null,
+      studios: d.studios ?? null,
+      synopsis: synopsisText,
+      genres: (d.genreList ?? []).map((g) => g.title),
+      batch: d.batch
+        ? {
+            title: d.batch.title,
+            batchId: d.batch.batchId,
+            href: d.batch.href,
+            otakudesuUrl: d.batch.otakudesuUrl,
+          }
+        : null,
+      recommended,
+    };
+  } catch (error) {
+    console.error(`Error in getDetail for ${id}:`, error);
+    throw error;
+  }
+}
+
+// -------------------------------------------------------------
+// EPISODE STREAM & DOWNLOADS
+// -------------------------------------------------------------
+interface ApiEpisodeResponse {
+  status: string;
+  data: {
+    title: string;
+    animeId: string;
+    releaseTime?: string;
+    defaultStreamingUrl: string;
+    hasPrevEpisode: boolean;
+    prevEpisode?: {
+      title?: string;
+      episodeId: string;
+      href?: string;
+    } | null;
+    hasNextEpisode: boolean;
+    nextEpisode?: {
+      title?: string;
+      episodeId: string;
+      href?: string;
+    } | null;
+    server?: {
+      qualities?: {
+        title: string;
+        serverList?: {
+          title: string;
+          serverId: string;
+          href?: string;
+        }[];
+      }[];
+    };
+    downloadUrl?: {
+      qualities?: {
+        title: string;
+        size: string;
+        urls: {
+          title: string;
+          url: string;
+        }[];
+      }[];
+    };
+    info?: {
+      credit?: string;
+      encoder?: string;
+      duration?: string;
+      type?: string;
+      genreList?: { title: string; genreId: string }[];
+      episodeList?: {
+        title: string;
+        eps: number;
+        episodeId: string;
+      }[];
+    };
+  };
+}
+
+export async function getStream(episodeId: string): Promise<StreamResult> {
+  try {
+    const json = await fetchJson<ApiEpisodeResponse>(
+      `${SANKA_API_BASE}/episode/${encodeURIComponent(episodeId)}`,
+    );
+    const d = json.data;
+
+    const qualities = (d.server?.qualities ?? []).map((q) => ({
+      quality: q.title,
+      serverList: (q.serverList ?? []).map((s) => ({
+        title: s.title.trim(),
+        serverId: s.serverId,
+        href: s.href,
+      })),
+    }));
+
+    const downloads = (d.downloadUrl?.qualities ?? []).map((q) => ({
+      quality: q.title,
+      size: q.size ?? null,
+      urls: (q.urls ?? []).map((u) => ({
+        title: u.title,
+        url: u.url,
+      })),
+    }));
+
+    return {
+      title: d.title,
+      animeId: d.animeId,
+      episodeId,
+      releaseTime: d.releaseTime ?? null,
+      defaultStreamingUrl: d.defaultStreamingUrl || null,
+      hasPrevEpisode: Boolean(d.hasPrevEpisode),
+      prevEpisodeId: d.prevEpisode?.episodeId ?? null,
+      hasNextEpisode: Boolean(d.hasNextEpisode),
+      nextEpisodeId: d.nextEpisode?.episodeId ?? null,
+      servers: {
+        qualities,
+      },
+      downloads,
+      info: d.info,
+    };
+  } catch (error) {
+    console.error(`Error in getStream for ${episodeId}:`, error);
+    throw error;
+  }
+}
+
+// -------------------------------------------------------------
+// RESOLVE SERVER STREAM URL
+// -------------------------------------------------------------
+interface ApiServerResponse {
+  status: string;
+  data: {
+    url: string;
+  };
+}
+
+export async function resolveServer(serverId: string): Promise<{ url: string }> {
+  try {
+    const json = await fetchJson<ApiServerResponse>(
+      `${SANKA_API_BASE}/server/${encodeURIComponent(serverId)}`,
+    );
+    return { url: json.data?.url || "" };
+  } catch (error) {
+    console.error(`Error resolving server ${serverId}:`, error);
+    return { url: "" };
+  }
+}
+
+// -------------------------------------------------------------
+// BATCH DOWNLOAD
+// -------------------------------------------------------------
+interface ApiBatchResponse {
+  status: string;
+  data: BatchDetail;
+}
+
+export async function getBatch(batchId: string): Promise<BatchDetail | null> {
+  try {
+    const json = await fetchJson<ApiBatchResponse>(
+      `${SANKA_API_BASE}/batch/${encodeURIComponent(batchId)}`,
+    );
+    return json.data ?? null;
+  } catch (error) {
+    console.error(`Error in getBatch for ${batchId}:`, error);
+    return null;
+  }
 }

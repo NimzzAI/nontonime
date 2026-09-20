@@ -10,7 +10,8 @@ export function isDirectVideoUrl(url: string) {
 }
 
 export function isDownloadableUrl(url: string) {
-  return /\.mp4(\?|$)/i.test(url);
+  if (!url) return false;
+  return !url.startsWith("#") && !url.startsWith("javascript:");
 }
 
 export function formatViews(views: number | string) {

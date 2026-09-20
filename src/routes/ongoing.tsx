@@ -12,9 +12,15 @@ export const Route = createFileRoute("/ongoing")({
   head: () => ({
     meta: [
       { title: "Anime Ongoing — Nontonime" },
-      { name: "description", content: "Daftar anime yang sedang tayang musim ini dengan subtitle Indonesia." },
+      {
+        name: "description",
+        content: "Daftar anime yang sedang tayang musim ini dengan subtitle Indonesia.",
+      },
       { property: "og:title", content: "Anime Ongoing — Nontonime" },
-      { property: "og:description", content: "Daftar anime yang sedang tayang musim ini subtitle Indonesia." },
+      {
+        property: "og:description",
+        content: "Daftar anime yang sedang tayang musim ini subtitle Indonesia.",
+      },
     ],
   }),
   component: OngoingPage,
@@ -33,7 +39,11 @@ function OngoingPage() {
       {data ? (
         <>
           <AnimeGrid items={data.items} />
-          <Pagination page={page} hasNext={data.hasNext} onChange={(next) => navigate({ to: "/ongoing", search: { page: next } })} />
+          <Pagination
+            page={page}
+            hasNext={data.hasNext}
+            onChange={(next) => navigate({ to: "/ongoing", search: { page: next } })}
+          />
         </>
       ) : null}
     </div>

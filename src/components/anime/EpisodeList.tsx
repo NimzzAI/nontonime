@@ -34,7 +34,12 @@ export function EpisodeList({
                 className="relative h-16 w-28 shrink-0 overflow-hidden rounded-xl bg-muted"
               >
                 {episode.image ? (
-                  <img src={episode.image} alt={episode.title} loading="lazy" className="h-full w-full object-cover" />
+                  <img
+                    src={episode.image}
+                    alt={episode.title}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                     <i className="fa-solid fa-play text-sm" />
@@ -53,7 +58,9 @@ export function EpisodeList({
               <div className="min-w-0 flex-1 space-y-1">
                 <p className="truncate text-sm font-semibold text-card-foreground">
                   Episode {episode.number}
-                  {episode.title && episode.title !== `Episode ${episode.number}` ? ` — ${episode.title}` : ""}
+                  {episode.title && episode.title !== `Episode ${episode.number}`
+                    ? ` — ${episode.title}`
+                    : ""}
                 </p>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   {episode.views ? (

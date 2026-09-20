@@ -8,17 +8,18 @@ import { nitro as nitroV2Plugin } from "nitro/vite";
 
 export default defineConfig({
   server: {
-    port: 8080,
+    host: "0.0.0.0",
+    port: 3000,
   },
   plugins: [
     tsConfigPaths(),
     tailwindcss(),
+    tanstackStart({
+      server: { entry: "server" },
+    }),
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
-    }),
-    tanstackStart({
-      server: { entry: "server" },
     }),
     nitroV2Plugin({
       config: {

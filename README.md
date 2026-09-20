@@ -38,27 +38,28 @@ Beberapa catatan penting soal sumber data ini:
 
 ## Fitur
 
-| Fitur | Deskripsi |
-|---|---|
-| **Beranda** | Hero slider otomatis dari data live, plus rak Tayang Hari Ini, Trending, Terpopuler, Baru Ditambahkan, Segera Tayang, dan Lanjutkan Nonton |
-| **Ongoing & Tamat** | Daftar anime berdasarkan status (hasil filter, lihat [Sumber Data](#sumber-data)), dengan paginasi |
-| **Jadwal Rilis** | Jadwal tayang anime per hari dalam seminggu, lengkap dengan poster, hari ini ditandai otomatis |
-| **Pencarian** | Cari judul anime dengan hasil berpaginasi |
-| **Genre** | Jelajahi anime berdasarkan kategori genre, dengan thumbnail genre |
-| **Detail Anime** | Hero backdrop, info ringkas, sinopsis collapsible, tombol lanjut nonton, subscribe, watchlist, dan rekomendasi berbasis genre |
-| **Nonton Episode** | Video player dengan pilihan kualitas & server instan (tanpa fetch ulang), episode list, tombol episode sebelumnya/selanjutnya |
-| **Download Per-Episode & Per-Anime** | Tombol unduh di setiap episode (popover kualitas & server) plus halaman "Unduh Semua Episode" per anime |
-| **Riwayat Tontonan** | Tersimpan otomatis di perangkat, dikelompokkan per hari |
-| **Watchlist** | Simpan anime buat ditonton nanti, tersimpan di perangkat |
-| **Notifikasi** | Subscribe per anime, notifikasi lokal via Web Push API (lihat bagian [Notifikasi](#notifikasi)) |
-| **Navigasi Mobile** | Bottom tab bar (Home/Jadwal/Cari/Riwayat/Profil) khusus layar kecil |
-| **PWA** | Bisa di-install ke homescreen HP (manifest + service worker) |
+| Fitur                                | Deskripsi                                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Beranda**                          | Hero slider otomatis dari data live, plus rak Tayang Hari Ini, Trending, Terpopuler, Baru Ditambahkan, Segera Tayang, dan Lanjutkan Nonton |
+| **Ongoing & Tamat**                  | Daftar anime berdasarkan status (hasil filter, lihat [Sumber Data](#sumber-data)), dengan paginasi                                         |
+| **Jadwal Rilis**                     | Jadwal tayang anime per hari dalam seminggu, lengkap dengan poster, hari ini ditandai otomatis                                             |
+| **Pencarian**                        | Cari judul anime dengan hasil berpaginasi                                                                                                  |
+| **Genre**                            | Jelajahi anime berdasarkan kategori genre, dengan thumbnail genre                                                                          |
+| **Detail Anime**                     | Hero backdrop, info ringkas, sinopsis collapsible, tombol lanjut nonton, subscribe, watchlist, dan rekomendasi berbasis genre              |
+| **Nonton Episode**                   | Video player dengan pilihan kualitas & server instan (tanpa fetch ulang), episode list, tombol episode sebelumnya/selanjutnya              |
+| **Download Per-Episode & Per-Anime** | Tombol unduh di setiap episode (popover kualitas & server) plus halaman "Unduh Semua Episode" per anime                                    |
+| **Riwayat Tontonan**                 | Tersimpan otomatis di perangkat, dikelompokkan per hari                                                                                    |
+| **Watchlist**                        | Simpan anime buat ditonton nanti, tersimpan di perangkat                                                                                   |
+| **Notifikasi**                       | Subscribe per anime, notifikasi lokal via Web Push API (lihat bagian [Notifikasi](#notifikasi))                                            |
+| **Navigasi Mobile**                  | Bottom tab bar (Home/Jadwal/Cari/Riwayat/Profil) khusus layar kecil                                                                        |
+| **PWA**                              | Bisa di-install ke homescreen HP (manifest + service worker)                                                                               |
 
 ## Tampilan
 
 Desain dirombak total dengan identitas baru bertema "malam maraton nonton anime": latar gelap indigo-plum yang hangat (bukan hitam pekat) dipadukan aksen ganda — kuning keemasan untuk aksi utama dan merah muda lembut untuk badge/notifikasi — dengan tema terang sebagai alternatif. Tipografi memakai **Bricolage Grotesque** untuk judul/heading dan **Plus Jakarta Sans** untuk teks isi. Semua token warna, radius, dan utilitas visual (`glass`, `press-soft`, `card-lift`, skeleton loading, dsb.) diatur terpusat di `src/styles.css`.
 
 Perubahan tata letak yang cukup besar dibanding versi sebelumnya:
+
 - Hero Beranda kini berupa slider berisi anime unggulan asli dari API (bukan video statis) — file `public/hero-bg.mp4` jadi tidak terpakai, boleh dihapus atau dipakai lagi manual kalau mau.
 - Bottom tab bar mobile: **Download** diganti **Cari** supaya pencarian lebih mudah dijangkau jempol; akses ke unduhan tetap ada lewat halaman detail anime.
 - Episode kini tampil dengan thumbnail asli (bukan cuma nomor), baik di daftar episode maupun grid navigasi.
@@ -94,13 +95,13 @@ Aplikasi akan berjalan di `http://localhost:8080`.
 
 ### Skrip yang tersedia
 
-| Perintah | Fungsi |
-|---|---|
-| `npm run dev` | Menjalankan server pengembangan |
-| `npm run build` | Build untuk produksi |
-| `npm run preview` | Menjalankan hasil build secara lokal |
-| `npm run lint` | Memeriksa kualitas kode dengan ESLint |
-| `npm run format` | Merapikan format kode dengan Prettier |
+| Perintah          | Fungsi                                |
+| ----------------- | ------------------------------------- |
+| `npm run dev`     | Menjalankan server pengembangan       |
+| `npm run build`   | Build untuk produksi                  |
+| `npm run preview` | Menjalankan hasil build secara lokal  |
+| `npm run lint`    | Memeriksa kualitas kode dengan ESLint |
+| `npm run format`  | Merapikan format kode dengan Prettier |
 
 ## Build untuk Produksi
 
@@ -120,21 +121,23 @@ Proyek ini di-deploy di **Vercel** menggunakan preset Nitro `vercel`, sehingga s
 Fitur subscribe/notifikasi di halaman detail anime memakai **Web Push API bawaan browser** (Service Worker + `PushManager` + VAPID) — bukan Firebase Cloud Messaging maupun SDK pihak ketiga lain.
 
 Yang sudah aktif:
+
 - Minta izin notifikasi & bikin Push Subscription asli lewat tombol **Subscribe**
 - Notifikasi lokal langsung muncul di bar notifikasi HP (konfirmasi subscribe, tombol tes di halaman **Profil**)
 - Anime yang di-subscribe tersimpan di perangkat (`src/lib/subscriptions.ts`), bisa dilihat/dihapus dari halaman Profil
 - Service worker (`public/sw.js`) sudah siap menerima & menampilkan push message beneran, termasuk buka halaman anime terkait saat notifikasi diklik
 
 Yang **belum** ada (perlu dikerjakan terpisah kalau mau notifikasi otomatis saat episode baru rilis):
+
 - Backend untuk menyimpan Push Subscription per pengguna (database)
 - Cron/scheduler untuk mengecek episode baru dan memicu pengiriman push (pakai kunci privat VAPID + library `web-push` di server)
 
 Variabel environment terkait (lihat `.env.example`):
 
-| Variabel | Dipakai di | Keterangan |
-|---|---|---|
-| `VITE_VAPID_PUBLIC_KEY` | Client | Aman diekspos, dipakai saat `pushManager.subscribe()` |
-| `VAPID_PRIVATE_KEY` | Server (belum dipakai) | **Jangan** taruh di kode client; simpan sebagai secret di hosting saat backend pengirim push dibuat |
+| Variabel                | Dipakai di             | Keterangan                                                                                          |
+| ----------------------- | ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `VITE_VAPID_PUBLIC_KEY` | Client                 | Aman diekspos, dipakai saat `pushManager.subscribe()`                                               |
+| `VAPID_PRIVATE_KEY`     | Server (belum dipakai) | **Jangan** taruh di kode client; simpan sebagai secret di hosting saat backend pengirim push dibuat |
 
 Generate ulang key sendiri kapan saja lewat `npx web-push generate-vapid-keys`.
 
