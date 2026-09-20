@@ -1,91 +1,161 @@
 export interface AnimeSummary {
   id: string;
   title: string;
-  synonyms: string | null;
-  type: string | null;
-  status: string | null;
-  day: string | null;
-  year: string | number | null;
-  views: number | null;
-  favorites: number | null;
-  genres: string[];
   poster: string | null;
-  cover: string | null;
-  airedStart: string | null;
-  synopsis: string | null;
+  score?: string | number | null;
+  episodes?: number | null;
+  status?: string | null;
+  type?: string | null;
+  releaseDay?: string | null;
+  latestReleaseDate?: string | null;
+  genres?: string[];
+  synopsis?: string | null;
+  year?: string | number | null;
+  views?: number | null;
+  day?: string | null;
+  cover?: string | null;
+  studios?: string | null;
 }
 
 export interface EpisodeSummary {
   id: string;
   number: number;
   title: string;
-  views: number;
-  releaseDate: string | null;
-  image: string | null;
-  isNew: boolean;
+  releaseDate?: string | null;
+}
+
+export interface BatchInfo {
+  title: string;
+  batchId: string;
+  href?: string;
+  otakudesuUrl?: string;
 }
 
 export interface AnimeDetail extends AnimeSummary {
-  studio: string;
-  airedEnd: string | null;
-  totalEpisodes: number;
+  japanese?: string | null;
+  producers?: string | null;
+  duration?: string | null;
+  aired?: string | null;
+  studio?: string | null;
+  batch?: BatchInfo | null;
   episodes: EpisodeSummary[];
+  recommended?: AnimeSummary[];
+}
+
+export interface ServerQualityOption {
+  title: string;
+  serverId: string;
+  href?: string;
+}
+
+export interface QualityServerGroup {
+  quality: string;
+  serverList: ServerQualityOption[];
+}
+
+export interface DownloadUrlItem {
+  title: string;
+  url: string;
+}
+
+export interface DownloadQualityGroup {
+  quality: string;
+  size: string | null;
+  urls: DownloadUrlItem[];
+}
+
+export interface StreamResult {
+  title: string;
+  animeId: string;
+  episodeId: string;
+  releaseTime?: string | null;
+  defaultStreamingUrl: string | null;
+  hasPrevEpisode: boolean;
+  prevEpisodeId?: string | null;
+  hasNextEpisode: boolean;
+  nextEpisodeId?: string | null;
+  servers: {
+    qualities: QualityServerGroup[];
+  };
+  downloads: DownloadQualityGroup[];
+  info?: {
+    credit?: string;
+    encoder?: string;
+    duration?: string;
+    type?: string;
+    genreList?: { title: string; genreId: string }[];
+    episodeList?: { title: string; eps: number; episodeId: string }[];
+  };
 }
 
 export interface HomeSections {
+  slider: AnimeSummary[];
   today: AnimeSummary[];
+  hot: AnimeSummary[];
   popular: AnimeSummary[];
   new: AnimeSummary[];
-  hot: AnimeSummary[];
-  slider: AnimeSummary[];
   waiting: AnimeSummary[];
 }
 
 export interface GenreItem {
   id: string;
   name: string;
-  group: string | null;
-  image: string | null;
+  group?: string | null;
+  image?: string | null;
+}
+
+export interface ListPagination {
+  currentPage: number;
+  hasPrevPage: boolean;
+  prevPage: number | null;
+  hasNextPage: boolean;
+  nextPage: number | null;
+  totalPages: number;
 }
 
 export interface ListResult {
   items: AnimeSummary[];
   page: number;
   hasNext: boolean;
+  totalPages?: number;
+  pagination?: ListPagination | null;
 }
 
 export type ScheduleMap = Record<string, AnimeSummary[]>;
 
-export interface StreamServer {
-  id: string;
-  name: string;
-  quality: string;
-  type: string | null;
-  fileSizeMb: number | null;
-  url: string;
-  serverId: string;
+export interface BatchDetail {
+  title: string;
+  animeId: string;
+  poster: string | null;
+  downloadUrl: {
+    formats: {
+      title: string;
+      qualities: {
+        title: string;
+        size: string;
+        urls: { title: string; url: string }[];
+      }[];
+    }[];
+  };
 }
 
-export interface StreamResult {
-  episode: {
-    id: string;
+export interface DirectoryGroup {
+  startWith: string;
+  animeList: {
     title: string;
-    number: number;
-    views: number;
-    releaseDate: string | null;
-    nextEpisodeId: string | null;
-  };
-  servers: StreamServer[];
+    animeId: string;
+    href?: string;
+  }[];
 }
 
 export const SCHEDULE_DAYS = [
-  "SENIN",
-  "SELASA",
-  "RABU",
-  "KAMIS",
-  "JUMAT",
-  "SABTU",
-  "MINGGU",
+  "Senin",
+  "Selasa",
+  "Rabu",
+  "Kamis",
+  "Jumat",
+  "Sabtu",
+  "Minggu",
 ] as const;
 
 export type ScheduleDay = (typeof SCHEDULE_DAYS)[number];

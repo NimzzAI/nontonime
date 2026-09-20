@@ -1,26 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { ErrorState, LoadingState } from "@/components/anime/StateViews";
-import { ServerList } from "@/components/anime/ServerList";
-import { animeDetailQuery, streamQuery } from "@/lib/queries";
-import { cn } from "@/lib/utils";
-import type { EpisodeSummary } from "@/lib/anime-types";
+import { animeDetailQuery, batchQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/download/$batchId")({
   head: ({ params }) => {
     const name = params.batchId.replace(/-/g, " ");
     return {
       meta: [
-        { title: `Unduh Semua Episode ${name} — Nontonime` },
+        { title: `Unduh Batch ${name} — Nontonime` },
         {
           name: "description",
-          content: `Tautan unduhan per episode ${name} subtitle Indonesia per resolusi.`,
+          content: `Tautan unduhan paket lengkap batch ${name} subtitle Indonesia.`,
         },
-        { property: "og:title", content: `Unduh Semua Episode ${name} — Nontonime` },
+        { property: "og:title", content: `Unduh Batch ${name} — Nontonime` },
         {
           property: "og:description",
-          content: `Tautan unduhan per episode ${name} subtitle Indonesia.`,
+          content: `Tautan unduhan batch ${name} subtitle Indonesia.`,
         },
       ],
     };
@@ -28,109 +24,144 @@ export const Route = createFileRoute("/download/$batchId")({
   component: BatchPage,
 });
 
-function EpisodeDownloadRow({ episode, animeId }: { episode: EpisodeSummary; animeId: string }) {
-  const [open, setOpen] = useState(false);
-  const { data, isPending, isError } = useQuery({ ...streamQuery(episode.id), enabled: open });
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <button
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 text-left"
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
-            {episode.image ? (
-              <img
-                src={episode.image}
-                alt={episode.title}
-                loading="lazy"
-                className="h-full w-full object-cover"
-              />
-            ) : null}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-card-foreground">
-              Episode {episode.number}
-            </p>
-            {episode.releaseDate ? (
-              <p className="text-xs text-muted-foreground">{episode.releaseDate}</p>
-            ) : null}
-          </div>
-        </div>
-        <i
-          className={cn(
-            "fa-solid fa-chevron-down shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-180",
-          )}
-        />
-      </button>
-      {open ? (
-        <div className="mt-3 border-t border-border pt-3">
-          {isPending ? (
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <i className="fa-solid fa-circle-notch fa-spin" />
-              Memuat pilihan unduhan
-            </p>
-          ) : isError ? (
-            <p className="text-xs text-muted-foreground">Gagal memuat server. Coba lagi.</p>
-          ) : (
-            <ServerList servers={data?.servers ?? []} episodeId={episode.id} animeId={animeId} />
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function BatchPage() {
   const { batchId } = Route.useParams();
-  const { data, isPending, error, refetch } = useQuery(animeDetailQuery(batchId));
 
-  if (isPending) return <LoadingState label="Memuat daftar episode" />;
-  if (error)
+  // Try batch query first
+  const batchRes = useQuery(batchQuery(batchId));
+  // If batchId is actually animeId, fallback to anime detail
+  const animeRes = useQuery({
+    ...animeDetailQuery(batchId),
+    enabled: Boolean(batchRes.isError || (!batchRes.data && !batchRes.isPending)),
+  });
+
+  if (batchRes.isPending) return <LoadingState label="Memuat paket unduhan batch..." />;
+
+  const batchData = batchRes.data;
+
+  if (batchData && batchData.downloadUrl?.formats?.length > 0) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10">
-        <ErrorState error={error} onRetry={() => refetch()} />
-      </div>
-    );
+      <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+        <div className="flex flex-col sm:flex-row items-start gap-5">
+          {batchData.poster ? (
+            <img
+              src={batchData.poster}
+              alt={batchData.title}
+              className="w-32 sm:w-40 rounded-2xl border border-border/80 object-cover shadow-lg shrink-0"
+            />
+          ) : null}
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-3 py-0.5 text-xs font-bold">
+              <i className="fa-solid fa-box-archive" />
+              PAKET BATCH LENGKAP
+            </span>
+            <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground">
+              {batchData.title}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Unduh seluruh episode dalam satu paket arsip subtitle Indonesia.
+            </p>
+            {batchData.animeId ? (
+              <Link
+                to="/anime/$animeId"
+                params={{ animeId: batchData.animeId }}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline pt-2"
+              >
+                <i className="fa-solid fa-arrow-left text-xs" />
+                Kembali ke detail anime
+              </Link>
+            ) : null}
+          </div>
+        </div>
 
-  const anime = data;
-  const episodes = [...anime.episodes].sort((a, b) => a.number - b.number);
+        {/* Formats and Qualities */}
+        <div className="space-y-6">
+          {batchData.downloadUrl.formats.map((fmt, idx) => (
+            <div
+              key={fmt.title || idx}
+              className="rounded-2xl border border-border/80 bg-card p-5 space-y-4 shadow-sm"
+            >
+              <h2 className="font-display text-base font-bold text-foreground border-b border-border/60 pb-2.5">
+                {fmt.title}
+              </h2>
 
-  return (
-    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
-      <div className="flex flex-wrap items-start gap-4">
-        {anime.poster ? (
-          <img
-            src={anime.poster}
-            alt={anime.title}
-            className="w-28 rounded-2xl border border-border object-cover"
-          />
-        ) : null}
-        <div className="space-y-2">
-          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            {anime.title}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {[anime.type, `${episodes.length} episode`].filter(Boolean).join(" · ")}
-          </p>
-          <Link
-            to="/anime/$animeId"
-            params={{ animeId: batchId }}
-            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-          >
-            <i className="fa-solid fa-arrow-left" />
-            Kembali ke detail anime
-          </Link>
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                {fmt.qualities.map((q) => (
+                  <div
+                    key={q.title}
+                    className="rounded-xl border border-border/70 bg-background/70 p-3.5 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-foreground bg-primary/15 text-primary px-2 py-0.5 rounded-md">
+                        {q.title}
+                      </span>
+                      {q.size ? (
+                        <span className="font-semibold text-muted-foreground">{q.size}</span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {q.urls.map((link) => (
+                        <a
+                          key={link.title + link.url}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="press-soft inline-flex items-center gap-1 rounded-lg border border-border/80 bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent hover:border-primary/50"
+                        >
+                          <i className="fa-solid fa-download text-[10px] text-primary" />
+                          {link.title}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
+    );
+  }
 
-      <div className="space-y-3">
-        {episodes.map((episode) => (
-          <EpisodeDownloadRow key={episode.id} episode={episode} animeId={batchId} />
-        ))}
+  // Fallback if detail is loaded
+  if (animeRes.data) {
+    const anime = animeRes.data;
+    return (
+      <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+        <div className="flex items-start gap-4">
+          {anime.poster ? (
+            <img
+              src={anime.poster}
+              alt={anime.title}
+              className="w-28 rounded-2xl border border-border object-cover"
+            />
+          ) : null}
+          <div className="space-y-2">
+            <h1 className="font-display text-2xl font-bold text-foreground">{anime.title}</h1>
+            <p className="text-sm text-muted-foreground">
+              Tautan unduhan per episode tersedia di dalam halaman nonton episode terkait.
+            </p>
+            <Link
+              to="/anime/$animeId"
+              params={{ animeId: batchId }}
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+            >
+              <i className="fa-solid fa-arrow-left" />
+              Kembali ke detail anime
+            </Link>
+          </div>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-12">
+      <ErrorState
+        error={batchRes.error || new Error("Paket unduhan batch tidak ditemukan")}
+        onRetry={() => batchRes.refetch()}
+      />
     </div>
   );
 }

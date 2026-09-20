@@ -1,795 +1,691 @@
-import * as cheerio from "cheerio";
 import type {
   AnimeDetail,
   AnimeSummary,
+  BatchDetail,
+  DirectoryGroup,
   EpisodeSummary,
   GenreItem,
   HomeSections,
   ListResult,
   ScheduleMap,
   StreamResult,
-  StreamServer,
 } from "./anime-types";
-import {
-  FALLBACK_HOME,
-  FALLBACK_SCHEDULE,
-  FALLBACK_GENRES,
-  FALLBACK_DETAILS,
-} from "./fallback-data";
 
-const OTAKU_BASE = "https://otakudesu.blog";
+const SANKA_API_BASE = "https://www.sankavollerei.web.id/anime";
 
-// In-memory cache with TTL (10 minutes)
+// Cache in-memory with 5-minute TTL to reduce duplicate external latency
 interface CacheEntry<T> {
   data: T;
   expires: number;
 }
 const cache = new Map<string, CacheEntry<unknown>>();
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-function getCached<T>(key: string): T | null {
-  const item = cache.get(key);
-  if (!item) return null;
-  if (Date.now() > item.expires) {
-    cache.delete(key);
-    return null;
+async function fetchJson<T>(url: string, ttlMs = 5 * 60 * 1000): Promise<T> {
+  const cached = cache.get(url);
+  if (cached && Date.now() < cached.expires) {
+    return cached.data as T;
   }
-  return item.data as T;
-}
-
-function setCache<T>(key: string, data: T, ttlMs = CACHE_TTL_MS): void {
-  cache.set(key, {
-    data,
-    expires: Date.now() + ttlMs,
-  });
-}
-
-async function fetchHtml(url: string, timeoutMs = 8000): Promise<string> {
-  const cached = getCached<string>(`html:${url}`);
-  if (cached) return cached;
 
   const res = await fetch(url, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
-      Referer: `${OTAKU_BASE}/`,
+      Accept: "application/json",
     },
-    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch ${url} (status: ${res.status})`);
+    throw new Error(`API fetch error ${res.status}: ${res.statusText} at ${url}`);
   }
 
-  const html = await res.text();
-  setCache(`html:${url}`, html);
-  return html;
+  const json = await res.json();
+  cache.set(url, { data: json, expires: Date.now() + ttlMs });
+  return json as T;
 }
 
-function cleanSlug(urlOrSlug: string, prefix = "/anime/"): string {
-  if (!urlOrSlug) return "";
-  let s = urlOrSlug.trim();
-  s = s.replace(/^https?:\/\/[^/]+/, "");
-  s = s.replace(new RegExp(`^${prefix}`), "");
-  s = s.replace(/^\/|\/$/g, "");
-  return s;
+// -------------------------------------------------------------
+// HOME
+// -------------------------------------------------------------
+interface ApiHomeResponse {
+  status: string;
+  data: {
+    ongoing: {
+      animeList: {
+        title: string;
+        poster: string;
+        episodes?: number | string;
+        releaseDay?: string;
+        latestReleaseDate?: string;
+        animeId: string;
+      }[];
+    };
+    completed: {
+      animeList: {
+        title: string;
+        poster: string;
+        episodes?: number | string;
+        score?: string;
+        lastReleaseDate?: string;
+        animeId: string;
+      }[];
+    };
+  };
 }
 
-function parseScore(val?: string): number | null {
-  if (!val) return null;
-  const match = val.match(/\d+(\.\d+)?/);
-  return match ? parseFloat(match[0]) : null;
-}
-
-export async function getHome(_day: string | null = null): Promise<HomeSections> {
-  const cacheKey = "anime:home";
-  const cached = getCached<HomeSections>(cacheKey);
-  if (cached) return cached;
-
+export async function getHome(dayFilter?: string | null): Promise<HomeSections> {
   try {
-    const html = await fetchHtml(`${OTAKU_BASE}/`);
-    const $ = cheerio.load(html);
+    const json = await fetchJson<ApiHomeResponse>(`${SANKA_API_BASE}/home`);
+    const ongoingRaw = json.data?.ongoing?.animeList ?? [];
+    const completedRaw = json.data?.completed?.animeList ?? [];
 
-    // 1. Ongoing Anime
-    const ongoingItems: AnimeSummary[] = [];
-    $(".venz")
-      .first()
-      .find("ul li")
-      .each((_, el) => {
-        const $el = $(el);
-        const title = $el.find(".jdlflm").text().trim();
-        const href = $el.find("a").first().attr("href") || "";
-        const poster = $el.find("img").attr("src") || null;
-        const ep = $el.find(".epz").text().trim();
-        const day = $el.find(".epztipe").text().trim();
-        const date = $el.find(".newnime").text().trim();
-        const slug = cleanSlug(href, "/anime/");
+    const ongoing: AnimeSummary[] = ongoingRaw.map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      episodes:
+        typeof a.episodes === "number" ? a.episodes : parseInt(String(a.episodes || 0), 10) || null,
+      status: "Ongoing",
+      type: "TV",
+      releaseDay: a.releaseDay ?? null,
+      day: a.releaseDay ?? null,
+      latestReleaseDate: a.latestReleaseDate ?? null,
+      genres: [],
+    }));
 
-        if (title && slug) {
-          ongoingItems.push({
-            id: slug,
-            title,
-            synonyms: null,
-            type: "TV",
-            status: "Ongoing",
-            day: day || null,
-            year: date || null,
-            views: 12500 + ongoingItems.length * 450,
-            favorites: null,
-            genres: ["Action", "Fantasy"],
-            poster,
-            cover: poster,
-            airedStart: date || null,
-            synopsis: `${ep} · Rilis setiap hari ${day || "tertentu"}.`,
-          });
-        }
-      });
+    const completed: AnimeSummary[] = completedRaw.map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      episodes:
+        typeof a.episodes === "number" ? a.episodes : parseInt(String(a.episodes || 0), 10) || null,
+      score: a.score ?? null,
+      status: "Completed",
+      type: "TV",
+      latestReleaseDate: a.lastReleaseDate ?? null,
+      genres: [],
+    }));
 
-    // 2. Completed Anime
-    const completedItems: AnimeSummary[] = [];
-    $(".venz")
-      .last()
-      .find("ul li")
-      .each((_, el) => {
-        const $el = $(el);
-        const title = $el.find(".jdlflm").text().trim();
-        const href = $el.find("a").first().attr("href") || "";
-        const poster = $el.find("img").attr("src") || null;
-        const ep = $el.find(".epz").text().trim();
-        const rating = $el.find(".epztipe").text().trim();
-        const date = $el.find(".newnime").text().trim();
-        const slug = cleanSlug(href, "/anime/");
+    // Hero slider selects the top ongoing anime with high visual impact
+    const slider = ongoing.slice(0, 7);
 
-        if (title && slug) {
-          const score = parseScore(rating);
-          completedItems.push({
-            id: slug,
-            title,
-            synonyms: null,
-            type: "TV",
-            status: "Completed",
-            day: null,
-            year: date || null,
-            views: score ? Math.round(score * 8500) : 35000,
-            favorites: null,
-            genres: ["Drama", "Adventure"],
-            poster,
-            cover: poster,
-            airedStart: date || null,
-            synopsis: `Tamat (${ep}) · Rating ${rating || "7.5"}/10.`,
-          });
-        }
-      });
-
-    const all = [...ongoingItems, ...completedItems];
-    if (all.length === 0) {
-      return FALLBACK_HOME;
+    let today = ongoing;
+    if (dayFilter) {
+      today = ongoing.filter(
+        (a) => a.releaseDay?.toLowerCase().trim() === dayFilter.toLowerCase().trim(),
+      );
     }
 
-    // Hero slider: Top items with rich banners
-    const slider = [...ongoingItems.slice(0, 5), ...completedItems.slice(0, 3)].map(
-      (anime, idx) => ({
-        ...anime,
-        synopsis:
-          anime.synopsis ||
-          "Tonton anime seru pilihan dengan terjemahan Bahasa Indonesia lengkap dan kualitas gambar jernih.",
-        genres:
-          anime.genres.length > 0
-            ? anime.genres
-            : idx % 2 === 0
-              ? ["Action", "Adventure", "Fantasy"]
-              : ["Romance", "Comedy", "Slice of Life"],
-      }),
-    );
-
-    const result: HomeSections = {
-      slider: slider.length > 0 ? slider : FALLBACK_HOME.slider,
-      today: ongoingItems.slice(0, 10),
-      hot: ongoingItems.slice(2, 12),
-      popular: completedItems.slice(0, 10),
-      new: ongoingItems.slice(5, 15),
-      waiting: completedItems.slice(2, 10),
-    };
-
-    setCache(cacheKey, result);
-    return result;
-  } catch (err) {
-    console.warn("Failed to fetch Otakudesu home, using fallback data:", err);
-    return FALLBACK_HOME;
-  }
-}
-
-export async function getOngoing(page = 1): Promise<ListResult> {
-  const p = Math.max(1, page);
-  const cacheKey = `anime:ongoing:${p}`;
-  const cached = getCached<ListResult>(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const url = p === 1 ? `${OTAKU_BASE}/ongoing-anime/` : `${OTAKU_BASE}/ongoing-anime/page/${p}/`;
-    const html = await fetchHtml(url);
-    const $ = cheerio.load(html);
-
-    const items: AnimeSummary[] = [];
-    $(".venz ul li").each((_, el) => {
-      const $el = $(el);
-      const title = $el.find(".jdlflm").text().trim();
-      const href = $el.find("a").first().attr("href") || "";
-      const poster = $el.find("img").attr("src") || null;
-      const ep = $el.find(".epz").text().trim();
-      const day = $el.find(".epztipe").text().trim();
-      const slug = cleanSlug(href, "/anime/");
-
-      if (title && slug) {
-        items.push({
-          id: slug,
-          title,
-          synonyms: null,
-          type: "TV",
-          status: "Ongoing",
-          day: day || null,
-          year: null,
-          views: 15000,
-          favorites: null,
-          genres: ["Action", "Fantasy"],
-          poster,
-          cover: poster,
-          airedStart: null,
-          synopsis: `${ep} · Rilis setiap ${day || "minggu"}`,
-        });
-      }
-    });
-
-    const hasNext = $(".pagination .next, .pagenavix .next").length > 0 || items.length >= 20;
-    const result: ListResult = { items, page: p, hasNext };
-    setCache(cacheKey, result);
-    return result;
-  } catch (err) {
-    console.warn("Failed to fetch ongoing anime:", err);
     return {
-      items: FALLBACK_HOME.today,
-      page: p,
-      hasNext: false,
+      slider: slider.length > 0 ? slider : ongoing.slice(0, 5),
+      today: today.length > 0 ? today : ongoing,
+      hot: ongoing.slice(0, 10),
+      popular: completed.slice(0, 10),
+      new: ongoing.slice(0, 12),
+      waiting: completed.slice(0, 8),
     };
-  }
-}
-
-export async function getCompleted(page = 1): Promise<ListResult> {
-  const p = Math.max(1, page);
-  const cacheKey = `anime:completed:${p}`;
-  const cached = getCached<ListResult>(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const url =
-      p === 1 ? `${OTAKU_BASE}/complete-anime/` : `${OTAKU_BASE}/complete-anime/page/${p}/`;
-    const html = await fetchHtml(url);
-    const $ = cheerio.load(html);
-
-    const items: AnimeSummary[] = [];
-    $(".venz ul li").each((_, el) => {
-      const $el = $(el);
-      const title = $el.find(".jdlflm").text().trim();
-      const href = $el.find("a").first().attr("href") || "";
-      const poster = $el.find("img").attr("src") || null;
-      const ep = $el.find(".epz").text().trim();
-      const rating = $el.find(".epztipe").text().trim();
-      const slug = cleanSlug(href, "/anime/");
-
-      if (title && slug) {
-        const score = parseScore(rating);
-        items.push({
-          id: slug,
-          title,
-          synonyms: null,
-          type: "TV",
-          status: "Completed",
-          day: null,
-          year: null,
-          views: score ? Math.round(score * 9000) : 32000,
-          favorites: null,
-          genres: ["Drama", "Shounen"],
-          poster,
-          cover: poster,
-          airedStart: null,
-          synopsis: `Tamat (${ep}) · Rating ${rating || "7.5"}`,
-        });
-      }
-    });
-
-    const hasNext = $(".pagination .next, .pagenavix .next").length > 0 || items.length >= 20;
-    const result: ListResult = { items, page: p, hasNext };
-    setCache(cacheKey, result);
-    return result;
-  } catch (err) {
-    console.warn("Failed to fetch completed anime:", err);
+  } catch (error) {
+    console.error("Error in getHome:", error);
     return {
-      items: FALLBACK_HOME.popular,
-      page: p,
-      hasNext: false,
+      slider: [],
+      today: [],
+      hot: [],
+      popular: [],
+      new: [],
+      waiting: [],
     };
   }
 }
 
-export function getLatest(page = 0): Promise<ListResult> {
-  return getOngoing(page + 1);
+// -------------------------------------------------------------
+// ONGOING (LATEST)
+// -------------------------------------------------------------
+interface ApiOngoingResponse {
+  status: string;
+  data: {
+    animeList: {
+      title: string;
+      poster: string;
+      episodes?: number;
+      releaseDay?: string;
+      latestReleaseDate?: string;
+      animeId: string;
+    }[];
+  };
+  pagination: {
+    currentPage: number;
+    hasPrevPage: boolean;
+    prevPage: number | null;
+    hasNextPage: boolean;
+    nextPage: number | null;
+    totalPages: number;
+  } | null;
 }
 
-export function getPopular(page = 0): Promise<ListResult> {
-  return getCompleted(page + 1);
+export async function getLatest(page = 1): Promise<ListResult> {
+  const safePage = Math.max(1, page);
+  try {
+    const json = await fetchJson<ApiOngoingResponse>(
+      `${SANKA_API_BASE}/ongoing-anime?page=${safePage}`,
+    );
+    const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      episodes: a.episodes ?? null,
+      status: "Ongoing",
+      type: "TV",
+      releaseDay: a.releaseDay ?? null,
+      day: a.releaseDay ?? null,
+      latestReleaseDate: a.latestReleaseDate ?? null,
+      genres: [],
+    }));
+
+    return {
+      items,
+      page: safePage,
+      hasNext: Boolean(json.pagination?.hasNextPage),
+      totalPages: json.pagination?.totalPages ?? 1,
+      pagination: json.pagination,
+    };
+  } catch (error) {
+    console.error("Error in getLatest:", error);
+    return { items: [], page: safePage, hasNext: false };
+  }
 }
 
-export async function search(keyword: string, page = 0): Promise<ListResult> {
-  const query = keyword.trim();
-  if (!query) return { items: [], page, hasNext: false };
+// -------------------------------------------------------------
+// COMPLETED (POPULAR)
+// -------------------------------------------------------------
+interface ApiCompletedResponse {
+  status: string;
+  data: {
+    animeList: {
+      title: string;
+      poster: string;
+      episodes?: number;
+      score?: string;
+      lastReleaseDate?: string;
+      animeId: string;
+    }[];
+  };
+  pagination: {
+    currentPage: number;
+    hasPrevPage: boolean;
+    prevPage: number | null;
+    hasNextPage: boolean;
+    nextPage: number | null;
+    totalPages: number;
+  } | null;
+}
 
-  const cacheKey = `anime:search:${query.toLowerCase()}:${page}`;
-  const cached = getCached<ListResult>(cacheKey);
-  if (cached) return cached;
+export async function getPopular(page = 1): Promise<ListResult> {
+  const safePage = Math.max(1, page);
+  try {
+    const json = await fetchJson<ApiCompletedResponse>(
+      `${SANKA_API_BASE}/complete-anime?page=${safePage}`,
+    );
+    const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      episodes: a.episodes ?? null,
+      score: a.score ?? null,
+      status: "Completed",
+      type: "TV",
+      latestReleaseDate: a.lastReleaseDate ?? null,
+      genres: [],
+    }));
+
+    return {
+      items,
+      page: safePage,
+      hasNext: Boolean(json.pagination?.hasNextPage),
+      totalPages: json.pagination?.totalPages ?? 1,
+      pagination: json.pagination,
+    };
+  } catch (error) {
+    console.error("Error in getPopular:", error);
+    return { items: [], page: safePage, hasNext: false };
+  }
+}
+
+// -------------------------------------------------------------
+// SEARCH
+// -------------------------------------------------------------
+interface ApiSearchResponse {
+  status: string;
+  data: {
+    animeList: {
+      title: string;
+      poster: string;
+      status?: string;
+      score?: string;
+      animeId: string;
+      genreList?: { title: string; genreId: string }[];
+    }[];
+  };
+}
+
+export async function search(keyword: string, _page = 1): Promise<ListResult> {
+  if (!keyword || !keyword.trim()) {
+    return { items: [], page: 1, hasNext: false };
+  }
 
   try {
-    const url = `${OTAKU_BASE}/?s=${encodeURIComponent(query)}&post_type=anime`;
-    const html = await fetchHtml(url);
-    const $ = cheerio.load(html);
-
-    const items: AnimeSummary[] = [];
-    $(".chivsrc li").each((_, el) => {
-      const $el = $(el);
-      const a = $el.find("h2 a");
-      const title = a.text().trim();
-      const href = a.attr("href") || "";
-      const poster = $el.find("img").attr("src") || null;
-      const genres: string[] = [];
-      $el.find(".set a").each((_, g) => {
-        genres.push($(g).text().trim());
-      });
-      const status = $el
-        .find(".set")
-        .filter((_, s) => $(s).text().includes("Status"))
-        .text()
-        .replace("Status :", "")
-        .trim();
-      const rating = $el
-        .find(".set")
-        .filter((_, s) => $(s).text().includes("Rating"))
-        .text()
-        .replace("Rating :", "")
-        .trim();
-      const slug = cleanSlug(href, "/anime/");
-
-      if (title && slug) {
-        items.push({
-          id: slug,
-          title,
-          synonyms: null,
-          type: "TV",
-          status: status || "Completed",
-          day: null,
-          year: null,
-          views: rating ? Math.round(parseFloat(rating) * 5000) : 25000,
-          favorites: null,
-          genres: genres.length > 0 ? genres : ["Anime"],
-          poster,
-          cover: poster,
-          airedStart: null,
-          synopsis: `Status: ${status || "Tersedia"} · Rating: ${rating || "-"}`,
-        });
-      }
-    });
-
-    const result: ListResult = { items, page, hasNext: false };
-    setCache(cacheKey, result);
-    return result;
-  } catch (err) {
-    console.warn("Failed to search anime, filtering fallback:", err);
-    const filtered = [...FALLBACK_HOME.today, ...FALLBACK_HOME.popular].filter((a) =>
-      a.title.toLowerCase().includes(query.toLowerCase()),
+    const json = await fetchJson<ApiSearchResponse>(
+      `${SANKA_API_BASE}/search/${encodeURIComponent(keyword.trim())}`,
     );
-    return { items: filtered, page, hasNext: false };
+    const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      status: a.status ?? null,
+      score: a.score ?? null,
+      type: "TV",
+      genres: (a.genreList ?? []).map((g) => g.title),
+    }));
+
+    return {
+      items,
+      page: 1,
+      hasNext: false,
+      totalPages: 1,
+    };
+  } catch (error) {
+    console.error("Error in search:", error);
+    return { items: [], page: 1, hasNext: false };
   }
+}
+
+// -------------------------------------------------------------
+// GENRES
+// -------------------------------------------------------------
+interface ApiGenreResponse {
+  status: string;
+  data: {
+    genreList: {
+      title: string;
+      genreId: string;
+    }[];
+  };
 }
 
 export async function getGenres(): Promise<GenreItem[]> {
-  const cacheKey = "anime:genres";
-  const cached = getCached<GenreItem[]>(cacheKey);
-  if (cached) return cached;
-
   try {
-    const html = await fetchHtml(`${OTAKU_BASE}/genre-list/`);
-    const $ = cheerio.load(html);
-
-    const genres: GenreItem[] = [];
-    $(".genres li a").each((_, el) => {
-      const name = $(el).text().trim();
-      const href = $(el).attr("href") || "";
-      const id = cleanSlug(href, "/genres/");
-      if (id && name) {
-        genres.push({
-          id,
-          name,
-          group: null,
-          image: null,
-        });
-      }
-    });
-
-    if (genres.length === 0) return FALLBACK_GENRES;
-
-    setCache(cacheKey, genres, 24 * 60 * 60 * 1000); // 24h cache
-    return genres;
-  } catch {
-    return FALLBACK_GENRES;
+    const json = await fetchJson<ApiGenreResponse>(`${SANKA_API_BASE}/genre`);
+    return (json.data?.genreList ?? []).map((g) => ({
+      id: g.genreId,
+      name: g.title,
+    }));
+  } catch (error) {
+    console.error("Error in getGenres:", error);
+    return [];
   }
 }
 
-export async function getByGenre(genreId: string, page = 0, _sort = "views"): Promise<ListResult> {
-  const cleanId = genreId.replace(/^\/?genres\//, "").replace(/\/$/, "");
-  const p = Math.max(1, page + 1);
-  const cacheKey = `anime:genre:${cleanId}:${p}`;
-  const cached = getCached<ListResult>(cacheKey);
-  if (cached) return cached;
+// -------------------------------------------------------------
+// BY GENRE
+// -------------------------------------------------------------
+interface ApiByGenreResponse {
+  status: string;
+  data: {
+    animeList: {
+      title: string;
+      poster: string;
+      studios?: string;
+      score?: string;
+      episodes?: number;
+      season?: string;
+      animeId: string;
+      synopsis?: {
+        paragraphs?: string[];
+      };
+      genreList?: { title: string; genreId: string }[];
+    }[];
+  };
+  pagination: {
+    currentPage: number;
+    hasPrevPage: boolean;
+    prevPage: number | null;
+    hasNextPage: boolean;
+    nextPage: number | null;
+    totalPages: number;
+  } | null;
+}
 
+export async function getByGenre(genreId: string, page = 1, _sort = "views"): Promise<ListResult> {
+  const safePage = Math.max(1, page);
   try {
-    const url =
-      p === 1 ? `${OTAKU_BASE}/genres/${cleanId}/` : `${OTAKU_BASE}/genres/${cleanId}/page/${p}/`;
-    const html = await fetchHtml(url);
-    const $ = cheerio.load(html);
+    const json = await fetchJson<ApiByGenreResponse>(
+      `${SANKA_API_BASE}/genre/${encodeURIComponent(genreId)}?page=${safePage}`,
+    );
 
-    const items: AnimeSummary[] = [];
-    $(".col-anime").each((_, el) => {
-      const $el = $(el);
-      const title = $el.find(".col-anime-title a").text().trim();
-      const href = $el.find(".col-anime-title a").attr("href") || "";
-      const poster = $el.find(".col-anime-cover img").attr("src") || null;
-      const eps = $el.find(".col-anime-eps").text().trim();
-      const rating = $el.find(".col-anime-rating").text().trim();
-      const studio = $el.find(".col-anime-studio").text().trim();
-      const date = $el.find(".col-anime-date").text().trim();
-      const slug = cleanSlug(href, "/anime/");
+    const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+      id: a.animeId,
+      title: a.title,
+      poster: a.poster,
+      score: a.score ?? null,
+      episodes: a.episodes ?? null,
+      studios: a.studios ?? null,
+      genres: (a.genreList ?? []).map((g) => g.title),
+      synopsis: a.synopsis?.paragraphs?.join("\n\n") ?? null,
+      type: "TV",
+    }));
 
-      if (title && slug) {
-        items.push({
-          id: slug,
-          title,
-          synonyms: null,
-          type: "TV",
-          status: eps.includes("Unknown") ? "Ongoing" : "Completed",
-          day: null,
-          year: date || null,
-          views: rating ? Math.round(parseFloat(rating) * 8000) : 20000,
-          favorites: null,
-          genres: [cleanId],
-          poster,
-          cover: poster,
-          airedStart: date || null,
-          synopsis: `Studio: ${studio || "-"} · ${eps} · Rating ${rating || "-"}`,
-        });
-      }
-    });
-
-    const hasNext = $(".pagination .next, .pagenavix .next").length > 0 || items.length >= 15;
-    const result: ListResult = { items, page, hasNext };
-    setCache(cacheKey, result);
-    return result;
-  } catch (err) {
-    console.warn("Failed to fetch by genre:", err);
-    return { items: [], page, hasNext: false };
+    return {
+      items,
+      page: safePage,
+      hasNext: Boolean(json.pagination?.hasNextPage),
+      totalPages: json.pagination?.totalPages ?? 1,
+      pagination: json.pagination,
+    };
+  } catch (error) {
+    console.error("Error in getByGenre:", error);
+    return { items: [], page: safePage, hasNext: false };
   }
+}
+
+// -------------------------------------------------------------
+// SCHEDULE
+// -------------------------------------------------------------
+interface ApiScheduleResponse {
+  status: string;
+  data: {
+    day: string;
+    anime_list: {
+      title: string;
+      slug: string;
+      url: string;
+      poster: string;
+    }[];
+  }[];
 }
 
 export async function getSchedule(): Promise<ScheduleMap> {
-  const cacheKey = "anime:schedule";
-  const cached = getCached<ScheduleMap>(cacheKey);
-  if (cached) return cached;
-
   try {
-    const html = await fetchHtml(`${OTAKU_BASE}/jadwal-rilis/`);
-    const $ = cheerio.load(html);
+    const json = await fetchJson<ApiScheduleResponse>(`${SANKA_API_BASE}/schedule`);
+    const map: ScheduleMap = {};
 
-    const scheduleMap: ScheduleMap = {
-      SENIN: [],
-      SELASA: [],
-      RABU: [],
-      KAMIS: [],
-      JUMAT: [],
-      SABTU: [],
-      MINGGU: [],
-    };
+    for (const item of json.data ?? []) {
+      const dayName = item.day;
+      map[dayName] = (item.anime_list ?? []).map((a) => ({
+        id: a.slug,
+        title: a.title,
+        poster: a.poster,
+        releaseDay: dayName,
+        day: dayName,
+        status: "Ongoing",
+        genres: [],
+      }));
+    }
 
-    $(".kglist321").each((_, el) => {
-      const rawDay = $(el).find("h2").text().trim().toUpperCase();
-      const day = rawDay.replace(/[^A-Z]/g, "");
-      if (day in scheduleMap) {
-        const list: AnimeSummary[] = [];
-        $(el)
-          .find("ul li a")
-          .each((_, a) => {
-            const title = $(a).text().trim();
-            const href = $(a).attr("href") || "";
-            const slug = cleanSlug(href, "/anime/");
-            if (title && slug) {
-              list.push({
-                id: slug,
-                title,
-                synonyms: null,
-                type: "TV",
-                status: "Ongoing",
-                day: day,
-                year: null,
-                views: 12000,
-                favorites: null,
-                genres: ["Anime"],
-                poster: null,
-                cover: null,
-                airedStart: null,
-                synopsis: `Rilis setiap hari ${day}`,
-              });
-            }
-          });
-        scheduleMap[day] = list;
-      }
-    });
-
-    // If empty, return fallback
-    const totalCount = Object.values(scheduleMap).reduce((acc, l) => acc + l.length, 0);
-    if (totalCount === 0) return FALLBACK_SCHEDULE;
-
-    setCache(cacheKey, scheduleMap, 60 * 60 * 1000); // 1 hour
-    return scheduleMap;
-  } catch {
-    return FALLBACK_SCHEDULE;
+    return map;
+  } catch (error) {
+    console.error("Error in getSchedule:", error);
+    return {};
   }
 }
 
-export async function getDetail(animeIdOrUrl: string): Promise<AnimeDetail> {
-  const slug = cleanSlug(animeIdOrUrl, "/anime/");
-  if (!slug) throw new Error("ID anime tidak valid.");
+// -------------------------------------------------------------
+// DIRECTORY / UNLIMITED
+// -------------------------------------------------------------
+interface ApiUnlimitedResponse {
+  status: string;
+  data: {
+    list: DirectoryGroup[];
+  };
+}
 
-  // Check fallback first for instant demo/test data
-  if (FALLBACK_DETAILS[slug]) {
-    return FALLBACK_DETAILS[slug];
-  }
-
-  const cacheKey = `anime:detail:${slug}`;
-  const cached = getCached<AnimeDetail>(cacheKey);
-  if (cached) return cached;
-
+export async function getDirectory(): Promise<DirectoryGroup[]> {
   try {
-    const html = await fetchHtml(`${OTAKU_BASE}/anime/${slug}/`);
-    const $ = cheerio.load(html);
-
-    const infoMap: Record<string, string> = {};
-    $(".infozingle p").each((_, el) => {
-      const text = $(el).text();
-      const parts = text.split(":");
-      if (parts.length >= 2) {
-        const k = parts[0]!.trim().toLowerCase();
-        const v = parts.slice(1).join(":").trim();
-        infoMap[k] = v;
-      }
-    });
-
-    const title =
-      infoMap["judul"] ||
-      $(".infozingle p")
-        .filter((_, el) => $(el).text().includes("Judul:"))
-        .text()
-        .replace("Judul:", "")
-        .trim() ||
-      $("h1").text().trim() ||
-      slug.replace(/-/g, " ");
-
-    const poster = $(".fotoanime img").attr("src") || null;
-    const synopsis = $(".sinopc").text().trim() || null;
-    const japanese = infoMap["japanese"] || null;
-    const score = infoMap["skor"] || null;
-    const studio = infoMap["studio"] || "-";
-    const status = infoMap["status"] || "Ongoing";
-    const type = infoMap["tipe"] || "TV";
-    const totalEp = parseInt(infoMap["total episode"] || "0", 10) || 0;
-    const airedStart = infoMap["tanggal rilis"] || null;
-    const rawGenre = infoMap["genre"] || "";
-    const genres = rawGenre
-      ? rawGenre
-          .split(",")
-          .map((g) => g.trim())
-          .filter(Boolean)
-      : ["Action", "Adventure"];
-
-    const episodes: EpisodeSummary[] = [];
-    $(".episodelist ul li").each((_, el) => {
-      const a = $(el).find("a").first();
-      const href = a.attr("href") || "";
-      const epTitle = a.text().trim();
-      const date =
-        $(el).find(".zee-date, .zee-date-release").text().trim() ||
-        $(el).find("span").last().text().trim() ||
-        null;
-      const epSlug = cleanSlug(href, "/episode/");
-
-      if (epSlug && href.includes("/episode/")) {
-        const numMatch = epTitle.match(/Episode\s+(\d+(\.\d+)?)/i);
-        const number = numMatch ? parseFloat(numMatch[1]!) : episodes.length + 1;
-        episodes.push({
-          id: epSlug,
-          title: epTitle,
-          number,
-          releaseDate: date,
-          views: 3500 + episodes.length * 150,
-          image: poster,
-          isNew: episodes.length === 0,
-        });
-      }
-    });
-
-    // Sort episodes ascending by number
-    episodes.sort((a, b) => a.number - b.number);
-
-    const detail: AnimeDetail = {
-      id: slug,
-      title,
-      synonyms: japanese,
-      type,
-      status,
-      day: null,
-      year: airedStart,
-      views: score ? Math.round(parseFloat(score) * 12000) : 45000,
-      favorites: 1200,
-      genres,
-      poster,
-      cover: poster,
-      airedStart,
-      synopsis,
-      studio,
-      airedEnd: null,
-      totalEpisodes: totalEp || episodes.length,
-      episodes,
-    };
-
-    setCache(cacheKey, detail);
-    return detail;
-  } catch (err) {
-    console.warn(`Failed to fetch Otakudesu detail for ${slug}:`, err);
-    // Check if we have a matching or approximate fallback detail
-    const firstFallback = Object.values(FALLBACK_DETAILS)[0];
-    if (firstFallback) {
-      return {
-        ...firstFallback,
-        id: slug,
-        title: slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-      };
-    }
-    throw new Error("Gagal memuat detail anime.");
+    const json = await fetchJson<ApiUnlimitedResponse>(`${SANKA_API_BASE}/unlimited`);
+    return json.data?.list ?? [];
+  } catch (error) {
+    console.error("Error in getDirectory:", error);
+    return [];
   }
 }
 
-export async function getStream(episodeIdOrUrl: string): Promise<StreamResult> {
-  const epSlug = cleanSlug(episodeIdOrUrl, "/episode/");
-  if (!epSlug) throw new Error("ID episode tidak valid.");
-
-  const cacheKey = `anime:stream:${epSlug}`;
-  const cached = getCached<StreamResult>(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const html = await fetchHtml(`${OTAKU_BASE}/episode/${epSlug}/`);
-    const $ = cheerio.load(html);
-
-    const title = $(".posttl").text().trim() || $("h1").text().trim() || epSlug;
-    const numMatch = title.match(/Episode\s+(\d+(\.\d+)?)/i);
-    const number = numMatch ? parseFloat(numMatch[1]!) : 1;
-
-    // Stream iframe player
-    const iframeSrc =
-      $(".responsive-embed-stream iframe, .player-embed iframe, iframe").first().attr("src") || "";
-
-    // Next episode link
-    const nextHref =
-      $(".flir a")
-        .filter((_, el) => $(el).text().toLowerCase().includes("next"))
-        .attr("href") || null;
-    const nextEpisodeId = nextHref ? cleanSlug(nextHref, "/episode/") : null;
-
-    const servers: StreamServer[] = [];
-
-    // 1. Primary stream player
-    if (iframeSrc) {
-      servers.push({
-        id: "server-utama",
-        name: "Streaming Utama (HD)",
-        quality: "720p",
-        type: "embed",
-        fileSizeMb: null,
-        url: iframeSrc,
-        serverId: "server-utama",
-      });
-    }
-
-    // 2. Download and mirror servers
-    $(".download ul li").each((_, el) => {
-      const $li = $(el);
-      const qualityText = $li.find("strong").text().trim(); // e.g. "Mp4 360p", "Mp4 720p"
-      const quality = qualityText.includes("720")
-        ? "720p"
-        : qualityText.includes("480")
-          ? "480p"
-          : qualityText.includes("1080")
-            ? "1080p"
-            : "360p";
-
-      $li.find("a").each((_, a) => {
-        const serverName = $(a).text().trim();
-        const url = $(a).attr("href") || "";
-        if (url && serverName && !url.startsWith("#")) {
-          const sid = `dl-${quality}-${serverName}`.toLowerCase().replace(/[^a-z0-9]/g, "-");
-          servers.push({
-            id: sid,
-            name: `${serverName} (${qualityText || quality})`,
-            quality,
-            type: "download",
-            fileSizeMb: quality === "720p" ? 220 : quality === "480p" ? 140 : 85,
-            url,
-            serverId: serverName,
-          });
-        }
-      });
-    });
-
-    // Fallback embed server if none parsed
-    if (servers.length === 0) {
-      servers.push({
-        id: "stream-embed",
-        name: "Streaming Player",
-        quality: "720p",
-        type: "embed",
-        fileSizeMb: null,
-        url: `https://desustream.net/dstream/odcdn/?id=${Buffer.from(epSlug).toString("base64")}`,
-        serverId: "default",
-      });
-    }
-
-    const result: StreamResult = {
-      episode: {
-        id: epSlug,
-        title,
-        number,
-        views: 2800,
-        releaseDate: new Date().toLocaleDateString("id-ID", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
-        nextEpisodeId,
-      },
-      servers,
+// -------------------------------------------------------------
+// ANIME DETAIL
+// -------------------------------------------------------------
+interface ApiDetailResponse {
+  status: string;
+  data: {
+    title: string;
+    poster: string;
+    japanese?: string;
+    score?: string;
+    producers?: string;
+    type?: string;
+    status?: string;
+    episodes?: number;
+    duration?: string;
+    aired?: string;
+    studios?: string;
+    batch?: {
+      title: string;
+      batchId: string;
+      href?: string;
+      otakudesuUrl?: string;
+    } | null;
+    synopsis?: {
+      paragraphs?: string[];
     };
+    genreList?: { title: string; genreId: string }[];
+    episodeList?: {
+      title: string;
+      eps: number;
+      date?: string;
+      episodeId: string;
+      href?: string;
+    }[];
+    recommendedAnimeList?: {
+      title: string;
+      poster: string;
+      animeId: string;
+    }[];
+  };
+}
 
-    setCache(cacheKey, result);
-    return result;
-  } catch (err) {
-    console.warn(`Failed to fetch Otakudesu stream for ${epSlug}:`, err);
+export async function getDetail(id: string): Promise<AnimeDetail> {
+  try {
+    const json = await fetchJson<ApiDetailResponse>(
+      `${SANKA_API_BASE}/anime/${encodeURIComponent(id)}`,
+    );
+    const d = json.data;
+
+    const episodes: EpisodeSummary[] = (d.episodeList ?? []).map((ep) => ({
+      id: ep.episodeId,
+      number: ep.eps || 0,
+      title: ep.title,
+      releaseDate: ep.date ?? null,
+    }));
+
+    const recommended: AnimeSummary[] = (d.recommendedAnimeList ?? []).map((r) => ({
+      id: r.animeId,
+      title: r.title,
+      poster: r.poster,
+      genres: [],
+    }));
+
+    const synopsisText = d.synopsis?.paragraphs?.join("\n\n") || null;
+
     return {
-      episode: {
-        id: epSlug,
-        title: epSlug.replace(/-/g, " "),
-        number: 1,
-        views: 1200,
-        releaseDate: null,
-        nextEpisodeId: null,
-      },
-      servers: [
-        {
-          id: "stream-player",
-          name: "Streaming Player (HD)",
-          quality: "720p",
-          type: "embed",
-          fileSizeMb: null,
-          url: "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
-          serverId: "player",
-        },
-      ],
+      id,
+      title: d.title,
+      poster: d.poster,
+      japanese: d.japanese ?? null,
+      score: d.score ?? null,
+      producers: d.producers ?? null,
+      type: d.type ?? "TV",
+      status: d.status ?? "Unknown",
+      episodes,
+      totalEpisodes: d.episodes ?? episodes.length,
+      duration: d.duration ?? null,
+      aired: d.aired ?? null,
+      studio: d.studios ?? null,
+      studios: d.studios ?? null,
+      synopsis: synopsisText,
+      genres: (d.genreList ?? []).map((g) => g.title),
+      batch: d.batch
+        ? {
+            title: d.batch.title,
+            batchId: d.batch.batchId,
+            href: d.batch.href,
+            otakudesuUrl: d.batch.otakudesuUrl,
+          }
+        : null,
+      recommended,
     };
+  } catch (error) {
+    console.error(`Error in getDetail for ${id}:`, error);
+    throw error;
+  }
+}
+
+// -------------------------------------------------------------
+// EPISODE STREAM & DOWNLOADS
+// -------------------------------------------------------------
+interface ApiEpisodeResponse {
+  status: string;
+  data: {
+    title: string;
+    animeId: string;
+    releaseTime?: string;
+    defaultStreamingUrl: string;
+    hasPrevEpisode: boolean;
+    prevEpisode?: {
+      title?: string;
+      episodeId: string;
+      href?: string;
+    } | null;
+    hasNextEpisode: boolean;
+    nextEpisode?: {
+      title?: string;
+      episodeId: string;
+      href?: string;
+    } | null;
+    server?: {
+      qualities?: {
+        title: string;
+        serverList?: {
+          title: string;
+          serverId: string;
+          href?: string;
+        }[];
+      }[];
+    };
+    downloadUrl?: {
+      qualities?: {
+        title: string;
+        size: string;
+        urls: {
+          title: string;
+          url: string;
+        }[];
+      }[];
+    };
+    info?: {
+      credit?: string;
+      encoder?: string;
+      duration?: string;
+      type?: string;
+      genreList?: { title: string; genreId: string }[];
+      episodeList?: {
+        title: string;
+        eps: number;
+        episodeId: string;
+      }[];
+    };
+  };
+}
+
+export async function getStream(episodeId: string): Promise<StreamResult> {
+  try {
+    const json = await fetchJson<ApiEpisodeResponse>(
+      `${SANKA_API_BASE}/episode/${encodeURIComponent(episodeId)}`,
+    );
+    const d = json.data;
+
+    const qualities = (d.server?.qualities ?? []).map((q) => ({
+      quality: q.title,
+      serverList: (q.serverList ?? []).map((s) => ({
+        title: s.title.trim(),
+        serverId: s.serverId,
+        href: s.href,
+      })),
+    }));
+
+    const downloads = (d.downloadUrl?.qualities ?? []).map((q) => ({
+      quality: q.title,
+      size: q.size ?? null,
+      urls: (q.urls ?? []).map((u) => ({
+        title: u.title,
+        url: u.url,
+      })),
+    }));
+
+    return {
+      title: d.title,
+      animeId: d.animeId,
+      episodeId,
+      releaseTime: d.releaseTime ?? null,
+      defaultStreamingUrl: d.defaultStreamingUrl || null,
+      hasPrevEpisode: Boolean(d.hasPrevEpisode),
+      prevEpisodeId: d.prevEpisode?.episodeId ?? null,
+      hasNextEpisode: Boolean(d.hasNextEpisode),
+      nextEpisodeId: d.nextEpisode?.episodeId ?? null,
+      servers: {
+        qualities,
+      },
+      downloads,
+      info: d.info,
+    };
+  } catch (error) {
+    console.error(`Error in getStream for ${episodeId}:`, error);
+    throw error;
+  }
+}
+
+// -------------------------------------------------------------
+// RESOLVE SERVER STREAM URL
+// -------------------------------------------------------------
+interface ApiServerResponse {
+  status: string;
+  data: {
+    url: string;
+  };
+}
+
+export async function resolveServer(serverId: string): Promise<{ url: string }> {
+  try {
+    const json = await fetchJson<ApiServerResponse>(
+      `${SANKA_API_BASE}/server/${encodeURIComponent(serverId)}`,
+    );
+    return { url: json.data?.url || "" };
+  } catch (error) {
+    console.error(`Error resolving server ${serverId}:`, error);
+    return { url: "" };
+  }
+}
+
+// -------------------------------------------------------------
+// BATCH DOWNLOAD
+// -------------------------------------------------------------
+interface ApiBatchResponse {
+  status: string;
+  data: BatchDetail;
+}
+
+export async function getBatch(batchId: string): Promise<BatchDetail | null> {
+  try {
+    const json = await fetchJson<ApiBatchResponse>(
+      `${SANKA_API_BASE}/batch/${encodeURIComponent(batchId)}`,
+    );
+    return json.data ?? null;
+  } catch (error) {
+    console.error(`Error in getBatch for ${batchId}:`, error);
+    return null;
   }
 }

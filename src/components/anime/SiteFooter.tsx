@@ -1,38 +1,132 @@
 import { Link } from "@tanstack/react-router";
 
-const LINKS = [
-  { to: "/ongoing", label: "Ongoing", search: { page: 1 } },
-  { to: "/tamat", label: "Tamat", search: { page: 1 } },
-  { to: "/genre", label: "Genre", search: undefined },
-  { to: "/jadwal", label: "Jadwal", search: undefined },
-] as const;
-
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-border bg-card">
-      <div className="mx-auto max-w-7xl space-y-4 px-4 py-10 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="Nontonime" className="h-6 w-6 rounded-lg" />
-          <p className="font-display text-base font-bold tracking-tight text-foreground">
-            Nontonime
-          </p>
-        </div>
-        <p className="max-w-xl leading-relaxed">
-          Katalog dan pemutar anime subtitle Indonesia tanpa perlu akun. Seluruh data, poster, dan
-          tautan video berasal dari penyedia pihak ketiga — situs ini tidak meng-hosting berkas
-          video apa pun.
-        </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
-          {LINKS.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              search={link.search as never}
-              className="font-medium text-card-foreground hover:text-primary"
-            >
-              {link.label}
+    <footer className="mt-20 border-t border-border/80 bg-card/80 backdrop-blur-md">
+      <div className="mx-auto max-w-7xl px-4 py-12">
+        <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+          {/* Brand Col */}
+          <div className="space-y-3 sm:col-span-2">
+            <Link to="/" className="inline-flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30">
+                <i className="fa-solid fa-play ml-0.5 text-sm" />
+              </div>
+              <span className="font-display text-xl font-black tracking-tight text-foreground">
+                Nonton<span className="text-primary">ime</span>
+              </span>
             </Link>
-          ))}
+            <p className="max-w-md text-xs text-muted-foreground leading-relaxed">
+              Platform streaming dan informasi anime subtitle Indonesia terlengkap, gratis, dan
+              tanpa ribet. Seluruh data disediakan oleh API pihak ketiga tanpa menyimpan berkas
+              video di server kami.
+            </p>
+            <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Server Aktif & Cepat
+              </span>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="space-y-3">
+            <h4 className="font-display text-xs font-bold uppercase tracking-wider text-foreground">
+              Navigasi
+            </h4>
+            <ul className="space-y-2 text-xs text-muted-foreground">
+              <li>
+                <Link to="/" className="hover:text-primary transition-colors">
+                  Beranda
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/ongoing"
+                  search={{ page: 1 }}
+                  className="hover:text-primary transition-colors"
+                >
+                  Anime Ongoing
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/tamat"
+                  search={{ page: 1 }}
+                  className="hover:text-primary transition-colors"
+                >
+                  Anime Tamat
+                </Link>
+              </li>
+              <li>
+                <Link to="/jadwal" className="hover:text-primary transition-colors">
+                  Jadwal Rilis
+                </Link>
+              </li>
+              <li>
+                <Link to="/genre" className="hover:text-primary transition-colors">
+                  Daftar Genre
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Fitur Pengguna */}
+          <div className="space-y-3">
+            <h4 className="font-display text-xs font-bold uppercase tracking-wider text-foreground">
+              Fitur Pengguna
+            </h4>
+            <ul className="space-y-2 text-xs text-muted-foreground">
+              <li>
+                <Link to="/watchlist" className="hover:text-primary transition-colors">
+                  Daftar Watchlist
+                </Link>
+              </li>
+              <li>
+                <Link to="/riwayat" className="hover:text-primary transition-colors">
+                  Riwayat Tontonan
+                </Link>
+              </li>
+              <li>
+                <span className="text-muted-foreground/80">Multi Kualitas (360p - 720p HD)</span>
+              </li>
+              <li>
+                <span className="text-muted-foreground/80">Mode Bioskop (Theater)</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Legal / Disclaimer */}
+          <div className="space-y-3">
+            <h4 className="font-display text-xs font-bold uppercase tracking-wider text-foreground">
+              Pernyataan
+            </h4>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Nontonime tidak mengunggah atau menyimpan berkas media apa pun. Semua konten
+              disediakan oleh layanan pihak ketiga yang tidak berafiliasi.
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/60 pt-6 text-xs text-muted-foreground">
+          <p>© {new Date().getFullYear()} Nontonime. Dibuat dengan antarmuka modern & responsif.</p>
+          <div className="flex items-center gap-4 text-xs font-semibold">
+            <Link to="/jadwal" className="hover:text-primary transition-colors">
+              Jadwal
+            </Link>
+            <span>•</span>
+            <Link
+              to="/ongoing"
+              search={{ page: 1 }}
+              className="hover:text-primary transition-colors"
+            >
+              Ongoing
+            </Link>
+            <span>•</span>
+            <Link to="/tamat" search={{ page: 1 }} className="hover:text-primary transition-colors">
+              Tamat
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

@@ -2,14 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { VideoPlayer } from "@/components/anime/VideoPlayer";
-import { EpisodeGrid } from "@/components/anime/EpisodeGrid";
-import { EpisodeDownloadButton } from "@/components/anime/EpisodeDownloadButton";
 import { ShareButton } from "@/components/anime/ShareButton";
 import { ErrorState, LoadingState } from "@/components/anime/StateViews";
 import { animeDetailQuery, streamQuery } from "@/lib/queries";
+import { fetchResolveServer } from "@/lib/anime.functions";
 import { saveHistory } from "@/lib/history";
-import { formatViews } from "@/lib/utils";
-import type { EpisodeSummary } from "@/lib/anime-types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/watch/$episodeId")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -19,12 +17,12 @@ export const Route = createFileRoute("/watch/$episodeId")({
     const name = params.episodeId.replace(/-/g, " ");
     return {
       meta: [
-        { title: `Nonton Episode ${name} — Nontonime` },
+        { title: `Nonton ${name} — Nontonime` },
         {
           name: "description",
-          content: "Streaming anime subtitle Indonesia dengan pilihan kualitas dan server.",
+          content: "Streaming anime subtitle Indonesia dengan pilihan resolusi dan server cepat.",
         },
-        { property: "og:title", content: `Nonton Episode ${name} — Nontonime` },
+        { property: "og:title", content: `Nonton ${name} — Nontonime` },
         { property: "og:description", content: "Streaming anime subtitle Indonesia." },
       ],
     };
@@ -34,241 +32,446 @@ export const Route = createFileRoute("/watch/$episodeId")({
 
 function WatchPage() {
   const { episodeId } = Route.useParams();
-  const { a: animeId } = Route.useSearch();
+  const { a: searchAnimeId } = Route.useSearch();
   const [isTheater, setIsTheater] = useState(false);
+
   const stream = useQuery(streamQuery(episodeId));
-  const anime = useQuery({ ...animeDetailQuery(animeId ?? ""), enabled: Boolean(animeId) });
 
-  const [quality, setQuality] = useState<string | null>(null);
-  const [serverId, setServerId] = useState<string | null>(null);
+  const resolvedAnimeId = searchAnimeId || stream.data?.animeId || "";
+  const anime = useQuery({
+    ...animeDetailQuery(resolvedAnimeId),
+    enabled: Boolean(resolvedAnimeId),
+  });
 
-  const servers = stream.data?.servers ?? [];
-  const qualities = useMemo(() => [...new Set(servers.map((s) => s.quality))], [servers]);
+  const [currentStreamUrl, setCurrentStreamUrl] = useState<string | null>(null);
+  const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
+  const [episodeFilter, setEpisodeFilter] = useState("");
 
+  // Sync stream default URL on episode load
   useEffect(() => {
-    setQuality(null);
-    setServerId(null);
-  }, [episodeId]);
+    if (stream.data?.defaultStreamingUrl) {
+      setCurrentStreamUrl(stream.data.defaultStreamingUrl);
+    }
+    setSelectedServerId(null);
+    setSelectedQuality(null);
+  }, [episodeId, stream.data?.defaultStreamingUrl]);
 
+  // Server qualities
+  const qualityGroups = useMemo(() => {
+    return stream.data?.servers?.qualities ?? [];
+  }, [stream.data?.servers?.qualities]);
+
+  // Set default quality
   useEffect(() => {
-    if (quality || servers.length === 0) return;
-    setQuality(servers[0]!.quality);
-    setServerId(servers[0]!.id);
-  }, [servers, quality]);
+    if (!selectedQuality && qualityGroups.length > 0) {
+      // Prefer 720p or highest available
+      const preferred =
+        qualityGroups.find((q) => q.quality.includes("720")) ??
+        qualityGroups.find((q) => q.quality.includes("480")) ??
+        qualityGroups[0];
+      if (preferred) {
+        setSelectedQuality(preferred.quality);
+      }
+    }
+  }, [qualityGroups, selectedQuality]);
 
-  const activeServers = servers.filter((server) => server.quality === quality);
-  const activeServer = servers.find((server) => server.id === serverId) ?? null;
+  const activeGroup = useMemo(() => {
+    return qualityGroups.find((q) => q.quality === selectedQuality) ?? qualityGroups[0];
+  }, [qualityGroups, selectedQuality]);
 
-  const episodes = anime.data?.episodes ?? [];
-  const sortedEpisodes = useMemo(
-    () => [...episodes].sort((a, b) => a.number - b.number),
-    [episodes],
-  );
-  const activeIndex = sortedEpisodes.findIndex((episode) => episode.id === episodeId);
-  const activeEpisode: EpisodeSummary | undefined = sortedEpisodes[activeIndex];
-  const prevEpisode = activeIndex > 0 ? sortedEpisodes[activeIndex - 1] : undefined;
-  const nextEpisode =
+  // Handle server switch
+  const handleServerSelect = async (serverId: string) => {
+    if (serverId === selectedServerId || isResolving) return;
+    setSelectedServerId(serverId);
+    setIsResolving(true);
+    try {
+      const res = await fetchResolveServer({ data: { serverId } });
+      if (res.url) {
+        setCurrentStreamUrl(res.url);
+      }
+    } catch (err) {
+      console.error("Gagal mengganti server:", err);
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  // Episodes list from either anime detail query or stream info
+  const episodeList = useMemo(() => {
+    if (anime.data?.episodes && anime.data.episodes.length > 0) {
+      return anime.data.episodes;
+    }
+    if (stream.data?.info?.episodeList && stream.data.info.episodeList.length > 0) {
+      return stream.data.info.episodeList.map((ep) => ({
+        id: ep.episodeId,
+        number: ep.eps,
+        title: ep.title,
+      }));
+    }
+    return [];
+  }, [anime.data?.episodes, stream.data?.info?.episodeList]);
+
+  const sortedEpisodes = useMemo(() => {
+    return [...episodeList].sort((a, b) => a.number - b.number);
+  }, [episodeList]);
+
+  const filteredEpisodes = useMemo(() => {
+    if (!episodeFilter.trim()) return sortedEpisodes;
+    const q = episodeFilter.toLowerCase().trim();
+    return sortedEpisodes.filter(
+      (ep) => String(ep.number).includes(q) || ep.title.toLowerCase().includes(q),
+    );
+  }, [sortedEpisodes, episodeFilter]);
+
+  const activeIndex = sortedEpisodes.findIndex((ep) => ep.id === episodeId);
+  const prevEp = activeIndex > 0 ? sortedEpisodes[activeIndex - 1] : undefined;
+  const nextEp =
     activeIndex >= 0 && activeIndex < sortedEpisodes.length - 1
       ? sortedEpisodes[activeIndex + 1]
       : undefined;
-  const nextEpisodeId = nextEpisode?.id ?? stream.data?.episode.nextEpisodeId ?? null;
 
+  const prevEpisodeId = prevEp?.id ?? stream.data?.prevEpisodeId ?? null;
+  const nextEpisodeId = nextEp?.id ?? stream.data?.nextEpisodeId ?? null;
+
+  // Save to history
   useEffect(() => {
-    if (!stream.data || !anime.data || !animeId) return;
+    if (!stream.data) return;
+    const animeTitle = anime.data?.title || stream.data.title;
+    const poster = anime.data?.poster || "";
     saveHistory({
       episodeId,
-      animeId,
-      animeTitle: anime.data.title,
-      episodeTitle:
-        activeEpisode?.title ||
-        stream.data.episode.title ||
-        `Episode ${stream.data.episode.number}`,
-      poster: anime.data.poster ?? "",
+      animeId: resolvedAnimeId,
+      animeTitle,
+      episodeTitle: stream.data.title,
+      poster,
       watchedAt: Date.now(),
     });
-  }, [stream.data, anime.data, animeId, episodeId, activeEpisode]);
+  }, [stream.data, anime.data, resolvedAnimeId, episodeId]);
 
-  if (stream.isPending) return <LoadingState label="Memuat episode" />;
-  if (stream.error)
+  if (stream.isPending) return <LoadingState label="Menyiapkan episode & server streaming..." />;
+  if (stream.error) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="mx-auto max-w-3xl px-4 py-12">
         <ErrorState error={stream.error} onRetry={() => stream.refetch()} />
       </div>
     );
+  }
 
-  const episodeMeta = stream.data.episode;
-  const displayTitle = anime.data?.title ?? episodeMeta.title ?? `Episode ${episodeMeta.number}`;
-  const episodeForDownload: EpisodeSummary = activeEpisode ?? {
-    id: episodeId,
-    number: episodeMeta.number,
-    title: episodeMeta.title,
-    views: episodeMeta.views,
-    releaseDate: episodeMeta.releaseDate,
-    image: null,
-    isNew: false,
-  };
+  const episodeData = stream.data;
+  const animeTitle = anime.data?.title || episodeData.title;
 
   return (
     <div
       className={cn(
-        "mx-auto space-y-6 px-4 py-6 transition-all duration-300 sm:py-8",
-        isTheater ? "max-w-7xl" : "max-w-4xl",
+        "mx-auto px-4 py-6 transition-all duration-300",
+        isTheater ? "max-w-full" : "max-w-7xl",
       )}
     >
-      <VideoPlayer
-        src={activeServer?.url ?? null}
-        isTheater={isTheater}
-        onToggleTheater={() => setIsTheater((v) => !v)}
-      />
-
-      <div className="space-y-1">
-        <h1 className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">
-          {displayTitle}
-        </h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span>Episode {episodeMeta.number}</span>
-          {episodeMeta.views ? (
-            <span className="inline-flex items-center gap-1">
-              <i className="fa-solid fa-eye" />
-              {formatViews(episodeMeta.views)}
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Kualitas
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {qualities.map((item) => (
-              <button
-                key={item}
-                onClick={() => {
-                  setQuality(item);
-                  const first = servers.find((server) => server.quality === item);
-                  setServerId(first?.id ?? null);
-                }}
-                className={
-                  item === quality
-                    ? "rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground"
-                    : "rounded-full border border-border bg-card px-3 py-1.5 text-sm font-semibold text-card-foreground transition-colors hover:bg-accent"
-                }
+      {/* Top Breadcrumb & Info */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Link to="/" className="hover:text-primary transition-colors shrink-0">
+            Beranda
+          </Link>
+          <i className="fa-solid fa-chevron-right text-[10px] shrink-0" />
+          {resolvedAnimeId ? (
+            <>
+              <Link
+                to="/anime/$animeId"
+                params={{ animeId: resolvedAnimeId }}
+                className="hover:text-primary transition-colors truncate max-w-[200px] sm:max-w-xs font-medium"
               >
-                {item || "Default"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Server
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {activeServers.map((server) => (
-              <button
-                key={server.id}
-                onClick={() => setServerId(server.id)}
-                className={
-                  server.id === serverId
-                    ? "rounded-full bg-secondary px-3 py-1.5 text-sm font-semibold text-secondary-foreground"
-                    : "rounded-full border border-border bg-card px-3 py-1.5 text-sm font-semibold text-card-foreground transition-colors hover:bg-accent"
-                }
-              >
-                {server.name.trim()}
-              </button>
-            ))}
-            {activeServers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Server tidak tersedia untuk kualitas ini.
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <ShareButton title={displayTitle} text="Nonton anime ini di Nontonime" />
-        {animeId ? <EpisodeDownloadButton episode={episodeForDownload} animeId={animeId} /> : null}
-        <div className="ml-auto flex items-center gap-2">
-          {prevEpisode ? (
-            <Link
-              to="/watch/$episodeId"
-              params={{ episodeId: prevEpisode.id }}
-              search={{ a: animeId }}
-              aria-label="Episode sebelumnya"
-              className="press-soft inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-card-foreground shadow-sm transition-colors hover:bg-accent"
-            >
-              <i className="fa-solid fa-backward-step" />
-            </Link>
+                {animeTitle}
+              </Link>
+              <i className="fa-solid fa-chevron-right text-[10px] shrink-0" />
+            </>
           ) : null}
-          {nextEpisodeId ? (
-            <Link
-              to="/watch/$episodeId"
-              params={{ episodeId: nextEpisodeId }}
-              search={{ a: animeId }}
-              aria-label="Episode selanjutnya"
-              className="press-soft inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
-            >
-              <i className="fa-solid fa-forward-step" />
-            </Link>
-          ) : null}
+          <span className="text-foreground font-semibold truncate">{episodeData.title}</span>
         </div>
-      </div>
 
-      {animeId ? (
-        <section className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-base font-bold tracking-tight text-foreground">
-              Episode List
-            </h2>
+        <div className="flex items-center gap-2 shrink-0">
+          <ShareButton title={episodeData.title} />
+          {resolvedAnimeId ? (
             <Link
               to="/anime/$animeId"
-              params={{ animeId }}
-              className="text-xs font-medium text-primary hover:underline"
+              params={{ animeId: resolvedAnimeId }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-3 py-1 font-medium text-foreground hover:bg-accent"
             >
-              Lihat detail
+              <i className="fa-solid fa-circle-info text-primary" />
+              Detail Anime
             </Link>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Main Layout: Video Player + Episode Selector */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Left / Center Video Player Column */}
+        <div
+          className={cn("space-y-4", isTheater ? "lg:col-span-12" : "lg:col-span-8 xl:col-span-9")}
+        >
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black border border-border/80">
+            <VideoPlayer
+              src={currentStreamUrl}
+              isTheater={isTheater}
+              onToggleTheater={() => setIsTheater((prev) => !prev)}
+            />
           </div>
-          {anime.isPending ? (
-            <p className="text-sm text-muted-foreground">Memuat daftar episode…</p>
-          ) : (
-            <div className="max-h-72 overflow-y-auto pr-1">
-              <EpisodeGrid
-                episodes={sortedEpisodes}
-                animeId={animeId}
-                activeEpisodeId={episodeId}
-              />
+
+          {/* Player Controls: Server selection + Navigation */}
+          <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-4 shadow-sm">
+            {/* Episode Title & Prev/Next Quick Navigation */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-3">
+              <div>
+                <h1 className="font-display text-base sm:text-lg font-bold text-foreground">
+                  {episodeData.title}
+                </h1>
+                {episodeData.releaseTime ? (
+                  <p className="text-xs text-muted-foreground">{episodeData.releaseTime}</p>
+                ) : null}
+              </div>
+
+              {/* Prev / Next buttons */}
+              <div className="flex items-center gap-2">
+                {prevEpisodeId ? (
+                  <Link
+                    to="/watch/$episodeId"
+                    params={{ episodeId: prevEpisodeId }}
+                    search={{ a: resolvedAnimeId }}
+                    className="press-soft inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent"
+                  >
+                    <i className="fa-solid fa-backward-step" />
+                    Eps Sebelumnya
+                  </Link>
+                ) : (
+                  <button
+                    disabled
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-border/40 bg-muted/40 px-3 py-1.5 text-xs font-semibold text-muted-foreground/50 cursor-not-allowed"
+                  >
+                    <i className="fa-solid fa-backward-step" />
+                    Eps Sebelumnya
+                  </button>
+                )}
+
+                {nextEpisodeId ? (
+                  <Link
+                    to="/watch/$episodeId"
+                    params={{ episodeId: nextEpisodeId }}
+                    search={{ a: resolvedAnimeId }}
+                    className="press-soft inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
+                  >
+                    Eps Berikutnya
+                    <i className="fa-solid fa-forward-step" />
+                  </Link>
+                ) : (
+                  <button
+                    disabled
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-border/40 bg-muted/40 px-3 py-1.5 text-xs font-semibold text-muted-foreground/50 cursor-not-allowed"
+                  >
+                    Eps Berikutnya
+                    <i className="fa-solid fa-forward-step" />
+                  </button>
+                )}
+              </div>
             </div>
-          )}
-        </section>
-      ) : null}
 
-      {anime.data ? (
-        <section className="flex gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <img
-            src={anime.data.poster ?? ""}
-            alt={anime.data.title}
-            className="h-28 w-20 shrink-0 rounded-xl object-cover"
-          />
-          <div className="min-w-0 space-y-1">
-            <Link
-              to="/anime/$animeId"
-              params={{ animeId: animeId ?? "" }}
-              className="line-clamp-2 text-sm font-semibold text-card-foreground hover:text-primary"
-            >
-              {anime.data.title}
-            </Link>
-            {anime.data.synopsis ? (
-              <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
-                {anime.data.synopsis}
-              </p>
+            {/* Server Selector Bar */}
+            {qualityGroups.length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      <i className="fa-solid fa-server text-primary mr-1.5" />
+                      Pilihan Server
+                    </span>
+                    {isResolving ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+                        <i className="fa-solid fa-circle-notch animate-spin text-[10px]" />
+                        Mengganti server...
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Quality Filter Pills */}
+                  <div className="flex items-center gap-1.5">
+                    {qualityGroups.map((q) => (
+                      <button
+                        key={q.quality}
+                        onClick={() => setSelectedQuality(q.quality)}
+                        className={cn(
+                          "rounded-lg px-2.5 py-1 text-xs font-bold transition-all",
+                          selectedQuality === q.quality
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+                        )}
+                      >
+                        {q.quality}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Server list inside active quality */}
+                {activeGroup && activeGroup.serverList.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {activeGroup.serverList.map((srv) => {
+                      const isSelected = selectedServerId === srv.serverId;
+                      return (
+                        <button
+                          key={srv.serverId}
+                          onClick={() => handleServerSelect(srv.serverId)}
+                          disabled={isResolving}
+                          className={cn(
+                            "press-soft inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all",
+                            isSelected
+                              ? "border-primary bg-primary/15 text-primary shadow-xs"
+                              : "border-border/80 bg-background text-foreground hover:border-primary/50 hover:bg-accent",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              isSelected ? "bg-primary" : "bg-muted-foreground/60",
+                            )}
+                          />
+                          {srv.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Gunakan pemutar bawaan di atas.</p>
+                )}
+              </div>
             ) : null}
           </div>
-        </section>
-      ) : null}
+
+          {/* Download Links Section */}
+          {episodeData.downloads && episodeData.downloads.length > 0 ? (
+            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 space-y-4 shadow-sm">
+              <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                <i className="fa-solid fa-download text-primary" />
+                <h3 className="font-display text-sm font-bold text-foreground">
+                  Unduh Episode Ini
+                </h3>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Berbagai pilihan resolusi & penyedia
+                </span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {episodeData.downloads.map((dl) => (
+                  <div
+                    key={dl.quality}
+                    className="rounded-xl border border-border/70 bg-background/60 p-3 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-foreground bg-primary/15 text-primary px-2 py-0.5 rounded-md">
+                        {dl.quality}
+                      </span>
+                      {dl.size ? (
+                        <span className="font-semibold text-muted-foreground">{dl.size}</span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {dl.urls.map((link) => (
+                        <a
+                          key={link.title + link.url}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="press-soft inline-flex items-center gap-1 rounded-lg border border-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-accent hover:border-primary/50"
+                        >
+                          <i className="fa-solid fa-cloud-arrow-down text-[10px] text-primary" />
+                          {link.title}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Right Episode List Sidebar */}
+        <div
+          className={cn("space-y-4", isTheater ? "lg:col-span-12" : "lg:col-span-4 xl:col-span-3")}
+        >
+          <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-3 shadow-sm sticky top-20">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <i className="fa-solid fa-list-ul text-primary text-sm" />
+                <h3 className="font-display text-sm font-bold text-foreground">Daftar Episode</h3>
+              </div>
+              <span className="text-xs font-semibold text-muted-foreground">
+                {sortedEpisodes.length} Eps
+              </span>
+            </div>
+
+            {/* Quick search episode filter */}
+            {sortedEpisodes.length > 8 ? (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Cari nomor episode..."
+                  value={episodeFilter}
+                  onChange={(e) => setEpisodeFilter(e.target.value)}
+                  className="h-8 w-full rounded-lg border border-border/80 bg-background pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden"
+                />
+                <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground" />
+              </div>
+            ) : null}
+
+            {/* Scrollable list of episodes */}
+            <div className="max-h-[500px] overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+              {filteredEpisodes.length > 0 ? (
+                filteredEpisodes.map((ep) => {
+                  const isActive = ep.id === episodeId;
+                  return (
+                    <Link
+                      key={ep.id}
+                      to="/watch/$episodeId"
+                      params={{ episodeId: ep.id }}
+                      search={{ a: resolvedAnimeId }}
+                      className={cn(
+                        "press-soft flex items-center justify-between gap-2 rounded-xl p-2.5 text-xs font-medium transition-all",
+                        isActive
+                          ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                          : "bg-background/80 text-card-foreground hover:bg-accent border border-border/60",
+                      )}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        {isActive ? (
+                          <i className="fa-solid fa-play text-[10px] animate-pulse" />
+                        ) : (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-muted text-[10px] font-bold text-muted-foreground shrink-0">
+                            {ep.number}
+                          </span>
+                        )}
+                        <span className="truncate">Episode {ep.number}</span>
+                      </div>
+
+                      {isActive ? (
+                        <span className="text-[10px] uppercase font-bold tracking-wider shrink-0">
+                          Memutar
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="p-4 text-center text-xs text-muted-foreground">
+                  Episode tidak ditemukan.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,45 +1,65 @@
 import { Link } from "@tanstack/react-router";
 import type { AnimeSummary } from "@/lib/anime-types";
-import { formatViews } from "@/lib/utils";
 
 export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
-  const meta = [anime.type, anime.status, anime.year].filter(Boolean).join(" · ");
+  const isOngoing = /ongoing|tayang/i.test(anime.status ?? "");
 
   return (
     <Link
       to="/anime/$animeId"
       params={{ animeId: anime.id }}
-      className="press-soft flex items-center gap-3 rounded-2xl border border-border bg-card p-3 transition-colors hover:bg-accent"
+      className="press-soft group flex items-center gap-3.5 rounded-2xl border border-border/80 bg-card p-3 transition-all hover:border-primary/50 hover:bg-accent hover:shadow-sm"
     >
-      <div className="h-20 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
+      <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-muted">
         {anime.poster ? (
           <img
             src={anime.poster}
             alt={anime.title}
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
-        ) : null}
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <i className="fa-solid fa-clapperboard text-sm" />
+          </div>
+        )}
       </div>
-      <div className="min-w-0 flex-1 space-y-1">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-card-foreground">
+
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground group-hover:text-primary transition-colors">
           {anime.title}
         </h3>
+
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          {meta ? <span className="line-clamp-1">{meta}</span> : null}
-          {anime.views ? (
-            <span className="inline-flex shrink-0 items-center gap-1">
-              <i className="fa-solid fa-eye text-primary" />
-              {formatViews(anime.views)}
+          {anime.score ? (
+            <span className="inline-flex items-center gap-1 font-bold text-amber-500">
+              <i className="fa-solid fa-star text-[10px]" />
+              {anime.score}
             </span>
           ) : null}
+
+          {anime.status ? (
+            <span
+              className={
+                isOngoing
+                  ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                  : "font-semibold text-sky-600 dark:text-sky-400"
+              }
+            >
+              {isOngoing ? "Ongoing" : "Tamat"}
+            </span>
+          ) : null}
+
+          {anime.type ? <span>{anime.type}</span> : null}
+          {anime.episodes ? <span>{anime.episodes} Eps</span> : null}
         </div>
-        {anime.genres.length > 0 ? (
+
+        {anime.genres && anime.genres.length > 0 ? (
           <div className="flex flex-wrap gap-1 pt-0.5">
             {anime.genres.slice(0, 3).map((genre) => (
               <span
                 key={genre}
-                className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                className="rounded-md bg-muted/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
               >
                 {genre}
               </span>
@@ -47,7 +67,8 @@ export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
           </div>
         ) : null}
       </div>
-      <i className="fa-solid fa-chevron-right shrink-0 text-xs text-muted-foreground" />
+
+      <i className="fa-solid fa-chevron-right shrink-0 text-xs text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5 mr-1" />
     </Link>
   );
 }

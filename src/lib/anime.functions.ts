@@ -3,12 +3,15 @@ import { z } from "zod";
 import {
   getByGenre,
   getDetail,
+  getDirectory,
   getGenres,
   getHome,
   getLatest,
   getPopular,
   getSchedule,
   getStream,
+  getBatch,
+  resolveServer,
   search,
 } from "./animein.server";
 
@@ -17,16 +20,16 @@ export const fetchHome = createServerFn({ method: "GET" })
   .handler(({ data }) => getHome(data.day ?? null));
 
 export const fetchLatest = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => z.object({ page: z.number().int().min(0) }).parse(data))
+  .inputValidator((data: unknown) => z.object({ page: z.number().int().min(1) }).parse(data))
   .handler(({ data }) => getLatest(data.page));
 
 export const fetchPopular = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => z.object({ page: z.number().int().min(0) }).parse(data))
+  .inputValidator((data: unknown) => z.object({ page: z.number().int().min(1) }).parse(data))
   .handler(({ data }) => getPopular(data.page));
 
 export const fetchSearch = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
-    z.object({ keyword: z.string().max(100), page: z.number().int().min(0) }).parse(data),
+    z.object({ keyword: z.string().max(100), page: z.number().int().min(1) }).parse(data),
   )
   .handler(({ data }) => search(data.keyword, data.page));
 
@@ -37,7 +40,7 @@ export const fetchByGenre = createServerFn({ method: "GET" })
     z
       .object({
         genreId: z.string().min(1),
-        page: z.number().int().min(0),
+        page: z.number().int().min(1),
         sort: z.string().optional(),
       })
       .parse(data),
@@ -46,12 +49,22 @@ export const fetchByGenre = createServerFn({ method: "GET" })
 
 export const fetchSchedule = createServerFn({ method: "GET" }).handler(() => getSchedule());
 
+export const fetchDirectory = createServerFn({ method: "GET" }).handler(() => getDirectory());
+
 export const fetchDetail = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => z.object({ id: z.string().min(1).max(120) }).parse(data))
+  .inputValidator((data: unknown) => z.object({ id: z.string().min(1).max(150) }).parse(data))
   .handler(({ data }) => getDetail(data.id));
 
 export const fetchStream = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
-    z.object({ episodeId: z.string().min(1).max(120) }).parse(data),
+    z.object({ episodeId: z.string().min(1).max(150) }).parse(data),
   )
   .handler(({ data }) => getStream(data.episodeId));
+
+export const fetchResolveServer = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => z.object({ serverId: z.string().min(1) }).parse(data))
+  .handler(({ data }) => resolveServer(data.serverId));
+
+export const fetchBatch = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => z.object({ batchId: z.string().min(1) }).parse(data))
+  .handler(({ data }) => getBatch(data.batchId));
