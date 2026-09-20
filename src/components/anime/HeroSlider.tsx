@@ -75,9 +75,9 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                             </span>
                           )}
 
-                          {anime.episodes ? (
+                          {anime.episodeCount ? (
                             <span className="glass rounded-full px-3 py-1 text-xs font-semibold text-foreground">
-                              {anime.episodes} Episode
+                              {anime.episodeCount} Episode
                             </span>
                           ) : null}
 

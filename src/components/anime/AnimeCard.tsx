@@ -14,7 +14,7 @@ export function AnimeCard({
   const isOngoing = /ongoing|tayang/i.test(anime.status ?? "") || Boolean(anime.releaseDay);
   const isCompleted = /tamat|complete/i.test(anime.status ?? "");
 
-  const episodeLabel = anime.episodes ? `${anime.episodes} Eps` : isOngoing ? "Ongoing" : null;
+  const episodeLabel = anime.episodeCount ? `${anime.episodeCount} Eps` : isOngoing ? "Ongoing" : null;
 
   const subtitle = [
     anime.type || "TV",

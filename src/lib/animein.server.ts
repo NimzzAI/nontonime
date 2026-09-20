@@ -13,7 +13,6 @@ import type {
 
 const SANKA_API_BASE = "https://www.sankavollerei.web.id/anime";
 
-// Cache in-memory with 5-minute TTL to reduce duplicate external latency
 interface CacheEntry<T> {
   data: T;
   expires: number;
@@ -43,9 +42,6 @@ async function fetchJson<T>(url: string, ttlMs = 5 * 60 * 1000): Promise<T> {
   return json as T;
 }
 
-// -------------------------------------------------------------
-// HOME
-// -------------------------------------------------------------
 interface ApiHomeResponse {
   status: string;
   data: {
@@ -82,7 +78,7 @@ export async function getHome(dayFilter?: string | null): Promise<HomeSections> 
       id: a.animeId,
       title: a.title,
       poster: a.poster,
-      episodes:
+      episodeCount:
         typeof a.episodes === "number" ? a.episodes : parseInt(String(a.episodes || 0), 10) || null,
       status: "Ongoing",
       type: "TV",
@@ -96,7 +92,7 @@ export async function getHome(dayFilter?: string | null): Promise<HomeSections> 
       id: a.animeId,
       title: a.title,
       poster: a.poster,
-      episodes:
+      episodeCount:
         typeof a.episodes === "number" ? a.episodes : parseInt(String(a.episodes || 0), 10) || null,
       score: a.score ?? null,
       status: "Completed",
@@ -105,7 +101,6 @@ export async function getHome(dayFilter?: string | null): Promise<HomeSections> 
       genres: [],
     }));
 
-    // Hero slider selects the top ongoing anime with high visual impact
     const slider = ongoing.slice(0, 7);
 
     let today = ongoing;
@@ -125,20 +120,10 @@ export async function getHome(dayFilter?: string | null): Promise<HomeSections> 
     };
   } catch (error) {
     console.error("Error in getHome:", error);
-    return {
-      slider: [],
-      today: [],
-      hot: [],
-      popular: [],
-      new: [],
-      waiting: [],
-    };
+    throw error;
   }
 }
 
-// -------------------------------------------------------------
-// ONGOING (LATEST)
-// -------------------------------------------------------------
 interface ApiOngoingResponse {
   status: string;
   data: {
@@ -171,7 +156,7 @@ export async function getLatest(page = 1): Promise<ListResult> {
       id: a.animeId,
       title: a.title,
       poster: a.poster,
-      episodes: a.episodes ?? null,
+      episodeCount: a.episodes ?? null,
       status: "Ongoing",
       type: "TV",
       releaseDay: a.releaseDay ?? null,
@@ -189,13 +174,10 @@ export async function getLatest(page = 1): Promise<ListResult> {
     };
   } catch (error) {
     console.error("Error in getLatest:", error);
-    return { items: [], page: safePage, hasNext: false };
+    throw error;
   }
 }
 
-// -------------------------------------------------------------
-// COMPLETED (POPULAR)
-// -------------------------------------------------------------
 interface ApiCompletedResponse {
   status: string;
   data: {
@@ -228,7 +210,7 @@ export async function getPopular(page = 1): Promise<ListResult> {
       id: a.animeId,
       title: a.title,
       poster: a.poster,
-      episodes: a.episodes ?? null,
+      episodeCount: a.episodes ?? null,
       score: a.score ?? null,
       status: "Completed",
       type: "TV",
@@ -245,13 +227,10 @@ export async function getPopular(page = 1): Promise<ListResult> {
     };
   } catch (error) {
     console.error("Error in getPopular:", error);
-    return { items: [], page: safePage, hasNext: false };
+    throw error;
   }
 }
 
-// -------------------------------------------------------------
-// SEARCH
-// -------------------------------------------------------------
 interface ApiSearchResponse {
   status: string;
   data: {
@@ -293,13 +272,10 @@ export async function search(keyword: string, _page = 1): Promise<ListResult> {
     };
   } catch (error) {
     console.error("Error in search:", error);
-    return { items: [], page: 1, hasNext: false };
+    throw error;
   }
 }
 
-// -------------------------------------------------------------
-// GENRES
-// -------------------------------------------------------------
 interface ApiGenreResponse {
   status: string;
   data: {
@@ -319,13 +295,10 @@ export async function getGenres(): Promise<GenreItem[]> {
     }));
   } catch (error) {
     console.error("Error in getGenres:", error);
-    return [];
+    throw error;
   }
 }
 
-// -------------------------------------------------------------
-// BY GENRE
-// -------------------------------------------------------------
 interface ApiByGenreResponse {
   status: string;
   data: {
@@ -365,7 +338,7 @@ export async function getByGenre(genreId: string, page = 1, _sort = "views"): Pr
       title: a.title,
       poster: a.poster,
       score: a.score ?? null,
-      episodes: a.episodes ?? null,
+      episodeCount: a.episodes ?? null,
       studios: a.studios ?? null,
       genres: (a.genreList ?? []).map((g) => g.title),
       synopsis: a.synopsis?.paragraphs?.join("\n\n") ?? null,
@@ -381,13 +354,10 @@ export async function getByGenre(genreId: string, page = 1, _sort = "views"): Pr
     };
   } catch (error) {
     console.error("Error in getByGenre:", error);
-    return { items: [], page: safePage, hasNext: false };
+    throw error;
   }
 }
 
-// -------------------------------------------------------------
-// SCHEDULE
-// -------------------------------------------------------------
 interface ApiScheduleResponse {
   status: string;
   data: {
@@ -422,13 +392,10 @@ export async function getSchedule(): Promise<ScheduleMap> {
     return map;
   } catch (error) {
     console.error("Error in getSchedule:", error);
-    return {};
+    throw error;
   }
 }
 
-// -------------------------------------------------------------
-// DIRECTORY / UNLIMITED
-// -------------------------------------------------------------
 interface ApiUnlimitedResponse {
   status: string;
   data: {
@@ -446,9 +413,6 @@ export async function getDirectory(): Promise<DirectoryGroup[]> {
   }
 }
 
-// -------------------------------------------------------------
-// ANIME DETAIL
-// -------------------------------------------------------------
 interface ApiDetailResponse {
   status: string;
   data: {
@@ -544,9 +508,6 @@ export async function getDetail(id: string): Promise<AnimeDetail> {
   }
 }
 
-// -------------------------------------------------------------
-// EPISODE STREAM & DOWNLOADS
-// -------------------------------------------------------------
 interface ApiEpisodeResponse {
   status: string;
   data: {
@@ -648,9 +609,6 @@ export async function getStream(episodeId: string): Promise<StreamResult> {
   }
 }
 
-// -------------------------------------------------------------
-// RESOLVE SERVER STREAM URL
-// -------------------------------------------------------------
 interface ApiServerResponse {
   status: string;
   data: {
@@ -670,9 +628,6 @@ export async function resolveServer(serverId: string): Promise<{ url: string }> 
   }
 }
 
-// -------------------------------------------------------------
-// BATCH DOWNLOAD
-// -------------------------------------------------------------
 interface ApiBatchResponse {
   status: string;
   data: BatchDetail;

@@ -51,7 +51,7 @@ export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
           ) : null}
 
           {anime.type ? <span>{anime.type}</span> : null}
-          {anime.episodes ? <span>{anime.episodes} Eps</span> : null}
+          {anime.episodeCount ? <span>{anime.episodeCount} Eps</span> : null}
         </div>
 
         {anime.genres && anime.genres.length > 0 ? (

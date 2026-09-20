@@ -3,7 +3,7 @@ export interface AnimeSummary {
   title: string;
   poster: string | null;
   score?: string | number | null;
-  episodes?: number | null;
+  episodeCount?: number | null;
   status?: string | null;
   type?: string | null;
   releaseDay?: string | null;
