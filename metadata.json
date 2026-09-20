@@ -1,0 +1,6 @@
+{
+  "name": "Nontonime",
+  "description": "Indonesian anime streaming and tracking web application with schedules, genres, search, and watchlists.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

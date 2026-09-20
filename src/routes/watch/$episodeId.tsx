@@ -20,7 +20,10 @@ export const Route = createFileRoute("/watch/$episodeId")({
     return {
       meta: [
         { title: `Nonton Episode ${name} — Nontonime` },
-        { name: "description", content: "Streaming anime subtitle Indonesia dengan pilihan kualitas dan server." },
+        {
+          name: "description",
+          content: "Streaming anime subtitle Indonesia dengan pilihan kualitas dan server.",
+        },
         { property: "og:title", content: `Nonton Episode ${name} — Nontonime` },
         { property: "og:description", content: "Streaming anime subtitle Indonesia." },
       ],
@@ -32,6 +35,7 @@ export const Route = createFileRoute("/watch/$episodeId")({
 function WatchPage() {
   const { episodeId } = Route.useParams();
   const { a: animeId } = Route.useSearch();
+  const [isTheater, setIsTheater] = useState(false);
   const stream = useQuery(streamQuery(episodeId));
   const anime = useQuery({ ...animeDetailQuery(animeId ?? ""), enabled: Boolean(animeId) });
 
@@ -56,12 +60,17 @@ function WatchPage() {
   const activeServer = servers.find((server) => server.id === serverId) ?? null;
 
   const episodes = anime.data?.episodes ?? [];
-  const sortedEpisodes = useMemo(() => [...episodes].sort((a, b) => a.number - b.number), [episodes]);
+  const sortedEpisodes = useMemo(
+    () => [...episodes].sort((a, b) => a.number - b.number),
+    [episodes],
+  );
   const activeIndex = sortedEpisodes.findIndex((episode) => episode.id === episodeId);
   const activeEpisode: EpisodeSummary | undefined = sortedEpisodes[activeIndex];
   const prevEpisode = activeIndex > 0 ? sortedEpisodes[activeIndex - 1] : undefined;
   const nextEpisode =
-    activeIndex >= 0 && activeIndex < sortedEpisodes.length - 1 ? sortedEpisodes[activeIndex + 1] : undefined;
+    activeIndex >= 0 && activeIndex < sortedEpisodes.length - 1
+      ? sortedEpisodes[activeIndex + 1]
+      : undefined;
   const nextEpisodeId = nextEpisode?.id ?? stream.data?.episode.nextEpisodeId ?? null;
 
   useEffect(() => {
@@ -70,7 +79,10 @@ function WatchPage() {
       episodeId,
       animeId,
       animeTitle: anime.data.title,
-      episodeTitle: activeEpisode?.title || stream.data.episode.title || `Episode ${stream.data.episode.number}`,
+      episodeTitle:
+        activeEpisode?.title ||
+        stream.data.episode.title ||
+        `Episode ${stream.data.episode.number}`,
       poster: anime.data.poster ?? "",
       watchedAt: Date.now(),
     });
@@ -86,20 +98,28 @@ function WatchPage() {
 
   const episodeMeta = stream.data.episode;
   const displayTitle = anime.data?.title ?? episodeMeta.title ?? `Episode ${episodeMeta.number}`;
-  const episodeForDownload: EpisodeSummary =
-    activeEpisode ?? {
-      id: episodeId,
-      number: episodeMeta.number,
-      title: episodeMeta.title,
-      views: episodeMeta.views,
-      releaseDate: episodeMeta.releaseDate,
-      image: null,
-      isNew: false,
-    };
+  const episodeForDownload: EpisodeSummary = activeEpisode ?? {
+    id: episodeId,
+    number: episodeMeta.number,
+    title: episodeMeta.title,
+    views: episodeMeta.views,
+    releaseDate: episodeMeta.releaseDate,
+    image: null,
+    isNew: false,
+  };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:py-8">
-      <VideoPlayer src={activeServer?.url ?? null} />
+    <div
+      className={cn(
+        "mx-auto space-y-6 px-4 py-6 transition-all duration-300 sm:py-8",
+        isTheater ? "max-w-7xl" : "max-w-4xl",
+      )}
+    >
+      <VideoPlayer
+        src={activeServer?.url ?? null}
+        isTheater={isTheater}
+        onToggleTheater={() => setIsTheater((v) => !v)}
+      />
 
       <div className="space-y-1">
         <h1 className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">
@@ -118,7 +138,9 @@ function WatchPage() {
 
       <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kualitas</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Kualitas
+          </p>
           <div className="flex flex-wrap gap-2">
             {qualities.map((item) => (
               <button
@@ -141,7 +163,9 @@ function WatchPage() {
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Server</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Server
+          </p>
           <div className="flex flex-wrap gap-2">
             {activeServers.map((server) => (
               <button
@@ -157,7 +181,9 @@ function WatchPage() {
               </button>
             ))}
             {activeServers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Server tidak tersedia untuk kualitas ini.</p>
+              <p className="text-sm text-muted-foreground">
+                Server tidak tersedia untuk kualitas ini.
+              </p>
             ) : null}
           </div>
         </div>
@@ -195,7 +221,9 @@ function WatchPage() {
       {animeId ? (
         <section className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-base font-bold tracking-tight text-foreground">Episode List</h2>
+            <h2 className="font-display text-base font-bold tracking-tight text-foreground">
+              Episode List
+            </h2>
             <Link
               to="/anime/$animeId"
               params={{ animeId }}
@@ -208,7 +236,11 @@ function WatchPage() {
             <p className="text-sm text-muted-foreground">Memuat daftar episode…</p>
           ) : (
             <div className="max-h-72 overflow-y-auto pr-1">
-              <EpisodeGrid episodes={sortedEpisodes} animeId={animeId} activeEpisodeId={episodeId} />
+              <EpisodeGrid
+                episodes={sortedEpisodes}
+                animeId={animeId}
+                activeEpisodeId={episodeId}
+              />
             </div>
           )}
         </section>
@@ -230,7 +262,9 @@ function WatchPage() {
               {anime.data.title}
             </Link>
             {anime.data.synopsis ? (
-              <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">{anime.data.synopsis}</p>
+              <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                {anime.data.synopsis}
+              </p>
             ) : null}
           </div>
         </section>

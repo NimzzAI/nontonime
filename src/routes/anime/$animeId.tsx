@@ -17,9 +17,15 @@ export const Route = createFileRoute("/anime/$animeId")({
     return {
       meta: [
         { title: `${name} — Nontonime` },
-        { name: "description", content: `Sinopsis, informasi, dan daftar episode ${name} subtitle Indonesia.` },
+        {
+          name: "description",
+          content: `Sinopsis, informasi, dan daftar episode ${name} subtitle Indonesia.`,
+        },
         { property: "og:title", content: `${name} — Nontonime` },
-        { property: "og:description", content: `Sinopsis dan daftar episode ${name} subtitle Indonesia.` },
+        {
+          property: "og:description",
+          content: `Sinopsis dan daftar episode ${name} subtitle Indonesia.`,
+        },
       ],
     };
   },
@@ -42,7 +48,9 @@ function Synopsis({ text }: { text: string | null }) {
   return (
     <section className="space-y-2">
       <h2 className="font-display text-xl font-semibold text-foreground">Sinopsis</h2>
-      <p className={cn("text-sm leading-relaxed text-muted-foreground", !expanded && "line-clamp-4")}>
+      <p
+        className={cn("text-sm leading-relaxed text-muted-foreground", !expanded && "line-clamp-4")}
+      >
         {text}
       </p>
       <button
@@ -93,7 +101,9 @@ function SubscribeButton({ animeId, animeTitle }: { animeId: string; animeTitle:
       disabled={busy}
       className={cn(
         "press-soft inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-3 text-sm font-semibold shadow-sm transition-colors disabled:opacity-60 sm:w-auto",
-        subscribed ? "bg-secondary text-secondary-foreground" : "bg-card text-card-foreground hover:bg-accent",
+        subscribed
+          ? "bg-secondary text-secondary-foreground"
+          : "bg-card text-card-foreground hover:bg-accent",
       )}
     >
       <i className={subscribed ? "fa-solid fa-bell" : "fa-regular fa-bell"} />
@@ -132,7 +142,10 @@ function AnimeDetailPage() {
   const anime = data;
   const episodes = anime.episodes ?? [];
   const firstEpisode = episodes.length
-    ? episodes.reduce((earliest, episode) => (episode.number < earliest.number ? episode : earliest), episodes[0]!)
+    ? episodes.reduce(
+        (earliest, episode) => (episode.number < earliest.number ? episode : earliest),
+        episodes[0]!,
+      )
     : null;
   const continueEpisode = continueItem
     ? episodes.find((episode) => episode.id === continueItem.episodeId)
@@ -151,14 +164,23 @@ function AnimeDetailPage() {
       <div className="relative -mx-4 sm:mx-0 sm:overflow-hidden sm:rounded-3xl sm:border sm:border-border">
         <div className="relative h-64 w-full overflow-hidden sm:h-80">
           {anime.cover || anime.poster ? (
-            <img src={anime.cover ?? anime.poster ?? ""} alt={anime.title} className="h-full w-full object-cover" />
+            <img
+              src={anime.cover ?? anime.poster ?? ""}
+              alt={anime.title}
+              className="h-full w-full object-cover"
+            />
           ) : (
             <div className="h-full w-full bg-muted" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
           {anime.status ? (
             <span className="glass absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-foreground">
-              <i className={cn("fa-solid text-primary", isCompleted ? "fa-circle-check" : "fa-tower-broadcast")} />
+              <i
+                className={cn(
+                  "fa-solid text-primary",
+                  isCompleted ? "fa-circle-check" : "fa-tower-broadcast",
+                )}
+              />
               {anime.status}
             </span>
           ) : null}
@@ -167,7 +189,9 @@ function AnimeDetailPage() {
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground drop-shadow-sm sm:text-4xl">
             {anime.title}
           </h1>
-          {anime.synonyms ? <p className="text-sm text-muted-foreground">{anime.synonyms}</p> : null}
+          {anime.synonyms ? (
+            <p className="text-sm text-muted-foreground">{anime.synonyms}</p>
+          ) : null}
         </div>
       </div>
 
@@ -178,7 +202,9 @@ function AnimeDetailPage() {
           {anime.airedStart ? <Pill text={anime.airedStart} /> : null}
           {anime.totalEpisodes ? <Pill text={`${anime.totalEpisodes} episode`} /> : null}
           {anime.day ? <Pill icon="fa-solid fa-calendar-day" text={anime.day} /> : null}
-          {anime.views ? <Pill icon="fa-solid fa-eye" text={`${formatViews(anime.views)} views`} /> : null}
+          {anime.views ? (
+            <Pill icon="fa-solid fa-eye" text={`${formatViews(anime.views)} views`} />
+          ) : null}
         </div>
 
         {anime.genres.length ? (

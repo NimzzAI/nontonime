@@ -12,7 +12,9 @@ export function ServerList({
   animeId: string;
 }) {
   if (servers.length === 0) {
-    return <p className="text-xs text-muted-foreground">Belum ada server tersedia untuk episode ini.</p>;
+    return (
+      <p className="text-xs text-muted-foreground">Belum ada server tersedia untuk episode ini.</p>
+    );
   }
 
   const groups = new Map<string, StreamServer[]>();
@@ -36,9 +38,13 @@ export function ServerList({
                 className="flex items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-1.5"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-card-foreground">{server.name}</p>
+                  <p className="truncate text-xs font-semibold text-card-foreground">
+                    {server.name}
+                  </p>
                   {server.fileSizeMb ? (
-                    <p className="text-[10px] text-muted-foreground">{server.fileSizeMb.toFixed(0)} MB</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {server.fileSizeMb.toFixed(0)} MB
+                    </p>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">

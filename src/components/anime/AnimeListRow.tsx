@@ -13,7 +13,12 @@ export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
     >
       <div className="h-20 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
         {anime.poster ? (
-          <img src={anime.poster} alt={anime.title} loading="lazy" className="h-full w-full object-cover" />
+          <img
+            src={anime.poster}
+            alt={anime.title}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
         ) : null}
       </div>
       <div className="min-w-0 flex-1 space-y-1">
@@ -32,7 +37,10 @@ export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
         {anime.genres.length > 0 ? (
           <div className="flex flex-wrap gap-1 pt-0.5">
             {anime.genres.slice(0, 3).map((genre) => (
-              <span key={genre} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <span
+                key={genre}
+                className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              >
                 {genre}
               </span>
             ))}

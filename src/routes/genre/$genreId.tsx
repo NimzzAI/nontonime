@@ -15,9 +15,15 @@ export const Route = createFileRoute("/genre/$genreId")({
     return {
       meta: [
         { title: `Anime Genre ${name} — Nontonime` },
-        { name: "description", content: `Kumpulan anime bergenre ${name} dengan subtitle Indonesia.` },
+        {
+          name: "description",
+          content: `Kumpulan anime bergenre ${name} dengan subtitle Indonesia.`,
+        },
         { property: "og:title", content: `Anime Genre ${name} — Nontonime` },
-        { property: "og:description", content: `Kumpulan anime bergenre ${name} subtitle Indonesia.` },
+        {
+          property: "og:description",
+          content: `Kumpulan anime bergenre ${name} subtitle Indonesia.`,
+        },
       ],
     };
   },
@@ -41,7 +47,9 @@ function GenreDetailPage() {
           <Pagination
             page={page}
             hasNext={data.hasNext}
-            onChange={(next) => navigate({ to: "/genre/$genreId", params: { genreId }, search: { page: next, name } })}
+            onChange={(next) =>
+              navigate({ to: "/genre/$genreId", params: { genreId }, search: { page: next, name } })
+            }
           />
         </>
       ) : null}

@@ -13,9 +13,15 @@ export const Route = createFileRoute("/download/$batchId")({
     return {
       meta: [
         { title: `Unduh Semua Episode ${name} — Nontonime` },
-        { name: "description", content: `Tautan unduhan per episode ${name} subtitle Indonesia per resolusi.` },
+        {
+          name: "description",
+          content: `Tautan unduhan per episode ${name} subtitle Indonesia per resolusi.`,
+        },
         { property: "og:title", content: `Unduh Semua Episode ${name} — Nontonime` },
-        { property: "og:description", content: `Tautan unduhan per episode ${name} subtitle Indonesia.` },
+        {
+          property: "og:description",
+          content: `Tautan unduhan per episode ${name} subtitle Indonesia.`,
+        },
       ],
     };
   },
@@ -35,15 +41,29 @@ function EpisodeDownloadRow({ episode, animeId }: { episode: EpisodeSummary; ani
         <div className="flex min-w-0 items-center gap-3">
           <div className="h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
             {episode.image ? (
-              <img src={episode.image} alt={episode.title} loading="lazy" className="h-full w-full object-cover" />
+              <img
+                src={episode.image}
+                alt={episode.title}
+                loading="lazy"
+                className="h-full w-full object-cover"
+              />
             ) : null}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-card-foreground">Episode {episode.number}</p>
-            {episode.releaseDate ? <p className="text-xs text-muted-foreground">{episode.releaseDate}</p> : null}
+            <p className="truncate text-sm font-semibold text-card-foreground">
+              Episode {episode.number}
+            </p>
+            {episode.releaseDate ? (
+              <p className="text-xs text-muted-foreground">{episode.releaseDate}</p>
+            ) : null}
           </div>
         </div>
-        <i className={cn("fa-solid fa-chevron-down shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+        <i
+          className={cn(
+            "fa-solid fa-chevron-down shrink-0 text-muted-foreground transition-transform",
+            open && "rotate-180",
+          )}
+        />
       </button>
       {open ? (
         <div className="mt-3 border-t border-border pt-3">
@@ -82,10 +102,16 @@ function BatchPage() {
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
       <div className="flex flex-wrap items-start gap-4">
         {anime.poster ? (
-          <img src={anime.poster} alt={anime.title} className="w-28 rounded-2xl border border-border object-cover" />
+          <img
+            src={anime.poster}
+            alt={anime.title}
+            className="w-28 rounded-2xl border border-border object-cover"
+          />
         ) : null}
         <div className="space-y-2">
-          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">{anime.title}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            {anime.title}
+          </h1>
           <p className="text-sm text-muted-foreground">
             {[anime.type, `${episodes.length} episode`].filter(Boolean).join(" · ")}
           </p>

@@ -19,11 +19,18 @@ export function SiteHeader() {
   return (
     <>
       {open ? (
-        <div onClick={() => setOpen(false)} aria-hidden="true" className="fixed inset-0 z-30 lg:hidden" />
+        <div
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+          className="fixed inset-0 z-30 lg:hidden"
+        />
       ) : null}
       <header className="glass sticky top-0 z-40 border-b border-border">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4">
-          <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-display text-lg font-bold tracking-tight"
+          >
             <img src="/logo.svg" alt="Nontonime" className="h-8 w-8 rounded-xl" />
             Nontonime
           </Link>

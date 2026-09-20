@@ -9,7 +9,10 @@ export const Route = createFileRoute("/jadwal")({
   head: () => ({
     meta: [
       { title: "Jadwal Rilis Anime Mingguan — Nontonime" },
-      { name: "description", content: "Jadwal rilis anime setiap hari dalam seminggu, lengkap dengan poster." },
+      {
+        name: "description",
+        content: "Jadwal rilis anime setiap hari dalam seminggu, lengkap dengan poster.",
+      },
       { property: "og:title", content: "Jadwal Rilis Anime Mingguan — Nontonime" },
       { property: "og:description", content: "Jadwal rilis anime setiap hari dalam seminggu." },
     ],
@@ -21,7 +24,9 @@ function titleCase(day: string) {
   return day.charAt(0) + day.slice(1).toLowerCase();
 }
 
-const TODAY = new Intl.DateTimeFormat("id-ID", { weekday: "long" }).format(new Date()).toUpperCase();
+const TODAY = new Intl.DateTimeFormat("id-ID", { weekday: "long" })
+  .format(new Date())
+  .toUpperCase();
 
 function SchedulePage() {
   const { data, isPending, error, refetch } = useQuery(scheduleQuery());
@@ -51,7 +56,9 @@ function SchedulePage() {
                   )}
                 >
                   {items.length === 0 ? (
-                    <p className="p-4 text-sm text-muted-foreground">Belum ada jadwal untuk hari ini.</p>
+                    <p className="p-4 text-sm text-muted-foreground">
+                      Belum ada jadwal untuk hari ini.
+                    </p>
                   ) : (
                     items.map((anime) => (
                       <Link
@@ -60,12 +67,21 @@ function SchedulePage() {
                         params={{ animeId: anime.id }}
                         className="flex items-center gap-3 p-3 transition-colors hover:bg-accent"
                       >
-                        <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        <div className="flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/70 text-muted-foreground">
                           {anime.poster ? (
-                            <img src={anime.poster} alt={anime.title} loading="lazy" className="h-full w-full object-cover" />
-                          ) : null}
+                            <img
+                              src={anime.poster}
+                              alt={anime.title}
+                              loading="lazy"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <i className="fa-solid fa-clapperboard text-sm text-primary/70" />
+                          )}
                         </div>
-                        <span className="line-clamp-2 text-sm font-medium text-card-foreground">{anime.title}</span>
+                        <span className="line-clamp-2 text-sm font-medium text-card-foreground">
+                          {anime.title}
+                        </span>
                         <i className="fa-solid fa-chevron-right ml-auto shrink-0 text-xs text-muted-foreground" />
                       </Link>
                     ))

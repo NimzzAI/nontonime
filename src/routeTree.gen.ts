@@ -18,8 +18,8 @@ import { Route as RiwayatRouteImport } from './routes/riwayat'
 import { Route as TamatRouteImport } from './routes/tamat'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as AnimeAnimeIdRouteImport } from './routes/anime/$animeId'
-import { Route as DownloadBatchIdRouteImport } from './routes/download/$batchId'
 import { Route as DownloadIndexRouteImport } from './routes/download/index'
+import { Route as DownloadBatchIdRouteImport } from './routes/download/$batchId'
 import { Route as GenreIndexRouteImport } from './routes/genre/index'
 import { Route as GenreGenreIdRouteImport } from './routes/genre/$genreId'
 import { Route as WatchEpisodeIdRouteImport } from './routes/watch/$episodeId'
@@ -69,14 +69,14 @@ const AnimeAnimeIdRoute = AnimeAnimeIdRouteImport.update({
   path: '/anime/$animeId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DownloadBatchIdRoute = DownloadBatchIdRouteImport.update({
-  id: '/download/$batchId',
-  path: '/download/$batchId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DownloadIndexRoute = DownloadIndexRouteImport.update({
   id: '/download/',
   path: '/download/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadBatchIdRoute = DownloadBatchIdRouteImport.update({
+  id: '/download/$batchId',
+  path: '/download/$batchId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GenreIndexRoute = GenreIndexRouteImport.update({
@@ -108,8 +108,8 @@ export interface FileRoutesByFullPath {
   '/download/$batchId': typeof DownloadBatchIdRoute
   '/genre/$genreId': typeof GenreGenreIdRoute
   '/watch/$episodeId': typeof WatchEpisodeIdRoute
-  '/download': typeof DownloadIndexRoute
-  '/genre': typeof GenreIndexRoute
+  '/download/': typeof DownloadIndexRoute
+  '/genre/': typeof GenreIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -159,8 +159,8 @@ export interface FileRouteTypes {
     | '/download/$batchId'
     | '/genre/$genreId'
     | '/watch/$episodeId'
-    | '/download'
-    | '/genre'
+    | '/download/'
+    | '/genre/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -277,18 +277,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnimeAnimeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/download/': {
+      id: '/download/'
+      path: '/download'
+      fullPath: '/download/'
+      preLoaderRoute: typeof DownloadIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/download/$batchId': {
       id: '/download/$batchId'
       path: '/download/$batchId'
       fullPath: '/download/$batchId'
       preLoaderRoute: typeof DownloadBatchIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/download/': {
-      id: '/download/'
-      path: '/download'
-      fullPath: '/download'
-      preLoaderRoute: typeof DownloadIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/genre/': {
@@ -334,13 +334,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

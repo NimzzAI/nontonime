@@ -28,11 +28,19 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   const body = await response.clone().text();
   if (!isH3SwallowedErrorBody(body)) return response;
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
-  return new Response(renderErrorPage(), {
-    status: 500,
-    headers: { "content-type": "text/html; charset=utf-8" },
-  });
+  console.error(
+    "H3 SWALLOWED SSR ERROR:",
+    consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`),
+  );
+  return new Response(
+    process.env.NODE_ENV !== "production"
+      ? `<pre>H3 SSR ERROR: ${body}\n${String(consumeLastCapturedError())}</pre>`
+      : renderErrorPage(),
+    {
+      status: 500,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    },
+  );
 }
 
 function isH3SwallowedErrorBody(body: string): boolean {
@@ -51,11 +59,16 @@ export default {
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
-      console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      console.error("SERVER CATCH ERROR:", error);
+      return new Response(
+        process.env.NODE_ENV !== "production"
+          ? `<pre>${String(error)}\n${(error as Error)?.stack}</pre>`
+          : renderErrorPage(),
+        {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        },
+      );
     }
   },
 };

@@ -6,10 +6,11 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "vite dev --host 0.0.0.0 --port 3000",
+    "start": "node .output/server/index.mjs",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "preview": "vite preview",
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -47,6 +48,7 @@
     "@tanstack/react-start": "^1.168.44",
     "@tanstack/router-plugin": "^1.168.30",
     "@types/video.js": "^7.3.58",
+    "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

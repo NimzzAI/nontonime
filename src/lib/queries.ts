@@ -27,7 +27,11 @@ function currentDayName() {
 
 export const homeQuery = () => {
   const day = currentDayName();
-  return queryOptions({ queryKey: ["home", day], queryFn: () => fetchHome({ data: { day } }), ...common });
+  return queryOptions({
+    queryKey: ["home", day],
+    queryFn: () => fetchHome({ data: { day } }),
+    ...common,
+  });
 };
 
 export const latestQuery = (page: number) =>
@@ -47,7 +51,8 @@ export const popularQuery = (page: number) =>
 export const ongoingQuery = (page: number) =>
   queryOptions({
     queryKey: ["ongoing", page],
-    queryFn: async () => filterByStatus(await fetchLatest({ data: { page: page - 1 } }), /ongoing|tayang/i),
+    queryFn: async () =>
+      filterByStatus(await fetchLatest({ data: { page: page - 1 } }), /ongoing|tayang/i),
     ...common,
   });
 
@@ -55,7 +60,7 @@ export const completedQuery = (page: number) =>
   queryOptions({
     queryKey: ["completed", page],
     queryFn: async () =>
-      filterByStatus(await fetchLatest({ data: { page: page - 1 } }), /tamat|complete|end/i),
+      filterByStatus(await fetchPopular({ data: { page: page - 1 } }), /tamat|complete|end/i),
     ...common,
   });
 

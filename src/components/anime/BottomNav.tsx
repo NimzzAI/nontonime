@@ -2,10 +2,34 @@ import { Link } from "@tanstack/react-router";
 
 const TABS = [
   { to: "/", label: "Home", icon: "fa-solid fa-house", exact: true, search: undefined },
-  { to: "/jadwal", label: "Jadwal", icon: "fa-solid fa-calendar-days", exact: false, search: undefined },
-  { to: "/cari", label: "Cari", icon: "fa-solid fa-magnifying-glass", exact: false, search: { q: "", page: 1 } },
-  { to: "/riwayat", label: "Riwayat", icon: "fa-solid fa-clock-rotate-left", exact: false, search: undefined },
-  { to: "/profil", label: "Profil", icon: "fa-solid fa-circle-user", exact: false, search: undefined },
+  {
+    to: "/jadwal",
+    label: "Jadwal",
+    icon: "fa-solid fa-calendar-days",
+    exact: false,
+    search: undefined,
+  },
+  {
+    to: "/cari",
+    label: "Cari",
+    icon: "fa-solid fa-magnifying-glass",
+    exact: false,
+    search: { q: "", page: 1 },
+  },
+  {
+    to: "/riwayat",
+    label: "Riwayat",
+    icon: "fa-solid fa-clock-rotate-left",
+    exact: false,
+    search: undefined,
+  },
+  {
+    to: "/profil",
+    label: "Profil",
+    icon: "fa-solid fa-circle-user",
+    exact: false,
+    search: undefined,
+  },
 ] as const;
 
 export function BottomNav() {

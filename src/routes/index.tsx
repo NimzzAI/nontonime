@@ -72,7 +72,9 @@ function HomePage() {
                     <i className="fa-solid fa-play text-lg text-white opacity-0 transition-opacity group-hover:opacity-100" />
                   </div>
                 </div>
-                <p className="line-clamp-2 text-xs font-medium text-card-foreground">{item.animeTitle}</p>
+                <p className="line-clamp-2 text-xs font-medium text-card-foreground">
+                  {item.animeTitle}
+                </p>
               </Link>
             ))}
           </div>
@@ -87,7 +89,12 @@ function HomePage() {
         viewAllTo="/ongoing"
         viewAllSearch={{ page: 1 }}
       />
-      <Shelf title="Trending" icon="fa-solid fa-fire" items={data?.hot ?? []} isLoading={isPending} />
+      <Shelf
+        title="Trending"
+        icon="fa-solid fa-fire"
+        items={data?.hot ?? []}
+        isLoading={isPending}
+      />
       <Shelf
         title="Terpopuler"
         icon="fa-solid fa-ranking-star"

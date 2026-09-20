@@ -25,7 +25,9 @@ export function WatchlistButton({
       aria-label={saved ? "Hapus dari watchlist" : "Simpan ke watchlist"}
       className={cn(
         "press-soft inline-flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border shadow-sm transition-colors",
-        variant === "glass" ? "glass border-white/20 text-white" : "border-border bg-card text-card-foreground",
+        variant === "glass"
+          ? "glass border-white/20 text-white"
+          : "border-border bg-card text-card-foreground",
         saved && variant === "solid" ? "bg-secondary text-secondary-foreground" : null,
         !saved && variant === "solid" ? "hover:bg-accent" : null,
       )}

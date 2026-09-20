@@ -35,7 +35,11 @@ export const fetchGenres = createServerFn({ method: "GET" }).handler(() => getGe
 export const fetchByGenre = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z
-      .object({ genreId: z.string().min(1), page: z.number().int().min(0), sort: z.string().optional() })
+      .object({
+        genreId: z.string().min(1),
+        page: z.number().int().min(0),
+        sort: z.string().optional(),
+      })
       .parse(data),
   )
   .handler(({ data }) => getByGenre(data.genreId, data.page, data.sort ?? "views"));
@@ -47,5 +51,7 @@ export const fetchDetail = createServerFn({ method: "GET" })
   .handler(({ data }) => getDetail(data.id));
 
 export const fetchStream = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => z.object({ episodeId: z.string().min(1).max(120) }).parse(data))
+  .inputValidator((data: unknown) =>
+    z.object({ episodeId: z.string().min(1).max(120) }).parse(data),
+  )
   .handler(({ data }) => getStream(data.episodeId));

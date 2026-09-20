@@ -78,6 +78,14 @@ export interface StreamResult {
   servers: StreamServer[];
 }
 
-export const SCHEDULE_DAYS = ["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU"] as const;
+export const SCHEDULE_DAYS = [
+  "SENIN",
+  "SELASA",
+  "RABU",
+  "KAMIS",
+  "JUMAT",
+  "SABTU",
+  "MINGGU",
+] as const;
 
 export type ScheduleDay = (typeof SCHEDULE_DAYS)[number];

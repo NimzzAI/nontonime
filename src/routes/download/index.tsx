@@ -20,8 +20,8 @@ function DownloadPage() {
       <div className="rounded-2xl border border-border bg-card px-6 py-14 text-center">
         <i className="fa-solid fa-box-archive text-2xl text-muted-foreground" />
         <p className="mt-3 text-sm text-muted-foreground">
-          Buka halaman detail anime, lalu tekan "Unduh Semua Episode" atau ikon unduh di samping episode
-          yang kamu mau.
+          Buka halaman detail anime, lalu tekan "Unduh Semua Episode" atau ikon unduh di samping
+          episode yang kamu mau.
         </p>
         <Link to="/" className="mt-4 inline-block text-sm font-medium text-primary hover:underline">
           Jelajahi anime

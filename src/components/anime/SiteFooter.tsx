@@ -13,11 +13,14 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl space-y-4 px-4 py-10 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <img src="/logo.svg" alt="Nontonime" className="h-6 w-6 rounded-lg" />
-          <p className="font-display text-base font-bold tracking-tight text-foreground">Nontonime</p>
+          <p className="font-display text-base font-bold tracking-tight text-foreground">
+            Nontonime
+          </p>
         </div>
         <p className="max-w-xl leading-relaxed">
-          Katalog dan pemutar anime subtitle Indonesia tanpa perlu akun. Seluruh data, poster, dan tautan
-          video berasal dari penyedia pihak ketiga — situs ini tidak meng-hosting berkas video apa pun.
+          Katalog dan pemutar anime subtitle Indonesia tanpa perlu akun. Seluruh data, poster, dan
+          tautan video berasal dari penyedia pihak ketiga — situs ini tidak meng-hosting berkas
+          video apa pun.
         </p>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           {LINKS.map((link) => (
