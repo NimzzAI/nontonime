@@ -6,7 +6,8 @@ import { siteConfig } from "@/lib/site-config";
 import { readSubscriptions, removeSubscription, type SubscriptionItem } from "@/lib/subscriptions";
 import { getPermission, requestNotificationPermission, showLocalNotification } from "@/lib/push";
 import { readHistory } from "@/lib/history";
-import { readWatchlist } from "@/lib/watchlist";
+import { readWatchlist, removeFromWatchlist, type WatchlistItem } from "@/lib/watchlist";
+import { Bookmark, ChevronRight, Play, Trash2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/profil")({
   head: () => ({
@@ -152,6 +153,94 @@ function StatsRow() {
   );
 }
 
+function ProfileWatchlistSection() {
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+
+  useEffect(() => {
+    const sync = () => setWatchlist(readWatchlist());
+    sync();
+    window.addEventListener("watchlist-updated", sync);
+    return () => window.removeEventListener("watchlist-updated", sync);
+  }, []);
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Bookmark className="h-4 w-4 text-primary" />
+          <h3 className="font-display text-sm font-bold text-card-foreground">
+            Watchlist Tersimpan ({watchlist.length})
+          </h3>
+        </div>
+        {watchlist.length > 0 ? (
+          <Link
+            to="/watchlist"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+          >
+            Lihat Semua
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        ) : null}
+      </div>
+
+      {watchlist.length === 0 ? (
+        <div className="py-6 text-center">
+          <p className="text-xs text-muted-foreground">
+            Belum ada anime yang disimpan di watchlist.
+          </p>
+          <Link
+            to="/"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20"
+          >
+            Cari Anime Favorit
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {watchlist.slice(0, 6).map((item) => (
+            <div
+              key={item.animeId}
+              className="group relative overflow-hidden rounded-xl border border-border/80 bg-background/50 transition-all hover:border-primary/50"
+            >
+              <Link to="/anime/$animeId" params={{ animeId: item.animeId }} className="block">
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-muted">
+                  {item.poster ? (
+                    <img
+                      src={item.poster}
+                      alt={item.title}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                      <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
+                    </div>
+                  </div>
+                </div>
+                <div className="p-2">
+                  <p className="line-clamp-1 text-[11px] font-semibold text-card-foreground group-hover:text-primary transition-colors">
+                    {item.title}
+                  </p>
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={() => removeFromWatchlist(item.animeId)}
+                title="Hapus dari watchlist"
+                aria-label={`Hapus ${item.title} dari watchlist`}
+                className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-black/60 text-white/80 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground transition-all"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProfilPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -164,12 +253,14 @@ function ProfilPage() {
         <div>
           <p className="text-sm font-semibold text-card-foreground">Tamu</p>
           <p className="text-xs text-muted-foreground">
-            Belum ada sistem akun di {siteConfig.name}.
+            Belum ada sistem akun di {siteConfig.name}. Data profil tersimpan di perangkat ini.
           </p>
         </div>
       </div>
 
       <StatsRow />
+
+      <ProfileWatchlistSection />
 
       <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
         <div>
@@ -184,17 +275,20 @@ function ProfilPage() {
       <div className="divide-y divide-border rounded-2xl border border-border bg-card">
         <Link
           to="/watchlist"
-          className="flex items-center justify-between px-4 py-3 text-sm font-medium text-card-foreground"
+          className="flex items-center justify-between px-4 py-3 text-sm font-medium text-card-foreground hover:bg-secondary/40 transition-colors"
         >
-          Watchlist
-          <i className="fa-solid fa-chevron-right text-xs text-muted-foreground" />
+          <span className="flex items-center gap-2">
+            <Bookmark className="h-4 w-4 text-primary" />
+            Watchlist Lengkap
+          </span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
         <Link
           to="/riwayat"
-          className="flex items-center justify-between px-4 py-3 text-sm font-medium text-card-foreground"
+          className="flex items-center justify-between px-4 py-3 text-sm font-medium text-card-foreground hover:bg-secondary/40 transition-colors"
         >
-          Riwayat Tontonan
-          <i className="fa-solid fa-chevron-right text-xs text-muted-foreground" />
+          <span>Riwayat Tontonan</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
       </div>
     </div>

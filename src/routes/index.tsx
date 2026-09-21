@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { HeroSlider } from "@/components/anime/HeroSlider";
+import { TrendingSlider } from "@/components/anime/TrendingSlider";
 import { Shelf } from "@/components/anime/Shelf";
 import { ErrorState } from "@/components/anime/StateViews";
 import { homeQuery, currentDayName } from "@/lib/queries";
@@ -80,6 +81,13 @@ function HomePage() {
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
 
       {data && data.slider.length > 0 ? <HeroSlider items={data.slider.slice(0, 7)} /> : null}
+
+      {/* High-Quality Trending Anime Horizontal Slider */}
+      {data && (data.hot.length > 0 || data.slider.length > 0) ? (
+        <TrendingSlider
+          items={data.hot.length > 0 ? data.hot.slice(0, 10) : data.slider.slice(0, 10)}
+        />
+      ) : null}
 
       {/* Continue Watching Section */}
       {continueItems.length > 0 ? (

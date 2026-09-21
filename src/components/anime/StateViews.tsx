@@ -63,20 +63,20 @@ export function EmptyState({
   message,
   action,
 }: {
-  icon?: LucideIcon | string;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }> | string;
   message: string;
   action?: { label: string; to: string };
 }) {
   const renderIcon = () => {
     if (!IconProp) return <Inbox className="h-7 w-7 text-muted-foreground" />;
-    if (typeof IconProp === "function") {
-      const IconComp = IconProp;
-      return <IconComp className="h-7 w-7 text-muted-foreground" />;
+    if (typeof IconProp === "string") {
+      if (IconProp.startsWith("fa-")) {
+        return <i className={`${IconProp} text-2xl text-muted-foreground`} />;
+      }
+      return <Inbox className="h-7 w-7 text-muted-foreground" />;
     }
-    if (typeof IconProp === "string" && IconProp.startsWith("fa-")) {
-      return <i className={`${IconProp} text-2xl text-muted-foreground`} />;
-    }
-    return <Inbox className="h-7 w-7 text-muted-foreground" />;
+    const IconComp = IconProp as React.ElementType;
+    return <IconComp className="h-7 w-7 text-muted-foreground" />;
   };
 
   return (
@@ -97,18 +97,18 @@ export function SectionTitle({
   icon: IconProp,
 }: {
   title: string;
-  icon?: LucideIcon | string;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }> | string;
 }) {
   const renderIcon = () => {
     if (!IconProp) return null;
-    if (typeof IconProp === "function") {
-      const IconComp = IconProp;
-      return <IconComp className="h-5 w-5 text-primary" />;
+    if (typeof IconProp === "string") {
+      if (IconProp.startsWith("fa-")) {
+        return <i className={`${IconProp} text-primary`} />;
+      }
+      return null;
     }
-    if (typeof IconProp === "string" && IconProp.startsWith("fa-")) {
-      return <i className={`${IconProp} text-primary`} />;
-    }
-    return null;
+    const IconComp = IconProp as React.ElementType;
+    return <IconComp className="h-5 w-5 text-primary" />;
   };
 
   return (

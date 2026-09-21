@@ -4,7 +4,7 @@
 
 # Nontonime
 
-Website streaming anime subtitle Indonesia — tanpa akun, tanpa ribet.
+Website streaming anime subtitle Indonesia — tanpa iklan mengganggu, tanpa akun, dan performa ultra cepat.
 
 [![Demo](https://img.shields.io/badge/demo-nontonime.vercel.app-6366f1?style=for-the-badge&logo=vercel&logoColor=white)](https://nontonime.vercel.app/)
 [![Deploy](https://img.shields.io/github/deployments/Nimzz-pemboy/nontonime/production?style=for-the-badge&label=vercel&logo=vercel)](https://nontonime.vercel.app/)
@@ -21,165 +21,132 @@ Website streaming anime subtitle Indonesia — tanpa akun, tanpa ribet.
 
 ---
 
-## Tentang
+## Tentang Proyek
 
-Nontonime adalah platform streaming anime dengan subtitle Indonesia, dibangun full-stack di atas **TanStack Start**. Seluruh data anime (katalog, jadwal, detail, episode, tautan streaming/unduhan) diambil server-side dari sumber pihak ketiga lewat lapisan proxy internal, lalu dirender lewat server functions supaya halaman tetap cepat diakses. Tidak ada sistem akun — riwayat tontonan, watchlist, dan subscribe notifikasi disimpan langsung di penyimpanan lokal perangkat pengguna.
+**Nontonime** adalah platform web modern untuk streaming anime subtitle Indonesia dengan fokus pada **User Experience (UX) kelas atas**, performa kilat, dan kemudahan akses tanpa registrasi akun. Seluruh katalog anime, jadwal rilis harian, episode, serta multi-server streaming diambil server-side dari lapisan API proxy internal berkecepatan tinggi.
 
-## Sumber Data
+Semua preferensi personal seperti **Riwayat Tontonan**, **Watchlist**, dan **Langganan Notifikasi Rilis** tersimpan aman di penyimpanan lokal (Local Storage & IndexedDB) pengguna.
 
-Data anime discrape dari **animeinweb.com** lewat `src/lib/animein.server.ts`, sebuah client server-only (native `fetch`, tanpa dependency tambahan) yang meniru proxy internal situs tersebut, lengkap dengan header, secret proxy, timeout 15 detik, dan rate limit 60 request/menit per IP. Semua pemanggilan lewat `createServerFn` (`src/lib/anime.functions.ts`) sehingga secret proxy tidak pernah terekspos ke browser.
+---
 
-Beberapa catatan penting soal sumber data ini:
+## Arsitektur & Desain UI/UX
 
-- **Sekali panggil, langsung dapat semua server & kualitas** — endpoint stream episode mengembalikan seluruh server + resolusi sekaligus, jadi ganti kualitas/server di halaman nonton tidak perlu fetch ulang.
-- **Episode tidak tahu induk animenya sendiri** — API stream cuma balikin info episode, bukan anime induknya. Karena itu halaman `/watch/$episodeId` membawa context lewat query param `?a=<animeId>` (otomatis terpasang di semua tautan internal). Kalau halaman nonton dibuka langsung tanpa context ini (mis. link lama tanpa `?a=`), player tetap jalan tapi daftar episode, judul anime, dan riwayat tontonan tidak bisa ditampilkan.
-- **"Ongoing" & "Tamat" hasil filter, bukan endpoint khusus** — API sumber tidak punya endpoint terpisah untuk status ongoing/tamat, jadi kedua halaman ini mengambil daftar anime terbaru lalu memfilter berdasarkan teks status yang dikembalikan. Kalau suatu saat teks status di sumbernya berubah format, filter di `src/lib/queries.ts` (`ongoingQuery` / `completedQuery`) mungkin perlu disesuaikan.
-- **Unduh per-episode & per-anime** — tombol unduh di setiap episode maupun halaman "Unduh Semua Episode" langsung memakai tautan server yang dikembalikan API (file `.mp4` tampil sebagai tombol Unduh, sumber `.m3u8`/embed hanya bisa diputar).
+Aplikasi ini dirancang dengan standar developer modern:
+- **Clean Aesthetic & Anti-Slop Guidelines**: Menghilangkan gradien murahan dan template generik. Menggunakan sistem warna berbasis palet OKLCH dengan kontras tinggi (Dark & Light Mode).
+- **Hero Slider Sinematik Tanpa Dead-Space**: Carousel anime unggulan dengan poster backdrop beresolusi tinggi, tata letak mobile-first yang proporsional tanpa dead space (ruang kosong berlebih), radar indicator badge tayang dinamis dengan dual-ring ping wave (*Ongoing* / *Tamat*), dan indikator pill interaktif.
+- **Trending Anime Showcase**: Slider horizontal berkecepatan tinggi dengan edge-to-edge cinematic cards, hover-zoom effects (`scale-110`), glowing rank badges (#1 - #10), dan akses instan langsung ke streaming.
+- **Watchlist Interaktif dengan Spring Motion**: Tombol simpan anime dengan animasi berbasis pegas (*spring physics*) dari `motion`, feedback visual letupan partikel saat ditambahkan, toast notifikasi (*Sonner*), serta sinkronisasi otomatis ke profil dan counter badge.
+- **Mobile-First Glassmorphism Bottom Navigation**: Bar navigasi khusus mobile dengan efek glassmorphism blur berlapis (`backdrop-blur-2xl bg-card/75 border-white/10`), ambient light sheen, active pill spring transition, serta ikon SVG kustom yang dioptimalkan untuk sentuhan mobile.
+- **Overlay & Sidebar Search Panel dengan Filter Multi-Kategori**: Drawer pencarian instan lengkap dengan filter Status Tayang (*Ongoing/Completed*), Tahun Rilis (2020–2026), dan Kategori Genre, serta pintasan keyboard global `Ctrl+K` atau `/`.
+- **PWA Ready**: Dukungan Web App Manifest dan Service Worker sehingga dapat dipasang langsung ke layar utama perangkat (Android / iOS / Desktop).
 
-## Fitur
+---
 
-| Fitur                                | Deskripsi                                                                                                                                  |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Beranda**                          | Hero slider otomatis dari data live, plus rak Tayang Hari Ini, Trending, Terpopuler, Baru Ditambahkan, Segera Tayang, dan Lanjutkan Nonton |
-| **Ongoing & Tamat**                  | Daftar anime berdasarkan status (hasil filter, lihat [Sumber Data](#sumber-data)), dengan paginasi                                         |
-| **Jadwal Rilis**                     | Jadwal tayang anime per hari dalam seminggu, lengkap dengan poster, hari ini ditandai otomatis                                             |
-| **Pencarian**                        | Cari judul anime dengan hasil berpaginasi                                                                                                  |
-| **Genre**                            | Jelajahi anime berdasarkan kategori genre, dengan thumbnail genre                                                                          |
-| **Detail Anime**                     | Hero backdrop, info ringkas, sinopsis collapsible, tombol lanjut nonton, subscribe, watchlist, dan rekomendasi berbasis genre              |
-| **Nonton Episode**                   | Video player dengan pilihan kualitas & server instan (tanpa fetch ulang), episode list, tombol episode sebelumnya/selanjutnya              |
-| **Download Per-Episode & Per-Anime** | Tombol unduh di setiap episode (popover kualitas & server) plus halaman "Unduh Semua Episode" per anime                                    |
-| **Riwayat Tontonan**                 | Tersimpan otomatis di perangkat, dikelompokkan per hari                                                                                    |
-| **Watchlist**                        | Simpan anime buat ditonton nanti, tersimpan di perangkat                                                                                   |
-| **Notifikasi**                       | Subscribe per anime, notifikasi lokal via Web Push API (lihat bagian [Notifikasi](#notifikasi))                                            |
-| **Navigasi Mobile**                  | Bottom tab bar (Home/Jadwal/Cari/Riwayat/Profil) khusus layar kecil                                                                        |
-| **PWA**                              | Bisa di-install ke homescreen HP (manifest + service worker)                                                                               |
+## Sumber Data & Server Functions
 
-## Tampilan
+Data anime diperoleh melalui client server-side di `src/lib/animein.server.ts` dengan arsitektur:
+1. **Server-Only Security**: Endpoint dan rahasia proxy dieksekusi murni di backend via TanStack Start `createServerFn` (`src/lib/anime.functions.ts`). Kredensial tidak pernah terekspos ke browser.
+2. **Instant Multi-Server Resolution**: Pemanggilan stream episode langsung menyediakan seluruh opsi server (OtakuWatch, OdStream, VidHide, Mega, dll.) dan resolusi (360p, 480p, 720p HD) dalam satu payload, memungkinkan pergantian server instan tanpa request ulang.
+3. **Context-Aware Navigation**: Parameter konteks anime (`?a=<animeId>`) disematkan otomatis pada tautan tontonan untuk sinkronisasi daftar episode, histori, dan metadata.
 
-Desain dirombak total dengan identitas baru bertema "malam maraton nonton anime": latar gelap indigo-plum yang hangat (bukan hitam pekat) dipadukan aksen ganda — kuning keemasan untuk aksi utama dan merah muda lembut untuk badge/notifikasi — dengan tema terang sebagai alternatif. Tipografi memakai **Bricolage Grotesque** untuk judul/heading dan **Plus Jakarta Sans** untuk teks isi. Semua token warna, radius, dan utilitas visual (`glass`, `press-soft`, `card-lift`, skeleton loading, dsb.) diatur terpusat di `src/styles.css`.
+---
 
-Perubahan tata letak yang cukup besar dibanding versi sebelumnya:
+## Fitur Unggulan
 
-- Hero Beranda kini berupa slider berisi anime unggulan asli dari API (bukan video statis) — file `public/hero-bg.mp4` jadi tidak terpakai, boleh dihapus atau dipakai lagi manual kalau mau.
-- Bottom tab bar mobile: **Download** diganti **Cari** supaya pencarian lebih mudah dijangkau jempol; akses ke unduhan tetap ada lewat halaman detail anime.
-- Episode kini tampil dengan thumbnail asli (bukan cuma nomor), baik di daftar episode maupun grid navigasi.
-- Loading state pakai skeleton (bukan cuma spinner) di halaman beranda, grid, dan rak anime.
+| Fitur | Deskripsi |
+| :--- | :--- |
+| **Trending Anime Horizontal Slider** | Slider horizontal sinematik dengan kartu berbingkai besar, efek hover-zoom halus, badge ranking #1–#10, rating skor, dan akses instan. |
+| **Watchlist Spring-Animation & Profil** | Simpan anime favorit dengan toggle tombol beranimasi spring halus, efek letupan partikel, toast notifikasi, dan pengelolaan langsung di halaman profil. |
+| **Glassmorphism Mobile Navigation** | Bar navigasi bawah mobile dengan custom SVG icons, layout spring pill animation, dan frosted glass effect beresolusi tinggi. |
+| **Drawer Search & Filter Multi-Kategori** | Panel pencarian slide-in dengan filter Status (Ongoing/Tamat), Tahun Rilis, dan Genre, serta pintasan keyboard `Ctrl+K` / `/`. |
+| **Hero Carousel Sinematik** | Slider anime unggulan dengan cuplikan sinopsis, rating, poster preview, live radar badge, dan navigasi dot/panah yang responsif tanpa dead space. |
+| **Rak Anime Berbasis Status** | Rak terpisah untuk *Tayang Hari Ini*, *Sedang Tayang (Ongoing)*, *Anime Tamat (Completed)*, dan *Rekomendasi Pilihan*. |
+| **Jadwal Rilis Mingguan** | Kalender rilis anime per hari (Senin–Minggu) dengan penanda otomatis hari ini. |
+| **Eksplorasi Genre** | Direktori genre lengkap dengan navigasi berbasis teks yang bersih tanpa ikon berat. |
+| **Player Video Multi-Kualitas** | Pemutar video responsif dengan dukungan server embed dan streaming langsung (`.mp4` / `.m3u8`). |
+| **Riwayat & Lanjutkan Nonton** | Pelacakan otomatis episode terakhir yang ditonton, tersimpan lokal di perangkat. |
+| **Notifikasi Web Push Native** | Langganan notifikasi episode baru per anime menggunakan Web Push API bawaan browser. |
+| **PWA & Akses Offline** | Installable ke homescreen HP & tablet dengan dukungan offline state view yang elegan. |
+
+---
 
 ## Tumpukan Teknologi
 
-- **[TanStack Start](https://tanstack.com/start)** — framework full-stack berbasis React dengan SSR dan server functions
-- **[TanStack Router](https://tanstack.com/router)** — routing berbasis file dengan type-safety penuh
-- **[TanStack Query](https://tanstack.com/query)** — pengambilan dan caching data dari server functions
-- **TypeScript** (strict mode) — penulisan kode yang lebih aman dan terstruktur
-- **[Tailwind CSS v4](https://tailwindcss.com/)** — styling utility-first
-- **[Embla Carousel](https://www.embla-carousel.com/)** — hero slider di Beranda
-- **[Video.js](https://videojs.com/)** — pemutar video untuk sumber `.mp4`/`.m3u8` langsung
-- **Web Push API** — notifikasi native browser/HP lewat Service Worker + VAPID (bukan Firebase Cloud Messaging)
-- **[Nitro](https://nitro.build/)** (preset Vercel) — server runtime untuk deployment
+- **Framework**: [TanStack Start](https://tanstack.com/start) (React 19, Full-stack SSR & Server Functions)
+- **Routing**: [TanStack Router](https://tanstack.com/router) (File-based, 100% type-safe routing)
+- **State & Data Fetching**: [TanStack Query v5](https://tanstack.com/query)
+- **Physics Animations**: [Motion](https://motion.dev/) (Spring animations, Layout transitions)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) dengan OKLCH color token & theme switching
+- **Icon Set**: [Lucide React](https://lucide.dev/) + Custom Anime Mobile SVGs
+- **Carousel**: [Embla Carousel React](https://www.embla-carousel.com/)
+- **Video Engine**: [Video.js](https://videojs.com/)
+- **Notification Toast**: [Sonner](https://sonner.emilkowal.ski/)
+- **Push Notification**: Native Web Push API (Service Worker + VAPID)
+- **Runtime & Deployment**: [Nitro Engine](https://nitro.build/) (Vercel / Node.js)
 
-## Pengembangan Lokal
+---
 
-Butuh Node.js terpasang di komputer.
+## Panduan Instalasi & Pengembangan Lokal
 
-```sh
+### Prasyarat
+- **Node.js**: versi 20.x atau lebih baru
+- **npm** atau **pnpm**
+
+### Langkah Instalasi
+```bash
+# 1. Kloning repositori
 git clone https://github.com/Nimzz-pemboy/nontonime.git
 cd nontonime
+
+# 2. Pasang dependensi
 npm install
+
+# 3. Siapkan environment variable
 cp .env.example .env
+
+# 4. Jalankan dev server
 npm run dev
 ```
 
-Aplikasi akan berjalan di `http://localhost:8080`.
+Aplikasi dapat diakses melalui peramban di `http://localhost:3000` (atau port yang ditentukan lingkungan).
 
-`.env.example` sudah berisi VAPID key siap pakai untuk fitur notifikasi (lihat bagian [Notifikasi](#notifikasi)) — tinggal disalin ke `.env`. Tidak ada environment variable tambahan yang dibutuhkan untuk sumber data anime (secret proxy sudah ditanam di `animein.server.ts`, hanya berjalan di server).
+---
 
-### Skrip yang tersedia
+## Skrip yang Tersedia
 
-| Perintah          | Fungsi                                |
-| ----------------- | ------------------------------------- |
-| `npm run dev`     | Menjalankan server pengembangan       |
-| `npm run build`   | Build untuk produksi                  |
-| `npm run preview` | Menjalankan hasil build secara lokal  |
-| `npm run lint`    | Memeriksa kualitas kode dengan ESLint |
-| `npm run format`  | Merapikan format kode dengan Prettier |
+| Perintah | Deskripsi |
+| :--- | :--- |
+| `npm run dev` | Menjalankan server pengembangan dengan hot reload |
+| `npm run build` | Menjalankan build produksi (client bundles + server bundles) |
+| `npm run preview` | Menjalankan preview lokal dari hasil build |
+| `npm run lint` | Memeriksa kepatuhan kode dan sintaks dengan ESLint |
+| `npm run format` | Memformat kode menggunakan Prettier |
 
-## Build untuk Produksi
+---
 
-```sh
-npm run build
-npm run preview
-```
-
-## Deployment
-
-Proyek ini di-deploy di **Vercel** menggunakan preset Nitro `vercel`, sehingga server function dan SSR berjalan sebagai serverless function tanpa konfigurasi tambahan.
-
-**Live:** [nontonime.vercel.app](https://nontonime.vercel.app/)
-
-## Notifikasi
-
-Fitur subscribe/notifikasi di halaman detail anime memakai **Web Push API bawaan browser** (Service Worker + `PushManager` + VAPID) — bukan Firebase Cloud Messaging maupun SDK pihak ketiga lain.
-
-Yang sudah aktif:
-
-- Minta izin notifikasi & bikin Push Subscription asli lewat tombol **Subscribe**
-- Notifikasi lokal langsung muncul di bar notifikasi HP (konfirmasi subscribe, tombol tes di halaman **Profil**)
-- Anime yang di-subscribe tersimpan di perangkat (`src/lib/subscriptions.ts`), bisa dilihat/dihapus dari halaman Profil
-- Service worker (`public/sw.js`) sudah siap menerima & menampilkan push message beneran, termasuk buka halaman anime terkait saat notifikasi diklik
-
-Yang **belum** ada (perlu dikerjakan terpisah kalau mau notifikasi otomatis saat episode baru rilis):
-
-- Backend untuk menyimpan Push Subscription per pengguna (database)
-- Cron/scheduler untuk mengecek episode baru dan memicu pengiriman push (pakai kunci privat VAPID + library `web-push` di server)
-
-Variabel environment terkait (lihat `.env.example`):
-
-| Variabel                | Dipakai di             | Keterangan                                                                                          |
-| ----------------------- | ---------------------- | --------------------------------------------------------------------------------------------------- |
-| `VITE_VAPID_PUBLIC_KEY` | Client                 | Aman diekspos, dipakai saat `pushManager.subscribe()`                                               |
-| `VAPID_PRIVATE_KEY`     | Server (belum dipakai) | **Jangan** taruh di kode client; simpan sebagai secret di hosting saat backend pengirim push dibuat |
-
-Generate ulang key sendiri kapan saja lewat `npx web-push generate-vapid-keys`.
-
-## Struktur Proyek
+## Struktur Direktori
 
 ```
 src/
 ├── components/
-│   ├── anime/       # Komponen fitur anime: card, grid, hero slider, shelf, player,
-│   │                #   episode list/grid, popover download, watchlist, nav, state view
-│   └── ui/          # Komponen UI dasar (shadcn)
+│   ├── anime/       # Komponen anime (AnimeCard, HeroSlider, Shelf, Player, BottomNav, dll.)
+│   └── ui/          # Komponen primitif antarmuka
 ├── lib/
-│   ├── animein.server.ts   # Client scraper server-only (fetch + rate limit) ke animeinweb.com
-│   ├── anime.functions.ts  # Pembungkus createServerFn per endpoint
-│   ├── anime-types.ts      # Tipe data anime/episode/stream/genre/jadwal
-│   ├── queries.ts          # React Query options, termasuk filter ongoing/tamat
-│   ├── history.ts / watchlist.ts / subscriptions.ts / push.ts  # Penyimpanan lokal + notifikasi
-│   └── site-config.ts / utils.ts / theme.ts
-├── routes/          # Routing berbasis file (TanStack Router)
-│   ├── anime/       # Detail anime
-│   ├── watch/       # Halaman nonton episode (butuh query param ?a=<animeId>)
-│   ├── download/    # Halaman "Unduh Semua Episode" per anime & info download
-│   ├── genre/       # Daftar & filter genre
-│   ├── watchlist.tsx
-│   └── profil.tsx   # Pengaturan tema & notifikasi
-├── router.tsx
-├── server.ts
-└── start.ts         # Konfigurasi middleware global (termasuk proteksi CSRF)
-
-public/
-├── logo.svg               # Logo situs
-├── manifest.webmanifest   # Manifest PWA (installable ke homescreen)
-├── sw.js                  # Service worker untuk notifikasi push
-└── hero-bg.mp4            # Sudah tidak dipakai sejak hero jadi slider data live — aman dihapus
+│   ├── animein.server.ts   # Client server-side scraping & rate limiting
+│   ├── anime.functions.ts  # Server Functions per endpoint
+│   ├── anime-types.ts      # TypeScript definitions untuk anime, episode, dan jadwal
+│   ├── queries.ts          # TanStack Query query options
+│   ├── history.ts          # State storage riwayat tontonan
+│   ├── watchlist.ts        # State storage watchlist
+│   ├── subscriptions.ts    # State storage langganan notifikasi
+│   └── push.ts             # Integrasi Web Push & VAPID
+├── routes/          # File-based routing (Beranda, Detail, Nonton, Genre, Jadwal, Profil)
+├── styles.css       # Token Tailwind CSS, utilitas OKLCH, dan styling global
+└── start.ts         # Middleware TanStack Start
 ```
-
-## Lisensi
-
-Proyek ini dibuat untuk kebutuhan pribadi/edukasi. Silakan hubungi pemilik repo untuk pertanyaan terkait penggunaan lebih lanjut.
 
 ---
 
 <div align="center">
-Dibuat oleh <a href="https://github.com/Nimzz-pemboy">Nimzz</a>
+Dikelola dan dikembangkan dengan bangga oleh <strong>Nimzz</strong>.
 </div>

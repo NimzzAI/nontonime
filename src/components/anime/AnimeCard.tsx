@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { AnimeSummary } from "@/lib/anime-types";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Film, Layers, Play, Star } from "lucide-react";
+import { WatchlistButton } from "./WatchlistButton";
 
 export function AnimeCard({
   anime,
@@ -15,7 +16,11 @@ export function AnimeCard({
   const isOngoing = /ongoing|tayang/i.test(anime.status ?? "") || Boolean(anime.releaseDay);
   const isCompleted = /tamat|complete/i.test(anime.status ?? "");
 
-  const episodeLabel = anime.episodeCount ? `${anime.episodeCount} Eps` : isOngoing ? "Ongoing" : null;
+  const episodeLabel = anime.episodeCount
+    ? `${anime.episodeCount} Eps`
+    : isOngoing
+      ? "Ongoing"
+      : null;
 
   const subtitle = [
     anime.type || "TV",
@@ -56,34 +61,45 @@ export function AnimeCard({
           </div>
         </div>
 
-        {/* Top badges */}
-        <div className="absolute left-2 top-2 flex flex-col gap-1 items-start">
-          {isOngoing ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-              ONGOING
-            </span>
-          ) : isCompleted ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-sky-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
-              <CheckCircle2 className="h-2.5 w-2.5" />
-              TAMAT
-            </span>
-          ) : null}
-        </div>
-
-        {/* Score badge in top-right if present */}
-        {anime.score ? (
-          <div className="absolute right-2 top-2">
-            <span className="inline-flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 shadow-xs backdrop-blur-md">
-              <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-              {anime.score}
-            </span>
+        {/* Top Badges and Action Row */}
+        <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-1.5 z-10">
+          {/* Status badge */}
+          <div className="flex flex-col gap-1 items-start pointer-events-none">
+            {isOngoing ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                ONGOING
+              </span>
+            ) : isCompleted ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-sky-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                TAMAT
+              </span>
+            ) : null}
           </div>
-        ) : null}
+
+          {/* Right: Score + Spring Watchlist Toggle Button */}
+          <div className="flex items-center gap-1">
+            {anime.score ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 shadow-xs backdrop-blur-md pointer-events-none">
+                <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                {anime.score}
+              </span>
+            ) : null}
+
+            <WatchlistButton
+              animeId={anime.id}
+              title={anime.title}
+              poster={anime.poster}
+              variant="card-overlay"
+              size="sm"
+            />
+          </div>
+        </div>
 
         {/* Bottom episode pill */}
         {episodeLabel ? (
-          <div className="absolute bottom-2 left-2">
+          <div className="absolute bottom-2 left-2 pointer-events-none z-10">
             <span className="inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white/95 backdrop-blur-md">
               <Layers className="h-2.5 w-2.5 text-primary" />
               {episodeLabel}

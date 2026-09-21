@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ThemeToggle } from "./ThemeToggle";
+import { SearchFilterPanel } from "./SearchFilterPanel";
 import { readWatchlist } from "@/lib/watchlist";
 import { useQuery } from "@tanstack/react-query";
 import { searchQuery } from "@/lib/queries";
@@ -15,6 +16,7 @@ import {
   Menu,
   Play,
   Search,
+  SlidersHorizontal,
   Tags,
   X,
 } from "lucide-react";
@@ -44,6 +46,7 @@ export function SiteHeader() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [watchlistCount, setWatchlistCount] = useState(0);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -77,7 +80,7 @@ export function SiteHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Keyboard shortcut Ctrl+K or / to focus search
+  // Keyboard shortcut Ctrl+K or / to open Search & Filter Panel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -85,10 +88,10 @@ export function SiteHeader() {
         (e.key === "/" && document.activeElement?.tagName !== "INPUT")
       ) {
         e.preventDefault();
-        searchInputRef.current?.focus();
-        setShowSearchDropdown(true);
+        setShowFilterPanel(true);
       } else if (e.key === "Escape") {
         setShowSearchDropdown(false);
+        setShowFilterPanel(false);
         setOpen(false);
       }
     };
@@ -251,15 +254,26 @@ export function SiteHeader() {
               ) : null}
             </div>
 
-            {/* Mobile Search Button (Quick link to /cari) */}
-            <Link
-              to="/cari"
-              search={{ q: "", page: 1 }}
-              aria-label="Cari anime"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-secondary/40 text-foreground transition-colors hover:bg-secondary md:hidden"
+            {/* Filter & Discover Quick Button */}
+            <button
+              type="button"
+              onClick={() => setShowFilterPanel(true)}
+              title="Panel Filter Kategori Genre, Tahun, & Status (Ctrl+K)"
+              className="hidden sm:inline-flex h-9 items-center gap-1.5 rounded-lg border border-border/80 bg-secondary/40 px-2.5 text-xs font-semibold text-foreground transition-all hover:bg-secondary hover:text-primary hover:border-primary/50 cursor-pointer"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
+              <span className="hidden lg:inline">Filter</span>
+            </button>
+
+            {/* Mobile Search & Filter Button */}
+            <button
+              type="button"
+              onClick={() => setShowFilterPanel(true)}
+              aria-label="Cari dan filter anime"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-secondary/40 text-foreground transition-colors hover:bg-secondary md:hidden cursor-pointer"
             >
               <Search className="h-4 w-4" />
-            </Link>
+            </button>
 
             {/* Watchlist Quick Button with Counter */}
             <Link
@@ -389,6 +403,9 @@ export function SiteHeader() {
           </div>
         ) : null}
       </header>
+
+      {/* Overlay Search & Filter Drawer Panel */}
+      <SearchFilterPanel isOpen={showFilterPanel} onClose={() => setShowFilterPanel(false)} />
     </>
   );
 }
