@@ -33,7 +33,11 @@ function CompletedPage() {
       {data ? (
         <>
           <AnimeGrid items={data.items} />
-          <Pagination page={page} hasNext={data.hasNext} onChange={(next) => navigate({ to: "/tamat", search: { page: next } })} />
+          <Pagination
+            page={page}
+            hasNext={data.hasNext}
+            onChange={(next) => navigate({ to: "/tamat", search: { page: next } })}
+          />
         </>
       ) : null}
     </div>

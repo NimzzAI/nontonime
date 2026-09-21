@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AnimeSummary } from "@/lib/anime-types";
 import { cn } from "@/lib/utils";
+import { CheckCircle2, Film, Layers, Play, Star } from "lucide-react";
 
 export function AnimeCard({
   anime,
@@ -27,7 +28,7 @@ export function AnimeCard({
     <Link
       to="/anime/$animeId"
       params={{ animeId: anime.id }}
-      className="card-lift group relative block overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs transition-all duration-300 hover:border-primary/50 hover:shadow-xl"
+      className="card-lift group relative block overflow-hidden rounded-xl sm:rounded-2xl border border-border/80 bg-card shadow-xs transition-all duration-300 hover:border-primary/50 hover:shadow-xl"
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted/60">
         {anime.poster && !imgError ? (
@@ -36,35 +37,35 @@ export function AnimeCard({
             alt={anime.title}
             loading="lazy"
             onError={() => setImgError(true)}
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-108"
+            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
-            <i className="fa-solid fa-film text-2xl text-muted-foreground/50" />
+            <Film className="h-6 w-6 text-muted-foreground/40" />
             <span className="line-clamp-2 text-xs font-medium leading-tight">{anime.title}</span>
           </div>
         )}
 
         {/* Cinematic gradient overlay */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10 opacity-70 transition-opacity duration-300 group-hover:opacity-90" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-90" />
 
         {/* Hover quick play icon */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/95 text-primary-foreground shadow-lg shadow-primary/40 backdrop-blur-xs">
-            <i className="fa-solid fa-play ml-0.5 text-sm" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/95 text-primary-foreground shadow-lg shadow-primary/40 backdrop-blur-xs">
+            <Play className="h-4 w-4 fill-current ml-0.5" />
           </div>
         </div>
 
         {/* Top badges */}
         <div className="absolute left-2 top-2 flex flex-col gap-1 items-start">
           {isOngoing ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
               ONGOING
             </span>
           ) : isCompleted ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-sky-600/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
-              <i className="fa-solid fa-circle-check text-[9px]" />
+            <span className="inline-flex items-center gap-1 rounded-md bg-sky-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
+              <CheckCircle2 className="h-2.5 w-2.5" />
               TAMAT
             </span>
           ) : null}
@@ -73,8 +74,8 @@ export function AnimeCard({
         {/* Score badge in top-right if present */}
         {anime.score ? (
           <div className="absolute right-2 top-2">
-            <span className="glass inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-amber-300 shadow-xs backdrop-blur-md">
-              <i className="fa-solid fa-star text-[9px] text-amber-400" />
+            <span className="inline-flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 shadow-xs backdrop-blur-md">
+              <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
               {anime.score}
             </span>
           </div>
@@ -83,15 +84,15 @@ export function AnimeCard({
         {/* Bottom episode pill */}
         {episodeLabel ? (
           <div className="absolute bottom-2 left-2">
-            <span className="glass inline-flex items-center gap-1 rounded-lg bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white/95 backdrop-blur-md">
-              <i className="fa-solid fa-layer-group text-[9px] text-primary" />
+            <span className="inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white/95 backdrop-blur-md">
+              <Layers className="h-2.5 w-2.5 text-primary" />
               {episodeLabel}
             </span>
           </div>
         ) : null}
       </div>
 
-      <div className="space-y-1 p-3">
+      <div className="space-y-1 p-2.5 sm:p-3">
         <h3
           className={cn(
             "line-clamp-2 font-display text-xs font-bold leading-snug text-card-foreground transition-colors group-hover:text-primary sm:text-sm",

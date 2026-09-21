@@ -4,16 +4,40 @@ import { ThemeToggle } from "./ThemeToggle";
 import { readWatchlist } from "@/lib/watchlist";
 import { useQuery } from "@tanstack/react-query";
 import { searchQuery } from "@/lib/queries";
+import {
+  Bookmark,
+  CalendarDays,
+  CheckCircle2,
+  Flame,
+  History,
+  Home,
+  Loader2,
+  Menu,
+  Play,
+  Search,
+  Tags,
+  X,
+} from "lucide-react";
 
-const NAV = [
-  { to: "/", label: "Beranda", icon: "fa-solid fa-house" },
-  { to: "/ongoing", label: "Ongoing", icon: "fa-solid fa-tower-broadcast", search: { page: 1 } },
-  { to: "/tamat", label: "Tamat", icon: "fa-solid fa-circle-check", search: { page: 1 } },
-  { to: "/jadwal", label: "Jadwal", icon: "fa-solid fa-calendar-days" },
-  { to: "/genre", label: "Genre", icon: "fa-solid fa-tags" },
-  { to: "/watchlist", label: "Watchlist", icon: "fa-solid fa-bookmark" },
-  { to: "/riwayat", label: "Riwayat", icon: "fa-solid fa-clock-rotate-left" },
-] as const;
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof Home;
+  search?: Record<string, unknown>;
+}
+
+const NAV_MAIN: readonly NavItem[] = [
+  { to: "/", label: "Beranda", icon: Home },
+  { to: "/ongoing", label: "Ongoing", icon: Flame, search: { page: 1 } },
+  { to: "/tamat", label: "Tamat", icon: CheckCircle2, search: { page: 1 } },
+  { to: "/jadwal", label: "Jadwal", icon: CalendarDays },
+  { to: "/genre", label: "Genre", icon: Tags },
+];
+
+const NAV_SECONDARY: readonly NavItem[] = [
+  { to: "/watchlist", label: "Watchlist", icon: Bookmark },
+  { to: "/riwayat", label: "Riwayat", icon: History },
+];
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
@@ -22,6 +46,7 @@ export function SiteHeader() {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [watchlistCount, setWatchlistCount] = useState(0);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,7 +61,7 @@ export function SiteHeader() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedTerm(searchTerm.trim());
-    }, 300);
+    }, 280);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
@@ -50,6 +75,25 @@ export function SiteHeader() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Keyboard shortcut Ctrl+K or / to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.key === "k" && (e.metaKey || e.ctrlKey)) ||
+        (e.key === "/" && document.activeElement?.tagName !== "INPUT")
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setShowSearchDropdown(true);
+      } else if (e.key === "Escape") {
+        setShowSearchDropdown(false);
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -68,191 +112,279 @@ export function SiteHeader() {
         <div
           onClick={() => setOpen(false)}
           aria-hidden="true"
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden transition-opacity"
         />
       ) : null}
 
-      <header className="glass sticky top-0 z-50 border-b border-border/70 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
-          {/* Brand Logo */}
-          <Link
-            to="/"
-            className="group flex items-center gap-2.5 font-display text-lg font-black tracking-tight text-foreground transition-transform hover:scale-102"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-rose-500 text-white shadow-md shadow-primary/30">
-              <i className="fa-solid fa-play text-sm ml-0.5" />
-            </div>
-            <span className="flex items-center">
-              Nonton<span className="text-primary">ime</span>
-            </span>
-          </Link>
-
-          {/* Desktop Nav Links */}
-          <nav className="ml-4 hidden items-center gap-1 xl:gap-2 lg:flex">
-            {NAV.slice(0, 5).map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                search={("search" in item ? item.search : {}) as never}
-                activeProps={{
-                  className: "bg-primary/15 text-primary font-semibold border-primary/30",
-                }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground active:scale-95"
-              >
-                <i className={`${item.icon} text-xs opacity-75`} />
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Desktop Instant Search Bar */}
-          <div ref={searchContainerRef} className="relative ml-auto hidden md:block w-64 lg:w-80">
-            <form onSubmit={handleSearchSubmit} className="relative">
-              <input
-                type="text"
-                placeholder="Cari anime subtitle Indonesia..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setShowSearchDropdown(true);
-                }}
-                onFocus={() => setShowSearchDropdown(true)}
-                className="h-10 w-full rounded-full border border-border/80 bg-card/90 pl-10 pr-9 text-xs text-foreground placeholder:text-muted-foreground shadow-xs transition-all focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20"
-              />
-              <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground" />
-              {searchTerm ? (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <i className="fa-solid fa-circle-xmark text-xs" />
-                </button>
-              ) : null}
-            </form>
-
-            {/* Instant Search Dropdown Popover */}
-            {showSearchDropdown && debouncedTerm ? (
-              <div className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-2xl border border-border bg-card p-2 shadow-2xl backdrop-blur-xl">
-                <div className="flex items-center justify-between border-b border-border/60 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
-                  <span>Hasil Pencarian</span>
-                  {isFetching ? (
-                    <i className="fa-solid fa-circle-notch animate-spin text-primary" />
-                  ) : null}
-                </div>
-
-                <div className="max-h-80 overflow-y-auto space-y-1 py-1">
-                  {searchData?.items && searchData.items.length > 0 ? (
-                    searchData.items.slice(0, 6).map((item) => (
-                      <Link
-                        key={item.id}
-                        to="/anime/$animeId"
-                        params={{ animeId: item.id }}
-                        onClick={() => setShowSearchDropdown(false)}
-                        className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-accent"
-                      >
-                        <img
-                          src={item.poster ?? ""}
-                          alt={item.title}
-                          className="h-12 w-9 rounded-md object-cover bg-muted shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-1 text-xs font-semibold text-foreground">
-                            {item.title}
-                          </p>
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            {item.score ? (
-                              <span className="text-amber-400 font-bold">★ {item.score}</span>
-                            ) : null}
-                            <span>{item.status || "Sub Indo"}</span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))
-                  ) : !isFetching ? (
-                    <div className="p-4 text-center text-xs text-muted-foreground">
-                      Tidak ada anime yang cocok.
-                    </div>
-                  ) : null}
-                </div>
-
-                <button
-                  onClick={handleSearchSubmit}
-                  className="block w-full border-t border-border/60 py-2 text-center text-xs font-bold text-primary hover:bg-accent rounded-b-xl"
-                >
-                  Lihat Semua Hasil
-                </button>
+      <header className="sticky top-0 z-50 border-b border-border/80 bg-background/90 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+          {/* Left: Brand Logo & Desktop Nav */}
+          <div className="flex items-center gap-6 lg:gap-8">
+            <Link
+              to="/"
+              id="site-logo"
+              className="group flex items-center gap-2.5 font-display text-lg font-bold tracking-tight text-foreground transition-opacity hover:opacity-90"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs transition-transform group-hover:scale-105">
+                <Play className="h-4 w-4 fill-current ml-0.5" />
               </div>
-            ) : null}
+              <span className="flex items-center tracking-tight text-base font-extrabold sm:text-lg">
+                Nonton<span className="text-primary ml-0.5">ime</span>
+              </span>
+            </Link>
+
+            {/* Desktop Navigation Links */}
+            <nav id="desktop-main-nav" className="hidden lg:flex items-center gap-1">
+              {NAV_MAIN.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    search={("search" in item ? item.search : {}) as never}
+                    activeProps={{
+                      className: "text-foreground font-semibold bg-secondary/80",
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
+                  >
+                    <Icon className="h-3.5 w-3.5 opacity-70" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
 
-          {/* Header Action Buttons */}
-          <div className="flex items-center gap-2">
-            {/* Mobile Search Button */}
+          {/* Center/Right: Search Bar & Actions */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Desktop Instant Search Bar */}
+            <div ref={searchContainerRef} className="relative hidden md:block w-64 lg:w-76">
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  ref={searchInputRef}
+                  id="site-search-input"
+                  type="text"
+                  placeholder="Cari anime..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setShowSearchDropdown(true);
+                  }}
+                  onFocus={() => setShowSearchDropdown(true)}
+                  className="h-9 w-full rounded-lg border border-border/80 bg-secondary/40 pl-8.5 pr-14 text-xs text-foreground placeholder:text-muted-foreground transition-all focus:bg-background focus:border-primary/60 focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                />
+                {searchTerm ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-sm"
+                    aria-label="Hapus kata kunci"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                ) : (
+                  <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground">
+                    /
+                  </kbd>
+                )}
+              </form>
+
+              {/* Instant Search Dropdown Popover */}
+              {showSearchDropdown && debouncedTerm ? (
+                <div className="absolute right-0 top-11 z-50 w-84 overflow-hidden rounded-xl border border-border bg-card p-2 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-border/60 px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground">
+                    <span>Hasil Pencarian</span>
+                    {isFetching ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">
+                        {searchData?.items?.length ?? 0} ditemukan
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto space-y-1 py-1">
+                    {searchData?.items && searchData.items.length > 0 ? (
+                      searchData.items.slice(0, 6).map((item) => (
+                        <Link
+                          key={item.id}
+                          to="/anime/$animeId"
+                          params={{ animeId: item.id }}
+                          onClick={() => setShowSearchDropdown(false)}
+                          className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary/70"
+                        >
+                          <img
+                            src={item.poster ?? ""}
+                            alt={item.title}
+                            className="h-12 w-9 rounded-sm object-cover bg-muted shrink-0"
+                            loading="lazy"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-1 text-xs font-semibold text-foreground">
+                              {item.title}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                              {item.score ? (
+                                <span className="font-semibold text-amber-500">★ {item.score}</span>
+                              ) : null}
+                              <span className="truncate">{item.status || "Sub Indo"}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    ) : !isFetching ? (
+                      <div className="py-6 text-center text-xs text-muted-foreground">
+                        Tidak ada anime yang cocok dengan &quot;{debouncedTerm}&quot;
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSearchSubmit}
+                    className="block w-full border-t border-border/60 pt-2 pb-1 text-center text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Lihat Semua Hasil Pencarian →
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Mobile Search Button (Quick link to /cari) */}
             <Link
               to="/cari"
               search={{ q: "", page: 1 }}
               aria-label="Cari anime"
-              className="press-soft inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/80 bg-card text-card-foreground transition-colors hover:bg-accent md:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-secondary/40 text-foreground transition-colors hover:bg-secondary md:hidden"
             >
-              <i className="fa-solid fa-magnifying-glass text-xs" />
+              <Search className="h-4 w-4" />
             </Link>
 
             {/* Watchlist Quick Button with Counter */}
             <Link
               to="/watchlist"
+              id="header-watchlist-btn"
               aria-label="Daftar tontonan"
-              className="press-soft relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/80 bg-card text-card-foreground transition-colors hover:bg-accent"
+              className="relative inline-flex h-9 items-center gap-1.5 rounded-lg border border-border/80 bg-secondary/40 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
               title="Watchlist tersimpan"
             >
-              <i className="fa-solid fa-bookmark text-xs text-primary" />
+              <Bookmark className="h-4 w-4 text-primary" />
+              <span className="hidden sm:inline">Watchlist</span>
               {watchlistCount > 0 ? (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground shadow-xs">
+                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
                   {watchlistCount > 99 ? "99+" : watchlistCount}
                 </span>
               ) : null}
             </Link>
 
-            {/* History Link */}
+            {/* History Link (Desktop/Tablet) */}
             <Link
               to="/riwayat"
+              id="header-history-btn"
               aria-label="Riwayat nonton"
-              className="press-soft hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/80 bg-card text-card-foreground transition-colors hover:bg-accent"
+              className="hidden sm:inline-flex h-9 items-center gap-1.5 rounded-lg border border-border/80 bg-secondary/40 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
               title="Riwayat tontonan"
             >
-              <i className="fa-solid fa-clock-rotate-left text-xs text-muted-foreground" />
+              <History className="h-4 w-4 text-muted-foreground" />
+              <span className="hidden md:inline">Riwayat</span>
             </Link>
 
             {/* Theme Toggle */}
             <ThemeToggle />
 
-            {/* Mobile Drawer Hamburger */}
+            {/* Mobile Menu Hamburger */}
             <button
-              onClick={() => setOpen((value) => !value)}
+              id="mobile-menu-toggle"
+              type="button"
+              onClick={() => setOpen((val) => !val)}
               aria-label="Menu navigasi"
-              className="press-soft inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/80 bg-card text-card-foreground transition-colors hover:bg-accent lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-secondary/40 text-foreground transition-colors hover:bg-secondary lg:hidden"
             >
-              <i className={open ? "fa-solid fa-xmark" : "fa-solid fa-bars"} />
+              {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
           </div>
         </div>
 
         {/* Mobile Navigation Drawer */}
         {open ? (
-          <div className="border-t border-border bg-card/95 px-4 py-4 backdrop-blur-xl lg:hidden">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {NAV.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  search={("search" in item ? item.search : {}) as never}
-                  onClick={() => setOpen(false)}
-                  className="press-soft flex items-center gap-2.5 rounded-xl border border-border/80 bg-background/50 p-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent"
-                >
-                  <i className={`${item.icon} text-sm text-primary`} />
-                  {item.label}
-                </Link>
-              ))}
+          <div
+            id="mobile-navigation-drawer"
+            className="border-t border-border bg-card/98 px-4 py-4 backdrop-blur-md lg:hidden"
+          >
+            <div className="space-y-4">
+              {/* Mobile Menu Search */}
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Cari anime favorit..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-border bg-secondary/50 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-hidden"
+                />
+              </form>
+
+              {/* Main Categories Section */}
+              <div>
+                <p className="px-1 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Jelajahi
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {NAV_MAIN.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        search={("search" in item ? item.search : {}) as never}
+                        onClick={() => setOpen(false)}
+                        activeProps={{
+                          className: "border-primary/40 bg-primary/10 text-primary font-semibold",
+                        }}
+                        className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-secondary/30 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                      >
+                        <Icon className="h-4 w-4 text-primary shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* User Collections Section */}
+              <div>
+                <p className="px-1 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Koleksi Saya
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {NAV_SECONDARY.map((item) => {
+                    const Icon = item.icon;
+                    const isWatchlist = item.to === "/watchlist";
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setOpen(false)}
+                        activeProps={{
+                          className: "border-primary/40 bg-primary/10 text-primary font-semibold",
+                        }}
+                        className="flex items-center justify-between rounded-lg border border-border/60 bg-secondary/30 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <Icon className="h-4 w-4 text-primary shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                        {isWatchlist && watchlistCount > 0 ? (
+                          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+                            {watchlistCount}
+                          </span>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         ) : null}

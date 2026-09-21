@@ -6,6 +6,19 @@ import { Shelf } from "@/components/anime/Shelf";
 import { ErrorState } from "@/components/anime/StateViews";
 import { homeQuery, currentDayName } from "@/lib/queries";
 import { readHistory, type HistoryItem } from "@/lib/history";
+import {
+  ArrowRight,
+  Bookmark,
+  CalendarCheck,
+  CalendarDays,
+  CheckCircle2,
+  Film,
+  Flame,
+  History,
+  Play,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,17 +40,22 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
+// Clean text-only popular genres (strictly no font-awesome icons)
 const POPULAR_GENRES = [
-  { id: "action", name: "Action", icon: "fa-solid fa-burst" },
-  { id: "comedy", name: "Comedy", icon: "fa-solid fa-face-laugh-squint" },
-  { id: "romance", name: "Romance", icon: "fa-solid fa-heart" },
-  { id: "isekai", name: "Isekai", icon: "fa-solid fa-dungeon" },
-  { id: "fantasy", name: "Fantasy", icon: "fa-solid fa-wand-magic-sparkles" },
-  { id: "school", name: "School", icon: "fa-solid fa-graduation-cap" },
-  { id: "shounen", name: "Shounen", icon: "fa-solid fa-fire" },
-  { id: "slice-of-life", name: "Slice of Life", icon: "fa-solid fa-mug-hot" },
-  { id: "supernatural", name: "Supernatural", icon: "fa-solid fa-ghost" },
-  { id: "sci-fi", name: "Sci-Fi", icon: "fa-solid fa-robot" },
+  { id: "action", name: "Action" },
+  { id: "isekai", name: "Isekai" },
+  { id: "fantasy", name: "Fantasy" },
+  { id: "romance", name: "Romance" },
+  { id: "comedy", name: "Comedy" },
+  { id: "shounen", name: "Shounen" },
+  { id: "adventure", name: "Adventure" },
+  { id: "slice-of-life", name: "Slice of Life" },
+  { id: "supernatural", name: "Supernatural" },
+  { id: "sci-fi", name: "Sci-Fi" },
+  { id: "mystery", name: "Mystery" },
+  { id: "drama", name: "Drama" },
+  { id: "school", name: "School" },
+  { id: "sports", name: "Sports" },
 ];
 
 function HomePage() {
@@ -68,11 +86,15 @@ function HomePage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">
-              <i className="fa-solid fa-clock-rotate-left text-primary" />
-              Lanjutkan Nonton
+              <History className="h-5 w-5 text-primary" />
+              <span>Lanjutkan Nonton</span>
             </h2>
-            <Link to="/riwayat" className="text-xs font-semibold text-primary hover:underline">
-              Semua Riwayat
+            <Link
+              to="/riwayat"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+            >
+              <span>Semua Riwayat</span>
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
@@ -85,19 +107,19 @@ function HomePage() {
                 search={{ a: item.animeId }}
                 className="group w-32 shrink-0 space-y-2 sm:w-40"
               >
-                <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-border/80 bg-muted shadow-sm transition group-hover:border-primary group-hover:shadow-md">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border/80 bg-muted shadow-xs transition group-hover:border-primary group-hover:shadow-md">
                   <img
                     src={item.poster}
                     alt={item.animeTitle}
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-md">
-                      <i className="fa-solid fa-play ml-0.5 text-xs" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                      <Play className="h-4 w-4 fill-current ml-0.5" />
                     </div>
                   </div>
-                  <div className="absolute bottom-1.5 inset-x-1.5 rounded-lg bg-black/70 px-1.5 py-0.5 text-center text-[10px] font-bold text-white backdrop-blur-xs truncate">
+                  <div className="absolute bottom-1.5 inset-x-1.5 rounded-md bg-black/75 px-1.5 py-0.5 text-center text-[10px] font-bold text-white backdrop-blur-xs truncate">
                     Lanjut
                   </div>
                 </div>
@@ -113,36 +135,50 @@ function HomePage() {
         </section>
       ) : null}
 
-      {/* Popular Genres Quick Navigation Bar */}
-      <section className="space-y-3">
+      {/* Popular Genres Quick Navigation Bar (Clean typography, no icons) */}
+      <section className="space-y-3.5">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-display text-base sm:text-lg font-bold tracking-tight text-foreground">
-            <i className="fa-solid fa-tags text-primary" />
-            Jelajahi Genre
-          </h2>
-          <Link to="/genre" className="text-xs font-semibold text-primary hover:underline">
-            Semua Genre
+          <div>
+            <h2 className="font-display text-base sm:text-lg font-bold tracking-tight text-foreground">
+              Jelajahi Berdasarkan Genre
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Pilih kategori favorit untuk menemukan anime pilihan terbaik
+            </p>
+          </div>
+          <Link
+            to="/genre"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+          >
+            <span>Semua Genre</span>
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        <div className="edge-fade no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        <div className="edge-fade no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1">
           {POPULAR_GENRES.map((g) => (
             <Link
               key={g.id}
               to="/genre/$genreId"
               params={{ genreId: g.id }}
-              className="press-soft flex items-center gap-2 rounded-full border border-border/80 bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-2xs hover:border-primary hover:bg-accent shrink-0"
+              search={{ page: 1, name: g.name }}
+              className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground transition-all hover:border-primary/60 hover:bg-secondary hover:text-primary active:scale-95 shadow-2xs"
             >
-              <i className={`${g.icon} text-primary text-[11px]`} />
               {g.name}
             </Link>
           ))}
+          <Link
+            to="/genre"
+            className="inline-flex h-9 shrink-0 items-center rounded-lg border border-dashed border-border bg-secondary/40 px-3.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-primary hover:bg-secondary"
+          >
+            +30 Genre Lainnya
+          </Link>
         </div>
       </section>
 
       {/* Ongoing / Tayang Section */}
       <Shelf
         title={`Tayang Hari ${todayDay}`}
-        icon="fa-solid fa-calendar-day"
+        icon={CalendarDays}
         items={data?.today ?? []}
         isLoading={isPending}
         viewAllTo="/jadwal"
@@ -150,7 +186,7 @@ function HomePage() {
 
       <Shelf
         title="Sedang Tayang (Ongoing)"
-        icon="fa-solid fa-tower-broadcast"
+        icon={Flame}
         items={data?.hot ?? []}
         isLoading={isPending}
         viewAllTo="/ongoing"
@@ -159,7 +195,7 @@ function HomePage() {
 
       <Shelf
         title="Anime Tamat Terbaru (Completed)"
-        icon="fa-solid fa-circle-check"
+        icon={CheckCircle2}
         items={data?.popular ?? []}
         isLoading={isPending}
         viewAllTo="/tamat"
@@ -168,20 +204,22 @@ function HomePage() {
 
       <Shelf
         title="Rekomendasi Pilihan"
-        icon="fa-solid fa-fire"
+        icon={Sparkles}
         items={data?.new ?? []}
         isLoading={isPending}
       />
 
       {/* Platform Features Highlight */}
-      <section className="rounded-3xl border border-border/80 bg-card/60 p-6 sm:p-8 backdrop-blur-xs">
+      <section className="rounded-2xl sm:rounded-3xl border border-border/80 bg-card/60 p-6 sm:p-8 backdrop-blur-xs">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex items-start gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <i className="fa-solid fa-bolt text-lg" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Zap className="h-5 w-5" />
             </div>
             <div className="space-y-1">
-              <h4 className="font-display text-sm font-bold text-foreground">Streaming Cepat</h4>
+              <h4 className="font-display text-xs sm:text-sm font-bold text-foreground">
+                Streaming Cepat
+              </h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Pemutar video responsif dengan multi-server OtakuWatch, OdStream, VidHide, & Mega.
               </p>
@@ -189,11 +227,13 @@ function HomePage() {
           </div>
 
           <div className="flex items-start gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <i className="fa-solid fa-film text-lg" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Film className="h-5 w-5" />
             </div>
             <div className="space-y-1">
-              <h4 className="font-display text-sm font-bold text-foreground">Kualitas Fleksibel</h4>
+              <h4 className="font-display text-xs sm:text-sm font-bold text-foreground">
+                Kualitas Fleksibel
+              </h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Pilih resolusi 360p hemat kuota, 480p seimbang, hingga 720p HD jernih.
               </p>
@@ -201,11 +241,13 @@ function HomePage() {
           </div>
 
           <div className="flex items-start gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <i className="fa-solid fa-calendar-check text-lg" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CalendarCheck className="h-5 w-5" />
             </div>
             <div className="space-y-1">
-              <h4 className="font-display text-sm font-bold text-foreground">Jadwal Rilis Tepat</h4>
+              <h4 className="font-display text-xs sm:text-sm font-bold text-foreground">
+                Jadwal Rilis Tepat
+              </h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Katalog anime rilis mingguan selalu disinkronkan setiap hari Senin s/d Minggu.
               </p>
@@ -213,11 +255,13 @@ function HomePage() {
           </div>
 
           <div className="flex items-start gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <i className="fa-solid fa-bookmark text-lg" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Bookmark className="h-5 w-5" />
             </div>
             <div className="space-y-1">
-              <h4 className="font-display text-sm font-bold text-foreground">Simpan & Riwayat</h4>
+              <h4 className="font-display text-xs sm:text-sm font-bold text-foreground">
+                Simpan & Riwayat
+              </h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Tandai anime favorit dan lacak episode terakhir yang ditonton secara otomatis.
               </p>

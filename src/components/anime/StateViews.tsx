@@ -1,9 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertTriangle, Inbox, Loader2, type LucideIcon } from "lucide-react";
 
 export function LoadingState({ label = "Memuat data" }: { label?: string }) {
   return (
     <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
-      <i className="fa-solid fa-circle-notch fa-spin text-2xl text-primary" />
+      <Loader2 className="h-7 w-7 animate-spin text-primary" />
       <p className="text-sm font-semibold">{label}</p>
     </div>
   );
@@ -43,7 +44,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       : "Terjadi kesalahan saat mengambil data.";
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-14 text-center shadow-sm">
-      <i className="fa-solid fa-triangle-exclamation text-2xl text-destructive" />
+      <AlertTriangle className="h-7 w-7 text-destructive" />
       <p className="text-sm text-muted-foreground">{message}</p>
       {onRetry ? (
         <button
@@ -58,17 +59,29 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
 }
 
 export function EmptyState({
-  icon = "fa-solid fa-inbox",
+  icon: IconProp,
   message,
   action,
 }: {
-  icon?: string;
+  icon?: LucideIcon | string;
   message: string;
   action?: { label: string; to: string };
 }) {
+  const renderIcon = () => {
+    if (!IconProp) return <Inbox className="h-7 w-7 text-muted-foreground" />;
+    if (typeof IconProp === "function") {
+      const IconComp = IconProp;
+      return <IconComp className="h-7 w-7 text-muted-foreground" />;
+    }
+    if (typeof IconProp === "string" && IconProp.startsWith("fa-")) {
+      return <i className={`${IconProp} text-2xl text-muted-foreground`} />;
+    }
+    return <Inbox className="h-7 w-7 text-muted-foreground" />;
+  };
+
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-14 text-center shadow-sm">
-      <i className={`${icon} text-2xl text-muted-foreground`} />
+      {renderIcon()}
       <p className="text-sm text-muted-foreground">{message}</p>
       {action ? (
         <a href={action.to} className="text-sm font-semibold text-primary hover:underline">
@@ -79,11 +92,29 @@ export function EmptyState({
   );
 }
 
-export function SectionTitle({ title, icon }: { title: string; icon: string }) {
+export function SectionTitle({
+  title,
+  icon: IconProp,
+}: {
+  title: string;
+  icon?: LucideIcon | string;
+}) {
+  const renderIcon = () => {
+    if (!IconProp) return null;
+    if (typeof IconProp === "function") {
+      const IconComp = IconProp;
+      return <IconComp className="h-5 w-5 text-primary" />;
+    }
+    if (typeof IconProp === "string" && IconProp.startsWith("fa-")) {
+      return <i className={`${IconProp} text-primary`} />;
+    }
+    return null;
+  };
+
   return (
-    <h2 className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight text-foreground">
-      <i className={`${icon} text-primary`} />
-      {title}
+    <h2 className="flex items-center gap-2 font-display text-xl font-bold tracking-tight text-foreground">
+      {renderIcon()}
+      <span>{title}</span>
     </h2>
   );
 }

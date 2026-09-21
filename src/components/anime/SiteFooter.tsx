@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Play } from "lucide-react";
 
 export function SiteFooter() {
   return (
@@ -8,11 +9,11 @@ export function SiteFooter() {
           {/* Brand Col */}
           <div className="space-y-3 sm:col-span-2">
             <Link to="/" className="inline-flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30">
-                <i className="fa-solid fa-play ml-0.5 text-sm" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
+                <Play className="h-4 w-4 fill-current ml-0.5" />
               </div>
-              <span className="font-display text-xl font-black tracking-tight text-foreground">
-                Nonton<span className="text-primary">ime</span>
+              <span className="font-display text-lg font-extrabold tracking-tight text-foreground">
+                Nonton<span className="text-primary ml-0.5">ime</span>
               </span>
             </Link>
             <p className="max-w-md text-xs text-muted-foreground leading-relaxed">
@@ -21,9 +22,9 @@ export function SiteFooter() {
               video di server kami.
             </p>
             <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Server Aktif & Cepat
+                Layanan Aktif
               </span>
             </div>
           </div>
