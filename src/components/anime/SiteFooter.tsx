@@ -13,7 +13,7 @@ export function SiteFooter() {
                 <Play className="h-4 w-4 fill-current ml-0.5" />
               </div>
               <span className="font-display text-lg font-extrabold tracking-tight text-foreground">
-                Nonton<span className="text-primary ml-0.5">ime</span>
+                nonton<span className="text-primary font-bold">ime</span>
               </span>
             </Link>
             <p className="max-w-md text-xs text-muted-foreground leading-relaxed">

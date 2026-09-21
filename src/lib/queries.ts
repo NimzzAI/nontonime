@@ -18,12 +18,20 @@ const common = { staleTime: 5 * 60 * 1000, retry: 1 };
 
 const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
-export function currentDayName() {
-  return DAY_NAMES[new Date().getDay()] ?? "Senin";
+export function currentDayName(): string {
+  try {
+    const day = new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
+      weekday: "long",
+    }).format(new Date());
+    return day.charAt(0).toUpperCase() + day.slice(1);
+  } catch {
+    return DAY_NAMES[new Date().getDay()] ?? "Senin";
+  }
 }
 
-export const homeQuery = () => {
-  const day = currentDayName();
+export const homeQuery = (specificDay?: string) => {
+  const day = specificDay ?? currentDayName();
   return queryOptions({
     queryKey: ["home", day],
     queryFn: () => fetchHome({ data: { day } }),

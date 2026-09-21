@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ThemeToggle } from "./ThemeToggle";
 import { SearchFilterPanel } from "./SearchFilterPanel";
+import { AnimeGachaModal } from "./AnimeGachaModal";
+import { SpotlightSearchModal } from "./SpotlightSearchModal";
 import { readWatchlist } from "@/lib/watchlist";
 import { useQuery } from "@tanstack/react-query";
 import { searchQuery } from "@/lib/queries";
@@ -9,6 +11,7 @@ import {
   Bookmark,
   CalendarDays,
   CheckCircle2,
+  Dices,
   Flame,
   History,
   Home,
@@ -47,6 +50,8 @@ export function SiteHeader() {
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [showGachaModal, setShowGachaModal] = useState(false);
+  const [showSpotlight, setShowSpotlight] = useState(false);
   const [watchlistCount, setWatchlistCount] = useState(0);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +85,7 @@ export function SiteHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Keyboard shortcut Ctrl+K or / to open Search & Filter Panel
+  // Keyboard shortcut Ctrl+K or Cmd+K to open Spotlight Command Palette
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -88,10 +93,11 @@ export function SiteHeader() {
         (e.key === "/" && document.activeElement?.tagName !== "INPUT")
       ) {
         e.preventDefault();
-        setShowFilterPanel(true);
+        setShowSpotlight(true);
       } else if (e.key === "Escape") {
         setShowSearchDropdown(false);
         setShowFilterPanel(false);
+        setShowSpotlight(false);
         setOpen(false);
       }
     };
@@ -132,7 +138,7 @@ export function SiteHeader() {
                 <Play className="h-4 w-4 fill-current ml-0.5" />
               </div>
               <span className="flex items-center tracking-tight text-base font-extrabold sm:text-lg">
-                Nonton<span className="text-primary ml-0.5">ime</span>
+                nonton<span className="text-primary font-bold">ime</span>
               </span>
             </Link>
 
@@ -254,22 +260,48 @@ export function SiteHeader() {
               ) : null}
             </div>
 
+            {/* Spotlight Search Command Palette Trigger */}
+            <button
+              type="button"
+              onClick={() => setShowSpotlight(true)}
+              title="Cari Cepat & Navigasi (Ctrl+K / ⌘K)"
+              className="hidden xl:inline-flex h-9 items-center gap-1.5 rounded-lg border border-border/80 bg-secondary/40 px-2.5 text-xs font-semibold text-foreground transition-all hover:bg-secondary hover:text-primary hover:border-primary/50 cursor-pointer"
+            >
+              <Search className="h-3.5 w-3.5 text-primary" />
+              <span>Cepat</span>
+              <kbd className="rounded border border-border/60 bg-muted/60 px-1 py-0.2 text-[9px] font-mono text-muted-foreground">
+                ⌘K
+              </kbd>
+            </button>
+
             {/* Filter & Discover Quick Button */}
             <button
               type="button"
               onClick={() => setShowFilterPanel(true)}
-              title="Panel Filter Kategori Genre, Tahun, & Status (Ctrl+K)"
+              title="Panel Filter Kategori Genre, Tahun, & Status"
               className="hidden sm:inline-flex h-9 items-center gap-1.5 rounded-lg border border-border/80 bg-secondary/40 px-2.5 text-xs font-semibold text-foreground transition-all hover:bg-secondary hover:text-primary hover:border-primary/50 cursor-pointer"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
               <span className="hidden lg:inline">Filter</span>
             </button>
 
-            {/* Mobile Search & Filter Button */}
+            {/* Random / Gacha Roulette Button */}
             <button
               type="button"
-              onClick={() => setShowFilterPanel(true)}
-              aria-label="Cari dan filter anime"
+              onClick={() => setShowGachaModal(true)}
+              title="Acak Anime / Mau Nonton Apa?"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-xs font-bold text-primary transition-all hover:bg-primary/20 hover:scale-102 active:scale-95 cursor-pointer"
+            >
+              <Dices className="h-4 w-4" />
+              <span className="hidden md:inline">Acak</span>
+            </button>
+
+            {/* Mobile Search Button -> opens Spotlight */}
+            <button
+              type="button"
+              onClick={() => setShowSpotlight(true)}
+              aria-label="Cari anime instan (Spotlight)"
+              title="Cari cepat (⌘K)"
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-secondary/40 text-foreground transition-colors hover:bg-secondary md:hidden cursor-pointer"
             >
               <Search className="h-4 w-4" />
@@ -406,6 +438,16 @@ export function SiteHeader() {
 
       {/* Overlay Search & Filter Drawer Panel */}
       <SearchFilterPanel isOpen={showFilterPanel} onClose={() => setShowFilterPanel(false)} />
+
+      {/* Anime Gacha Roulette Modal */}
+      <AnimeGachaModal open={showGachaModal} onOpenChange={setShowGachaModal} />
+
+      {/* Spotlight Command Palette Search Modal (⌘K) */}
+      <SpotlightSearchModal
+        open={showSpotlight}
+        onOpenChange={setShowSpotlight}
+        onOpenGacha={() => setShowGachaModal(true)}
+      />
     </>
   );
 }

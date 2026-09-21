@@ -5,6 +5,9 @@ import { HeroSlider } from "@/components/anime/HeroSlider";
 import { TrendingSlider } from "@/components/anime/TrendingSlider";
 import { Shelf } from "@/components/anime/Shelf";
 import { ErrorState } from "@/components/anime/StateViews";
+import { AnimeGachaModal } from "@/components/anime/AnimeGachaModal";
+import { FloatingTools } from "@/components/anime/FloatingTools";
+import { SearchFilterPanel } from "@/components/anime/SearchFilterPanel";
 import { homeQuery, currentDayName } from "@/lib/queries";
 import { readHistory, type HistoryItem } from "@/lib/history";
 import {
@@ -13,6 +16,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CheckCircle2,
+  Dices,
   Film,
   Flame,
   History,
@@ -22,6 +26,13 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  loader: async ({ context }) => {
+    try {
+      await context.queryClient.ensureQueryData(homeQuery());
+    } catch {
+      // In case of transient network error during SSR prefetch, let client query handle fallback
+    }
+  },
   head: () => ({
     meta: [
       { title: "Nontonime — Streaming Anime Subtitle Indonesia Terbaru" },
@@ -62,6 +73,8 @@ const POPULAR_GENRES = [
 function HomePage() {
   const { data, isPending, error, refetch } = useQuery(homeQuery());
   const [continueItems, setContinueItems] = useState<HistoryItem[]>([]);
+  const [gachaOpen, setGachaOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const todayDay = currentDayName();
 
   useEffect(() => {
@@ -72,7 +85,7 @@ function HomePage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-10 px-4 py-6 sm:py-8">
+    <div className="mx-auto max-w-7xl space-y-12 sm:space-y-16 px-4 py-6 sm:py-8">
       {/* Hero Section Loading / Carousel */}
       {isPending ? (
         <div className="aspect-[16/9] w-full animate-pulse rounded-3xl bg-muted/60 sm:aspect-[21/9]" />
@@ -88,6 +101,34 @@ function HomePage() {
           items={data.hot.length > 0 ? data.hot.slice(0, 10) : data.slider.slice(0, 10)}
         />
       ) : null}
+
+      {/* Interactive Surprise Anime Roulette Banner */}
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-card p-5 sm:p-6 shadow-lg backdrop-blur-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/30">
+              <Dices className="h-6 w-6" />
+            </span>
+            <div>
+              <h3 className="font-display text-base sm:text-lg font-bold text-foreground">
+                Bingung Mau Nonton Apa Hari Ini?
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-snug">
+                Putar roda roulette takdir anime dan temukan serial menarik berikutnya secara
+                instan!
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGachaOpen(true)}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs sm:text-sm font-bold text-primary-foreground shadow-md shadow-primary/30 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer w-full sm:w-auto"
+          >
+            <Dices className="h-4 w-4" />
+            <span>Putar Anime Acak 🎲</span>
+          </button>
+        </div>
+      </section>
 
       {/* Continue Watching Section */}
       {continueItems.length > 0 ? (
@@ -277,6 +318,15 @@ function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Floating Quick Tools (Scroll to Top, Gacha, Filter) */}
+      <FloatingTools onOpenFilter={() => setFilterOpen(true)} />
+
+      {/* Anime Gacha Roulette Modal */}
+      <AnimeGachaModal open={gachaOpen} onOpenChange={setGachaOpen} />
+
+      {/* Filter Drawer Panel */}
+      <SearchFilterPanel open={filterOpen} onOpenChange={setFilterOpen} />
     </div>
   );
 }
