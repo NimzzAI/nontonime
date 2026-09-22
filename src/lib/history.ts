@@ -9,19 +9,39 @@ export interface HistoryItem {
   watchedAt: number;
 }
 
+let cachedHistory: HistoryItem[] | null = null;
+
+function invalidateCache() {
+  cachedHistory = null;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === STORAGE_KEY) invalidateCache();
+  });
+}
+
 export function readHistory(): HistoryItem[] {
   if (typeof window === "undefined") return [];
+  if (cachedHistory) return cachedHistory;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      cachedHistory = [];
+      return [];
+    }
     const parsed = JSON.parse(raw) as HistoryItem[];
-    return Array.isArray(parsed) ? parsed.sort((a, b) => b.watchedAt - a.watchedAt) : [];
+    const items = Array.isArray(parsed) ? parsed.sort((a, b) => b.watchedAt - a.watchedAt) : [];
+    cachedHistory = items;
+    return items;
   } catch {
+    cachedHistory = [];
     return [];
   }
 }
 
 function write(items: HistoryItem[]) {
+  cachedHistory = items;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, 100)));
   window.dispatchEvent(new Event("history-updated"));
 }

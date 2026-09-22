@@ -12,13 +12,32 @@ export interface WatchlistItem {
   notes?: string;
 }
 
+let cachedWatchlist: WatchlistItem[] | null = null;
+let cachedIdSet: Set<string> | null = null;
+
+function invalidateCache() {
+  cachedWatchlist = null;
+  cachedIdSet = null;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === STORAGE_KEY) invalidateCache();
+  });
+}
+
 export function readWatchlist(): WatchlistItem[] {
   if (typeof window === "undefined") return [];
+  if (cachedWatchlist) return cachedWatchlist;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      cachedWatchlist = [];
+      cachedIdSet = new Set();
+      return [];
+    }
     const parsed = JSON.parse(raw) as WatchlistItem[];
-    return Array.isArray(parsed)
+    const items = Array.isArray(parsed)
       ? parsed
           .map((item) => ({
             ...item,
@@ -26,18 +45,28 @@ export function readWatchlist(): WatchlistItem[] {
           }))
           .sort((a, b) => b.addedAt - a.addedAt)
       : [];
+    cachedWatchlist = items;
+    cachedIdSet = new Set(items.map((i) => i.animeId));
+    return items;
   } catch {
+    cachedWatchlist = [];
+    cachedIdSet = new Set();
     return [];
   }
 }
 
 function write(items: WatchlistItem[]) {
+  cachedWatchlist = items;
+  cachedIdSet = new Set(items.map((i) => i.animeId));
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   window.dispatchEvent(new Event("watchlist-updated"));
 }
 
-export function isInWatchlist(animeId: string) {
-  return readWatchlist().some((item) => item.animeId === animeId);
+export function isInWatchlist(animeId: string): boolean {
+  if (!cachedIdSet) {
+    readWatchlist();
+  }
+  return cachedIdSet?.has(animeId) ?? false;
 }
 
 export function getWatchlistItem(animeId: string): WatchlistItem | undefined {

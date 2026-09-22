@@ -11,7 +11,55 @@ import type {
   StreamResult,
 } from "./anime-types";
 
-const SANKA_API_BASE = "https://www.sankavollerei.web.id/anime";
+export function getApiBase(): string {
+  const env =
+    process.env.SANKA_API_BASE ||
+    process.env.SANKA_API_URL ||
+    process.env.SANKA_API_IP ||
+    process.env.ANIME_API_URL;
+  if (env && env.trim()) {
+    let clean = env.trim().replace(/\/+$/, "");
+    if (!clean.endsWith("/anime")) {
+      clean = `${clean}/anime`;
+    }
+    return clean;
+  }
+  return "https://www.sankavollerei.web.id/anime";
+}
+
+function getFallbackApiBase(): string | null {
+  const fallback = process.env.SANKA_API_FALLBACK;
+  if (fallback && fallback.trim()) {
+    let clean = fallback.trim().replace(/\/+$/, "");
+    if (!clean.endsWith("/anime")) {
+      clean = `${clean}/anime`;
+    }
+    return clean;
+  }
+  return null;
+}
+
+function buildApiUrl(path: string, base = getApiBase()): string {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+}
+
+const BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+  Accept: "application/json, text/plain, */*",
+  "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+  "Cache-Control": "no-cache",
+  Pragma: "no-cache",
+  Referer: "https://www.sankavollerei.web.id/",
+  Origin: "https://www.sankavollerei.web.id",
+  "Sec-Ch-Ua": '"Not(A:Brand";v="99", "Google Chrome";v="133", "Chromium";v="133"',
+  "Sec-Ch-Ua-Mobile": "?0",
+  "Sec-Ch-Ua-Platform": '"Windows"',
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "same-origin",
+};
 
 interface CacheEntry<T> {
   data: T;
@@ -25,13 +73,36 @@ async function fetchJson<T>(url: string, ttlMs = 5 * 60 * 1000): Promise<T> {
     return cached.data as T;
   }
 
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      Accept: "application/json",
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: BROWSER_HEADERS,
+    });
+  } catch (netErr) {
+    // If fetch failed and fallback is available, attempt fallback
+    const fallbackBase = getFallbackApiBase();
+    if (fallbackBase && !url.startsWith(fallbackBase)) {
+      const fallbackUrl = url.replace(getApiBase(), fallbackBase);
+      console.warn(`[API] Network error on ${url}. Retrying with fallback: ${fallbackUrl}`);
+      return fetchJson<T>(fallbackUrl, ttlMs);
+    }
+    throw netErr;
+  }
+
+  if (res.status === 403) {
+    const fallbackBase = getFallbackApiBase();
+    if (fallbackBase && !url.startsWith(fallbackBase)) {
+      const fallbackUrl = url.replace(getApiBase(), fallbackBase);
+      console.warn(
+        `[API] 403 Forbidden on ${url}. Retrying with fallback IP/Proxy: ${fallbackUrl}`,
+      );
+      return fetchJson<T>(fallbackUrl, ttlMs);
+    }
+    console.error(
+      `[Sanka API 403 Forbidden] Request ke ${url} ditolak oleh Cloudflare/WAF. ` +
+        `Solusi: Atur SANKA_API_BASE=<URL/IP_PROXY> pada environment variable Vercel / server Anda.`,
+    );
+  }
 
   if (!res.ok) {
     throw new Error(`API fetch error ${res.status}: ${res.statusText} at ${url}`);
@@ -70,7 +141,7 @@ interface ApiHomeResponse {
 
 export async function getHome(dayFilter?: string | null): Promise<HomeSections> {
   try {
-    const json = await fetchJson<ApiHomeResponse>(`${SANKA_API_BASE}/home`);
+    const json = await fetchJson<ApiHomeResponse>(`${getApiBase()}/home`);
     const ongoingRaw = json.data?.ongoing?.animeList ?? [];
     const completedRaw = json.data?.completed?.animeList ?? [];
 
@@ -150,7 +221,7 @@ export async function getLatest(page = 1): Promise<ListResult> {
   const safePage = Math.max(1, page);
   try {
     const json = await fetchJson<ApiOngoingResponse>(
-      `${SANKA_API_BASE}/ongoing-anime?page=${safePage}`,
+      `${getApiBase()}/ongoing-anime?page=${safePage}`,
     );
     const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
       id: a.animeId,
@@ -204,7 +275,7 @@ export async function getPopular(page = 1): Promise<ListResult> {
   const safePage = Math.max(1, page);
   try {
     const json = await fetchJson<ApiCompletedResponse>(
-      `${SANKA_API_BASE}/complete-anime?page=${safePage}`,
+      `${getApiBase()}/complete-anime?page=${safePage}`,
     );
     const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
       id: a.animeId,
@@ -252,7 +323,7 @@ export async function search(keyword: string, _page = 1): Promise<ListResult> {
 
   try {
     const json = await fetchJson<ApiSearchResponse>(
-      `${SANKA_API_BASE}/search/${encodeURIComponent(keyword.trim())}`,
+      `${getApiBase()}/search/${encodeURIComponent(keyword.trim())}`,
     );
     const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
       id: a.animeId,
@@ -288,7 +359,7 @@ interface ApiGenreResponse {
 
 export async function getGenres(): Promise<GenreItem[]> {
   try {
-    const json = await fetchJson<ApiGenreResponse>(`${SANKA_API_BASE}/genre`);
+    const json = await fetchJson<ApiGenreResponse>(`${getApiBase()}/genre`);
     return (json.data?.genreList ?? []).map((g) => ({
       id: g.genreId,
       name: g.title,
@@ -330,7 +401,7 @@ export async function getByGenre(genreId: string, page = 1, _sort = "views"): Pr
   const safePage = Math.max(1, page);
   try {
     const json = await fetchJson<ApiByGenreResponse>(
-      `${SANKA_API_BASE}/genre/${encodeURIComponent(genreId)}?page=${safePage}`,
+      `${getApiBase()}/genre/${encodeURIComponent(genreId)}?page=${safePage}`,
     );
 
     const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
@@ -373,7 +444,7 @@ interface ApiScheduleResponse {
 
 export async function getSchedule(): Promise<ScheduleMap> {
   try {
-    const json = await fetchJson<ApiScheduleResponse>(`${SANKA_API_BASE}/schedule`);
+    const json = await fetchJson<ApiScheduleResponse>(`${getApiBase()}/schedule`);
     const map: ScheduleMap = {};
 
     for (const item of json.data ?? []) {
@@ -405,7 +476,7 @@ interface ApiUnlimitedResponse {
 
 export async function getDirectory(): Promise<DirectoryGroup[]> {
   try {
-    const json = await fetchJson<ApiUnlimitedResponse>(`${SANKA_API_BASE}/unlimited`);
+    const json = await fetchJson<ApiUnlimitedResponse>(`${getApiBase()}/unlimited`);
     return json.data?.list ?? [];
   } catch (error) {
     console.error("Error in getDirectory:", error);
@@ -455,7 +526,7 @@ interface ApiDetailResponse {
 export async function getDetail(id: string): Promise<AnimeDetail> {
   try {
     const json = await fetchJson<ApiDetailResponse>(
-      `${SANKA_API_BASE}/anime/${encodeURIComponent(id)}`,
+      `${getApiBase()}/anime/${encodeURIComponent(id)}`,
     );
     const d = json.data;
 
@@ -565,7 +636,7 @@ interface ApiEpisodeResponse {
 export async function getStream(episodeId: string): Promise<StreamResult> {
   try {
     const json = await fetchJson<ApiEpisodeResponse>(
-      `${SANKA_API_BASE}/episode/${encodeURIComponent(episodeId)}`,
+      `${getApiBase()}/episode/${encodeURIComponent(episodeId)}`,
     );
     const d = json.data;
 
@@ -619,7 +690,7 @@ interface ApiServerResponse {
 export async function resolveServer(serverId: string): Promise<{ url: string }> {
   try {
     const json = await fetchJson<ApiServerResponse>(
-      `${SANKA_API_BASE}/server/${encodeURIComponent(serverId)}`,
+      `${getApiBase()}/server/${encodeURIComponent(serverId)}`,
     );
     return { url: json.data?.url || "" };
   } catch (error) {
@@ -636,7 +707,7 @@ interface ApiBatchResponse {
 export async function getBatch(batchId: string): Promise<BatchDetail | null> {
   try {
     const json = await fetchJson<ApiBatchResponse>(
-      `${SANKA_API_BASE}/batch/${encodeURIComponent(batchId)}`,
+      `${getApiBase()}/batch/${encodeURIComponent(batchId)}`,
     );
     return json.data ?? null;
   } catch (error) {

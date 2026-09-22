@@ -33,11 +33,31 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
 
   useEffect(() => {
     if (!emblaApi || items.length <= 1 || isHovered) return;
-    timerRef.current = setInterval(() => {
-      emblaApi.scrollNext();
-    }, 5500);
+
+    const startTimer = () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        if (!document.hidden) {
+          emblaApi.scrollNext();
+        }
+      }, 6000);
+    };
+
+    startTimer();
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (timerRef.current) clearInterval(timerRef.current);
+      } else {
+        startTimer();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [emblaApi, items.length, isHovered]);
 
@@ -61,12 +81,14 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                 <div className="relative flex flex-col w-full overflow-hidden p-4 sm:p-6 md:p-7 lg:p-8 space-y-3 sm:space-y-4">
                   {/* Atmospheric Backdrop Blur */}
                   {anime.poster ? (
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none transform-gpu">
                       <img
                         src={anime.poster}
                         alt=""
                         aria-hidden="true"
-                        className="h-full w-full object-cover object-center scale-110 blur-2xl opacity-20 dark:opacity-25"
+                        decoding="async"
+                        loading="lazy"
+                        className="h-full w-full object-cover object-center scale-110 blur-2xl opacity-20 dark:opacity-25 will-change-transform"
                       />
                       {/* Gradient Masks for Clean Contrast */}
                       <div className="absolute inset-0 bg-gradient-to-t from-card via-card/85 to-card/40" />
@@ -205,6 +227,8 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                           <img
                             src={anime.poster}
                             alt={anime.title}
+                            decoding="async"
+                            loading="lazy"
                             className="h-full w-full object-cover transition-transform duration-500 group-hover/poster:scale-110"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover/poster:opacity-100 transition-opacity flex items-end justify-center p-3">

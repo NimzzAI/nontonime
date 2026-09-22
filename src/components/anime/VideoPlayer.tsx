@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
 import "video.js/dist/video-js.css";
+import { Loader2, AlertTriangle, ExternalLink, Maximize, Minimize } from "lucide-react";
 
 function isDirectSource(url: string) {
   return /\.(m3u8|mp4)(\?|$)/i.test(url);
@@ -55,14 +56,14 @@ export function VideoPlayer({
       <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border/80 bg-black shadow-2xl">
         {!src ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
-            <i className="fa-solid fa-circle-notch fa-spin text-2xl text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span>Menyiapkan pemutar video...</span>
           </div>
         ) : isDirectSource(src) ? (
           <NativePlayer src={src} />
         ) : hasError ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
-            <i className="fa-solid fa-triangle-exclamation text-3xl text-amber-500" />
+            <AlertTriangle className="h-10 w-10 text-amber-500" />
             <p className="max-w-md text-sm">
               Pemutar video mengalami kendala saat dimuat di dalam bingkai ini.
             </p>
@@ -72,7 +73,7 @@ export function VideoPlayer({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
             >
-              <i className="fa-solid fa-arrow-up-right-from-square" />
+              <ExternalLink className="h-4 w-4" />
               Buka Stream di Tab Baru
             </a>
           </div>
@@ -102,7 +103,11 @@ export function VideoPlayer({
                 onClick={onToggleTheater}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-card-foreground transition hover:bg-accent"
               >
-                <i className={isTheater ? "fa-solid fa-compress" : "fa-solid fa-expand"} />
+                {isTheater ? (
+                  <Minimize className="h-3.5 w-3.5" />
+                ) : (
+                  <Maximize className="h-3.5 w-3.5" />
+                )}
                 {isTheater ? "Tampilan Normal" : "Mode Bioskop"}
               </button>
             ) : null}
@@ -112,7 +117,7 @@ export function VideoPlayer({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-card-foreground transition hover:bg-accent hover:text-primary"
             >
-              <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
+              <ExternalLink className="h-3.5 w-3.5" />
               Buka di Tab Baru
             </a>
           </div>

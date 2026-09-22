@@ -22,6 +22,8 @@ export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
+    let ticking = false;
+
     const handleCheckScroll = () => {
       if (!scrollRef.current) return;
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
@@ -29,16 +31,24 @@ export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
 
       // Calculate approximate active card
-      const cardWidth = 340; // average card scroll step
+      const cardWidth = 340;
       const index = Math.round(scrollLeft / cardWidth);
       setActiveIndex(Math.min(items.length - 1, Math.max(0, index)));
+      ticking = false;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(handleCheckScroll);
+        ticking = true;
+      }
     };
 
     handleCheckScroll();
     const el = scrollRef.current;
     if (!el) return;
-    el.addEventListener("scroll", handleCheckScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleCheckScroll);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, [items]);
 
   const handleScroll = (direction: "left" | "right") => {
@@ -120,6 +130,7 @@ export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
                     src={anime.poster}
                     alt={anime.title}
                     loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 group-hover:brightness-105"
                   />
                 ) : (

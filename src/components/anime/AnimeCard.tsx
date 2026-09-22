@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AnimeSummary } from "@/lib/anime-types";
 import { cn } from "@/lib/utils";
@@ -7,7 +7,7 @@ import { WatchlistButton } from "./WatchlistButton";
 import { AnimeQuickPreviewModal } from "./AnimeQuickPreviewModal";
 import { readHistory, type HistoryItem } from "@/lib/history";
 
-export function AnimeCard({
+export const AnimeCard = memo(function AnimeCard({
   anime,
   featured = false,
 }: {
@@ -54,6 +54,7 @@ export function AnimeCard({
               src={anime.poster}
               alt={anime.title}
               loading="lazy"
+              decoding="async"
               onError={() => setImgError(true)}
               className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             />
@@ -189,4 +190,4 @@ export function AnimeCard({
       <AnimeQuickPreviewModal anime={anime} open={previewOpen} onOpenChange={setPreviewOpen} />
     </>
   );
-}
+});

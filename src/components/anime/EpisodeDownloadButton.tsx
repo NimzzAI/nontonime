@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { streamQuery } from "@/lib/queries";
 import { ServerList } from "./ServerList";
 import type { EpisodeSummary } from "@/lib/anime-types";
+import { Download, Loader2 } from "lucide-react";
 
 export function EpisodeDownloadButton({
   episode,
@@ -22,14 +23,14 @@ export function EpisodeDownloadButton({
           aria-label={`Unduh Episode ${episode.number}`}
           className="press-soft inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-card-foreground shadow-sm transition-colors hover:bg-accent"
         >
-          <i className="fa-solid fa-download text-xs" />
+          <Download className="h-3.5 w-3.5" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 space-y-3">
         <p className="text-sm font-semibold text-popover-foreground">Episode {episode.number}</p>
         {isPending ? (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
-            <i className="fa-solid fa-circle-notch fa-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Memuat server &amp; kualitas
           </p>
         ) : isError ? (
