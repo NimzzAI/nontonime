@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with synchronized watchlist, rank, level, and XP",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "gamification": {
+          "type": "object",
+          "properties": {
+            "level": { "type": "number" },
+            "exp": { "type": "number" },
+            "maxExp": { "type": "number" },
+            "totalExp": { "type": "number" },
+            "rankTitle": { "type": "string" },
+            "rankBadgeColor": { "type": "string" },
+            "dailyStreak": { "type": "number" },
+            "lastCheckIn": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "WatchlistItem": {
+      "title": "WatchlistItem",
+      "description": "An anime tracked in user watching, planning, or completed list with episode progress",
+      "type": "object",
+      "properties": {
+        "animeId": { "type": "string" },
+        "title": { "type": "string" },
+        "poster": { "type": "string" },
+        "addedAt": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["watching", "plan", "completed"]
+        },
+        "currentEpisode": { "type": "number" },
+        "totalEpisodes": { "type": "number" },
+        "notes": { "type": "string" },
+        "userRating": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["animeId", "title"]
+    },
+    "HistoryItem": {
+      "title": "HistoryItem",
+      "description": "Watch history record for an episode",
+      "type": "object",
+      "properties": {
+        "episodeId": { "type": "string" },
+        "animeId": { "type": "string" },
+        "animeTitle": { "type": "string" },
+        "episodeTitle": { "type": "string" },
+        "poster": { "type": "string" },
+        "watchedAt": { "type": "number" }
+      },
+      "required": ["episodeId", "animeId", "episodeTitle"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User document containing account info, rank, level, and XP"
+    },
+    "/users/{userId}/watchlist/{animeId}": {
+      "schema": { "$ref": "WatchlistItem" },
+      "description": "User watching/planning/completed anime items with episode tracking"
+    },
+    "/users/{userId}/history/{episodeId}": {
+      "schema": { "$ref": "HistoryItem" },
+      "description": "User watch history items"
+    }
+  }
+}

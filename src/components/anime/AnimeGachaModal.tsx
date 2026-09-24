@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -8,10 +8,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { homeQuery } from "@/lib/queries";
+import { homeQuery, popularQuery } from "@/lib/queries";
 import { WatchlistButton } from "./WatchlistButton";
-import { Dices, Sparkles, RefreshCw, Play, Star, CheckCircle2, Flame, Layers } from "lucide-react";
+import { Dices, RefreshCw, Play, Star, CheckCircle2, Flame, Layers, Loader2 } from "lucide-react";
 import type { AnimeSummary } from "@/lib/anime-types";
+import { addExp } from "@/lib/gamification";
 import { cn } from "@/lib/utils";
 
 const MOODS = [
@@ -21,6 +22,58 @@ const MOODS = [
   { id: "recommend", label: "⭐ Rekomendasi", desc: "Pilihan terbaik kurator" },
 ] as const;
 
+// Fallback anime items ensuring the roulette NEVER hangs even if network is offline or Sanka is loading
+const FALLBACK_POOL: AnimeSummary[] = [
+  {
+    id: "frieren-beyond-journeys-end-sub-indo",
+    title: "Sousou no Frieren",
+    poster: "https://otakudesu.cloud/wp-content/uploads/2023/09/Sousou-no-Frieren-Sub-Indo.jpg",
+    score: "9.35",
+    type: "TV Series",
+    status: "Completed",
+    episodeCount: 28,
+  },
+  {
+    id: "jujutsu-kaisen-s2-sub-indo",
+    title: "Jujutsu Kaisen Season 2",
+    poster:
+      "https://otakudesu.cloud/wp-content/uploads/2023/07/Jujutsu-Kaisen-Season-2-Sub-Indo.jpg",
+    score: "8.90",
+    type: "TV Series",
+    status: "Completed",
+    episodeCount: 23,
+  },
+  {
+    id: "one-piece-sub-indo",
+    title: "One Piece",
+    poster: "https://otakudesu.cloud/wp-content/uploads/2020/09/One-Piece-Sub-Indo.jpg",
+    score: "8.72",
+    type: "TV Series",
+    status: "Ongoing",
+    releaseDay: "Minggu",
+  },
+  {
+    id: "kimetsu-no-yaiba-hashira-geiko-hen-sub-indo",
+    title: "Kimetsu no Yaiba: Hashira Geiko-hen",
+    poster:
+      "https://otakudesu.cloud/wp-content/uploads/2024/05/Kimetsu-no-Yaiba-Hashira-Geiko-hen-Sub-Indo.jpg",
+    score: "8.65",
+    type: "TV Series",
+    status: "Completed",
+    episodeCount: 8,
+  },
+  {
+    id: "solo-leveling-sub-indo",
+    title: "Ore dake Level Up na Ken (Solo Leveling)",
+    poster:
+      "https://otakudesu.cloud/wp-content/uploads/2024/01/Ore-dake-Level-Up-na-Ken-Sub-Indo.jpg",
+    score: "8.51",
+    type: "TV Series",
+    status: "Completed",
+    episodeCount: 12,
+  },
+];
+
 export function AnimeGachaModal({
   open,
   onOpenChange,
@@ -28,48 +81,62 @@ export function AnimeGachaModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data: homeData } = useQuery(homeQuery());
+  const { data: homeData, isLoading: homeLoading } = useQuery(homeQuery());
+  const { data: popData } = useQuery(popularQuery(1));
   const [selectedMood, setSelectedMood] = useState<(typeof MOODS)[number]["id"]>("all");
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState<AnimeSummary | null>(null);
 
-  // Pool of anime based on mood
-  const getPool = useCallback((): AnimeSummary[] => {
-    if (!homeData) return [];
-    if (selectedMood === "hot") return homeData.hot;
-    if (selectedMood === "completed") return homeData.popular;
-    if (selectedMood === "recommend") return homeData.new;
-    return [...homeData.slider, ...homeData.hot, ...homeData.popular, ...homeData.new];
-  }, [homeData, selectedMood]);
+  // Pool of anime based on mood with fallbacks
+  const pool = useMemo((): AnimeSummary[] => {
+    let list: AnimeSummary[] = [];
+
+    if (homeData) {
+      if (selectedMood === "hot") list = homeData.hot;
+      else if (selectedMood === "completed") list = homeData.popular;
+      else if (selectedMood === "recommend") list = homeData.new;
+      else list = [...homeData.slider, ...homeData.hot, ...homeData.popular, ...homeData.new];
+    }
+
+    if (list.length === 0 && popData?.items && popData.items.length > 0) {
+      list = popData.items;
+    }
+
+    if (list.length === 0) {
+      list = FALLBACK_POOL;
+    }
+
+    return list;
+  }, [homeData, popData, selectedMood]);
 
   const spin = useCallback(() => {
-    const pool = getPool();
     if (pool.length === 0) return;
 
     setIsSpinning(true);
     let counter = 0;
     const interval = setInterval(() => {
       const randomIdx = Math.floor(Math.random() * pool.length);
-      setResult(pool[randomIdx] ?? null);
+      setResult(pool[randomIdx] ?? pool[0]);
       counter++;
-      if (counter > 12) {
+      if (counter > 10) {
         clearInterval(interval);
         setIsSpinning(false);
+        addExp(10, "Putar Gacha Rekomendasi");
       }
-    }, 90);
-  }, [getPool]);
+    }, 85);
+  }, [pool]);
 
   useEffect(() => {
-    if (open && !result) {
+    if (open && (!result || isSpinning)) {
       spin();
     }
-  }, [open, result, spin]);
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg overflow-hidden border border-border/80 bg-background/95 p-0 backdrop-blur-2xl sm:rounded-3xl shadow-2xl">
+      <DialogContent className="max-w-lg overflow-hidden border border-border/80 bg-background/98 p-0 sm:rounded-3xl shadow-2xl">
         {/* Header decoration banner */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-primary/25 via-primary/10 to-transparent p-5 sm:p-6 border-b border-border/60">
+        <div className="relative overflow-hidden bg-gradient-to-r from-primary/20 via-primary/10 to-transparent p-5 sm:p-6 border-b border-border/60">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30">
@@ -80,7 +147,7 @@ export function AnimeGachaModal({
                   Gacha Anime Roulette
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Bingung mau nonton apa? Putar roda takdir anime pilihanmu!
+                  Bingung mau nonton apa? Putar roda rekomendasi anime pilihan!
                 </DialogDescription>
               </div>
             </div>
@@ -96,7 +163,7 @@ export function AnimeGachaModal({
                   type="button"
                   onClick={() => {
                     setSelectedMood(mood.id);
-                    setTimeout(spin, 50);
+                    setTimeout(spin, 40);
                   }}
                   className={cn(
                     "rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer",
@@ -118,11 +185,11 @@ export function AnimeGachaModal({
             <div
               className={cn(
                 "relative overflow-hidden rounded-2xl border border-border/80 bg-card p-4 transition-all duration-300",
-                isSpinning ? "scale-98 blur-[1px] opacity-75" : "scale-100 shadow-xl",
+                isSpinning ? "scale-98 opacity-75" : "scale-100 shadow-md",
               )}
             >
               <div className="flex gap-4">
-                {/* Poster with shine effect */}
+                {/* Poster */}
                 <div className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-xl border border-border/80 bg-muted sm:w-28">
                   {result.poster ? (
                     <img
@@ -132,7 +199,7 @@ export function AnimeGachaModal({
                     />
                   ) : null}
                   {result.score ? (
-                    <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 backdrop-blur-xs">
+                    <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-md bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
                       <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
                       {result.score}
                     </span>
@@ -148,7 +215,7 @@ export function AnimeGachaModal({
                           <Flame className="h-2.5 w-2.5" />
                           ONGOING
                         </span>
-                      ) : /tamat/i.test(result.status ?? "") ? (
+                      ) : /tamat|completed/i.test(result.status ?? "") ? (
                         <span className="inline-flex items-center gap-1 rounded-md bg-sky-600/90 px-1.5 py-0.5 text-[9px] font-bold text-white">
                           <CheckCircle2 className="h-2.5 w-2.5" />
                           TAMAT
@@ -185,8 +252,9 @@ export function AnimeGachaModal({
               </div>
             </div>
           ) : (
-            <div className="flex h-36 items-center justify-center text-xs text-muted-foreground">
-              Memuat pilihan anime...
+            <div className="flex h-36 flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span>Memuat pilihan anime...</span>
             </div>
           )}
 

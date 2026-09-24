@@ -4,10 +4,16 @@ import { ThemeToggle } from "./ThemeToggle";
 import { SearchFilterPanel } from "./SearchFilterPanel";
 import { AnimeGachaModal } from "./AnimeGachaModal";
 import { SpotlightSearchModal } from "./SpotlightSearchModal";
+import { AuthModal } from "./AuthModal";
+import { NotificationsModal } from "./NotificationsModal";
 import { readWatchlist } from "@/lib/watchlist";
 import { useQuery } from "@tanstack/react-query";
 import { searchQuery } from "@/lib/queries";
+import { useAuth, signOutUser } from "@/lib/firebase";
+import { readGamification, type UserGamification } from "@/lib/gamification";
+import { getUnreadUpdatesCount } from "@/lib/notifications";
 import {
+  Bell,
   Bookmark,
   CalendarDays,
   CheckCircle2,
@@ -16,11 +22,15 @@ import {
   History,
   Home,
   Loader2,
+  LogIn,
+  LogOut,
   Menu,
   Play,
   Search,
   SlidersHorizontal,
   Tags,
+  Trophy,
+  User as UserIcon,
   X,
 } from "lucide-react";
 
@@ -56,6 +66,12 @@ export function SiteHeader() {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<"login" | "register">("login");
+  const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [gamification, setGamification] = useState<UserGamification>(readGamification());
 
   useEffect(() => {
     const updateCount = () => {
@@ -64,6 +80,30 @@ export function SiteHeader() {
     updateCount();
     window.addEventListener("watchlist-updated", updateCount);
     return () => window.removeEventListener("watchlist-updated", updateCount);
+  }, []);
+
+  useEffect(() => {
+    const syncNotifs = () => setUnreadNotifCount(getUnreadUpdatesCount());
+    syncNotifs();
+    window.addEventListener("site-updates-read-changed", syncNotifs);
+    return () => window.removeEventListener("site-updates-read-changed", syncNotifs);
+  }, []);
+
+  useEffect(() => {
+    const syncGame = () => setGamification(readGamification());
+    syncGame();
+    window.addEventListener("gamification-updated", syncGame);
+    return () => window.removeEventListener("gamification-updated", syncGame);
+  }, []);
+
+  useEffect(() => {
+    const handleOpenAuth = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      setAuthModalTab(detail?.mode === "register" ? "register" : "login");
+      setAuthModalOpen(true);
+    };
+    window.addEventListener("open-auth-modal", handleOpenAuth);
+    return () => window.removeEventListener("open-auth-modal", handleOpenAuth);
   }, []);
 
   useEffect(() => {
@@ -339,6 +379,88 @@ export function SiteHeader() {
             {/* Theme Toggle */}
             <ThemeToggle />
 
+            {/* Notification Bell Button */}
+            <button
+              type="button"
+              id="header-notifications-btn"
+              onClick={() => setNotificationsModalOpen(true)}
+              title="Pusat Notifikasi & Update Website"
+              aria-label="Notifikasi dan Pembaruan"
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-secondary/40 text-foreground transition-colors hover:bg-secondary cursor-pointer"
+            >
+              <Bell className="h-4 w-4 text-foreground" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-black text-primary-foreground shadow-xs animate-pulse">
+                  {unreadNotifCount}
+                </span>
+              )}
+            </button>
+
+            {/* Authentication / User Profile with Level & Rank */}
+            {user ? (
+              <Link
+                to="/profil"
+                id="header-user-profile-btn"
+                title={`Profil: ${user.displayName || user.email} (Lv.${gamification.level} ${gamification.rankTitle})`}
+                className="flex items-center gap-2 rounded-xl border border-border/80 bg-secondary/40 p-1 pr-2.5 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+              >
+                <div className="relative">
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName || "User"}
+                      className="h-7 w-7 rounded-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xs">
+                      {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 items-center justify-center rounded-full bg-primary px-1 text-[8px] font-black text-primary-foreground shadow-xs">
+                    Lv.{gamification.level}
+                  </span>
+                </div>
+                <div className="hidden xl:flex flex-col text-left">
+                  <span className="max-w-[90px] truncate text-[11px] font-bold text-foreground">
+                    {user.displayName?.split(" ")[0] || "Profil"}
+                  </span>
+                  <span className="text-[9px] text-primary font-semibold truncate max-w-[90px]">
+                    {gamification.rankTitle}
+                  </span>
+                </div>
+              </Link>
+            ) : (
+              <div className="hidden sm:flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthModalTab("login");
+                    setAuthModalOpen(true);
+                  }}
+                  title="Masuk ke akun Nontonime"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-bold text-foreground transition-all hover:bg-secondary hover:border-primary/50 cursor-pointer"
+                >
+                  <LogIn className="h-3.5 w-3.5 text-primary" />
+                  <span>Masuk</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthModalTab("register");
+                    setAuthModalOpen(true);
+                  }}
+                  title="Daftar akun baru dan dapatkan +100 EXP"
+                  className="hidden md:inline-flex h-9 items-center gap-1 rounded-lg bg-primary px-2.5 text-xs font-bold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 cursor-pointer"
+                >
+                  <span>Daftar</span>
+                  <span className="rounded-full bg-primary-foreground/20 px-1 text-[9px] font-black">
+                    +100 EXP
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* Mobile Menu Hamburger */}
             <button
               id="mobile-menu-toggle"
@@ -431,6 +553,107 @@ export function SiteHeader() {
                   })}
                 </div>
               </div>
+
+              {/* Mobile Notification & Updates shortcut */}
+              <div className="border-t border-border/60 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setNotificationsModalOpen(true);
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl border border-border/70 bg-secondary/40 px-3.5 py-2.5 text-xs font-semibold text-foreground hover:bg-secondary transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-primary" />
+                    <span>Pusat Notifikasi & Update</span>
+                  </div>
+                  {unreadNotifCount > 0 && (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-primary-foreground">
+                      {unreadNotifCount} Baru
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Mobile Account Section */}
+              <div className="border-t border-border/60 pt-3">
+                {user ? (
+                  <div className="flex items-center justify-between rounded-xl border border-border/80 bg-secondary/40 p-3">
+                    <Link
+                      to="/profil"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2.5 min-w-0"
+                    >
+                      <div className="relative shrink-0">
+                        {user.photoURL ? (
+                          <img
+                            src={user.photoURL}
+                            alt={user.displayName || "User"}
+                            className="h-9 w-9 rounded-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xs">
+                            {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="absolute -bottom-1 -right-1 flex h-4 items-center justify-center rounded-full bg-primary px-1 text-[8px] font-black text-primary-foreground shadow-xs">
+                          Lv.{gamification.level}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-foreground truncate">
+                            {user.displayName || "Pengguna"}
+                          </p>
+                          <span className="text-[10px] text-primary font-bold">
+                            {gamification.rankTitle}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => signOutUser()}
+                      title="Keluar"
+                      className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-destructive transition-colors cursor-pointer"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        setAuthModalTab("login");
+                        setAuthModalOpen(true);
+                      }}
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-background p-2.5 text-xs font-bold text-foreground shadow-xs hover:bg-secondary transition-colors cursor-pointer"
+                    >
+                      <LogIn className="h-4 w-4 text-primary" />
+                      <span>Masuk</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        setAuthModalTab("register");
+                        setAuthModalOpen(true);
+                      }}
+                      className="flex items-center justify-center gap-1 rounded-xl bg-primary p-2.5 text-xs font-bold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 cursor-pointer"
+                    >
+                      <span>Daftar Akun</span>
+                      <span className="rounded-full bg-primary-foreground/20 px-1 text-[9px] font-black">
+                        +100 EXP
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : null}
@@ -448,6 +671,12 @@ export function SiteHeader() {
         onOpenChange={setShowSpotlight}
         onOpenGacha={() => setShowGachaModal(true)}
       />
+
+      {/* Auth Modal (Email & Google login / Register) */}
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} initialTab={authModalTab} />
+
+      {/* Notifications & Site Updates Modal */}
+      <NotificationsModal open={notificationsModalOpen} onOpenChange={setNotificationsModalOpen} />
     </>
   );
 }

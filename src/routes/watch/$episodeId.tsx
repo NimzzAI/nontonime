@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { VideoPlayer } from "@/components/anime/VideoPlayer";
 import { ShareButton } from "@/components/anime/ShareButton";
 import { WatchEnhancements } from "@/components/anime/WatchEnhancements";
@@ -8,6 +8,7 @@ import { ErrorState, LoadingState } from "@/components/anime/StateViews";
 import { animeDetailQuery, streamQuery } from "@/lib/queries";
 import { fetchResolveServer } from "@/lib/anime.functions";
 import { saveHistory } from "@/lib/history";
+import { addExp } from "@/lib/gamification";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/watch/$episodeId")({
@@ -34,9 +35,16 @@ export const Route = createFileRoute("/watch/$episodeId")({
 function WatchPage() {
   const { episodeId } = Route.useParams();
   const { a: searchAnimeId } = Route.useSearch();
+  const navigate = useNavigate();
   const [isTheater, setIsTheater] = useState(false);
   const [isAmbient, setIsAmbient] = useState(false);
   const [isSleepTriggered, setIsSleepTriggered] = useState(false);
+  const [autoNext, setAutoNext] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("nonton-auto-next") !== "false";
+  });
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stream = useQuery(streamQuery(episodeId));
 
@@ -138,7 +146,63 @@ function WatchPage() {
   const prevEpisodeId = prevEp?.id ?? stream.data?.prevEpisodeId ?? null;
   const nextEpisodeId = nextEp?.id ?? stream.data?.nextEpisodeId ?? null;
 
-  // Save to history
+  // Auto-play next episode handlers
+  const triggerNextEpisode = () => {
+    if (!nextEpisodeId) return;
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setCountdown(null);
+    navigate({
+      to: "/watch/$episodeId",
+      params: { episodeId: nextEpisodeId },
+      search: { a: resolvedAnimeId },
+    });
+  };
+
+  const cancelAutoNext = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setCountdown(null);
+  };
+
+  const handleEpisodeEnded = () => {
+    if (!nextEpisodeId || !autoNext) return;
+    setCountdown(5);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          triggerNextEpisode();
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const toggleAutoNext = () => {
+    const nextVal = !autoNext;
+    setAutoNext(nextVal);
+    localStorage.setItem("nonton-auto-next", String(nextVal));
+  };
+
+  // Save to history and reward EXP
   useEffect(() => {
     if (!stream.data) return;
     const animeTitle = anime.data?.title || stream.data.title;
@@ -151,6 +215,8 @@ function WatchPage() {
       poster,
       watchedAt: Date.now(),
     });
+    // Reward EXP for watching
+    addExp(25, `Nonton ${stream.data.title || "Episode"}`);
   }, [stream.data, anime.data, resolvedAnimeId, episodeId]);
 
   if (stream.isPending) return <LoadingState label="Menyiapkan episode & server streaming..." />;
@@ -225,6 +291,37 @@ function WatchPage() {
             ) : null}
 
             <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black border border-border/80">
+              {/* Auto-Next Episode Overlay */}
+              {countdown !== null ? (
+                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xs p-6 text-center text-white animate-in fade-in duration-200">
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/25 text-primary border border-primary/40 animate-pulse">
+                    <i className="fa-solid fa-forward-step text-2xl" />
+                  </div>
+                  <h3 className="font-display text-lg font-bold">Episode Selesai!</h3>
+                  <p className="mt-1.5 text-xs text-muted-foreground max-w-xs">
+                    Memutar episode berikutnya otomatis dalam{" "}
+                    <span className="font-extrabold text-primary text-base">{countdown}</span>{" "}
+                    detik...
+                  </p>
+                  <div className="mt-5 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={cancelAutoNext}
+                      className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/20 transition-colors cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={triggerNextEpisode}
+                      className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg cursor-pointer"
+                    >
+                      Putar Sekarang
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {isSleepTriggered ? (
                 <div className="flex aspect-video w-full flex-col items-center justify-center bg-black/95 p-6 text-center text-white space-y-3">
                   <span className="text-4xl">🌙</span>
@@ -246,6 +343,7 @@ function WatchPage() {
                   src={currentStreamUrl}
                   isTheater={isTheater}
                   onToggleTheater={() => setIsTheater((prev) => !prev)}
+                  onEnded={handleEpisodeEnded}
                 />
               )}
             </div>
@@ -309,11 +407,42 @@ function WatchPage() {
                 </div>
               </div>
 
-              {/* Watch Enhancements: Cinema light, sleep timer, shortcuts */}
-              <div className="flex items-center justify-between pt-1 border-t border-border/40 text-xs">
-                <span className="text-[11px] font-semibold text-muted-foreground">
-                  Fitur Pemutar:
-                </span>
+              {/* Watch Enhancements: Auto-Next, Cinema light, sleep timer, shortcuts */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/40 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-muted-foreground">
+                    Fitur Pemutar:
+                  </span>
+                  {/* Auto-Next Episode Toggle Switch */}
+                  <button
+                    type="button"
+                    onClick={toggleAutoNext}
+                    title="Otomatis putar episode berikutnya saat episode selesai"
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors cursor-pointer",
+                      autoNext
+                        ? "bg-primary/15 text-primary border border-primary/30"
+                        : "bg-muted text-muted-foreground hover:bg-accent",
+                    )}
+                  >
+                    <i className="fa-solid fa-forward-fast text-[10px]" />
+                    Auto-Next: {autoNext ? "Aktif" : "Mati"}
+                  </button>
+
+                  {/* Manual Finish & Next Quick Action */}
+                  {nextEpisodeId ? (
+                    <button
+                      type="button"
+                      onClick={handleEpisodeEnded}
+                      title="Tandai selesai & putar episode berikutnya"
+                      className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-border/80 bg-background px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent cursor-pointer"
+                    >
+                      <i className="fa-solid fa-check-double text-[10px] text-emerald-500" />
+                      Selesai & Lanjut
+                    </button>
+                  ) : null}
+                </div>
+
                 <WatchEnhancements
                   isAmbient={isAmbient}
                   onToggleAmbient={() => setIsAmbient((prev) => !prev)}

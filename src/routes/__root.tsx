@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { SiteHeader } from "../components/anime/SiteHeader";
 import { SiteFooter } from "../components/anime/SiteFooter";
 import { BottomNav } from "../components/anime/BottomNav";
+import { ExpNotificationToast } from "../components/anime/UserGamificationCard";
 import { siteConfig } from "../lib/site-config";
 
 function NotFoundComponent() {
@@ -76,7 +77,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover",
+      },
       { title: siteConfig.name },
       { name: "description", content: siteConfig.description },
       { property: "og:title", content: siteConfig.name },
@@ -147,6 +152,7 @@ function RootComponent() {
         </main>
         <SiteFooter />
         <BottomNav />
+        <ExpNotificationToast />
       </div>
     </QueryClientProvider>
   );

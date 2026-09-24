@@ -66,51 +66,87 @@ interface CacheEntry<T> {
   expires: number;
 }
 const cache = new Map<string, CacheEntry<unknown>>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
+const lastSuccessfulResponse = new Map<string, unknown>();
 
-async function fetchJson<T>(url: string, ttlMs = 5 * 60 * 1000): Promise<T> {
+async function fetchJson<T>(url: string, ttlMs = 15 * 60 * 1000): Promise<T> {
+  // 1. Check valid memory cache
   const cached = cache.get(url);
   if (cached && Date.now() < cached.expires) {
     return cached.data as T;
   }
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: BROWSER_HEADERS,
-    });
-  } catch (netErr) {
-    // If fetch failed and fallback is available, attempt fallback
-    const fallbackBase = getFallbackApiBase();
-    if (fallbackBase && !url.startsWith(fallbackBase)) {
-      const fallbackUrl = url.replace(getApiBase(), fallbackBase);
-      console.warn(`[API] Network error on ${url}. Retrying with fallback: ${fallbackUrl}`);
-      return fetchJson<T>(fallbackUrl, ttlMs);
+  // 2. Coalesce duplicate in-flight requests (prevents bursts of identical HTTP calls)
+  const inFlight = inFlightRequests.get(url);
+  if (inFlight) {
+    return inFlight as Promise<T>;
+  }
+
+  const fetchPromise = (async (): Promise<T> => {
+    try {
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          headers: BROWSER_HEADERS,
+        });
+      } catch (netErr) {
+        // If fetch failed and fallback is available, attempt fallback
+        const fallbackBase = getFallbackApiBase();
+        if (fallbackBase && !url.startsWith(fallbackBase)) {
+          const fallbackUrl = url.replace(getApiBase(), fallbackBase);
+          console.warn(`[API] Network error on ${url}. Retrying with fallback: ${fallbackUrl}`);
+          return await fetchJson<T>(fallbackUrl, ttlMs);
+        }
+        // If we have any last successful response, serve stale to save user experience
+        const stale = lastSuccessfulResponse.get(url);
+        if (stale) {
+          console.warn(`[API] Network error on ${url}. Serving stale fallback response.`);
+          return stale as T;
+        }
+        throw netErr;
+      }
+
+      if (res.status === 403) {
+        const fallbackBase = getFallbackApiBase();
+        if (fallbackBase && !url.startsWith(fallbackBase)) {
+          const fallbackUrl = url.replace(getApiBase(), fallbackBase);
+          console.warn(
+            `[API] 403 Forbidden on ${url}. Retrying with fallback IP/Proxy: ${fallbackUrl}`,
+          );
+          return await fetchJson<T>(fallbackUrl, ttlMs);
+        }
+        // Fallback to stale if available
+        const stale = lastSuccessfulResponse.get(url);
+        if (stale) {
+          console.warn(`[API] 403 Forbidden on ${url}. Serving stale fallback response.`);
+          return stale as T;
+        }
+        console.error(
+          `[Sanka API 403 Forbidden] Request ke ${url} ditolak oleh Cloudflare/WAF. ` +
+            `Solusi: Atur SANKA_API_BASE=<URL/IP_PROXY> pada environment variable Vercel / server Anda.`,
+        );
+      }
+
+      if (!res.ok) {
+        const stale = lastSuccessfulResponse.get(url);
+        if (stale) {
+          console.warn(`[API] Fetch error ${res.status}. Serving stale response.`);
+          return stale as T;
+        }
+        throw new Error(`API fetch error ${res.status}: ${res.statusText} at ${url}`);
+      }
+
+      const json = await res.json();
+      cache.set(url, { data: json, expires: Date.now() + ttlMs });
+      lastSuccessfulResponse.set(url, json);
+      return json as T;
+    } finally {
+      inFlightRequests.delete(url);
     }
-    throw netErr;
-  }
+  })();
 
-  if (res.status === 403) {
-    const fallbackBase = getFallbackApiBase();
-    if (fallbackBase && !url.startsWith(fallbackBase)) {
-      const fallbackUrl = url.replace(getApiBase(), fallbackBase);
-      console.warn(
-        `[API] 403 Forbidden on ${url}. Retrying with fallback IP/Proxy: ${fallbackUrl}`,
-      );
-      return fetchJson<T>(fallbackUrl, ttlMs);
-    }
-    console.error(
-      `[Sanka API 403 Forbidden] Request ke ${url} ditolak oleh Cloudflare/WAF. ` +
-        `Solusi: Atur SANKA_API_BASE=<URL/IP_PROXY> pada environment variable Vercel / server Anda.`,
-    );
-  }
-
-  if (!res.ok) {
-    throw new Error(`API fetch error ${res.status}: ${res.statusText} at ${url}`);
-  }
-
-  const json = await res.json();
-  cache.set(url, { data: json, expires: Date.now() + ttlMs });
-  return json as T;
+  inFlightRequests.set(url, fetchPromise);
+  return fetchPromise;
 }
 
 interface ApiHomeResponse {

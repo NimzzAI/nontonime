@@ -79,20 +79,20 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
             return (
               <div key={anime.id} className="relative min-w-0 shrink-0 grow-0 basis-full">
                 <div className="relative flex flex-col w-full overflow-hidden p-4 sm:p-6 md:p-7 lg:p-8 space-y-3 sm:space-y-4">
-                  {/* Atmospheric Backdrop Blur */}
+                  {/* Atmospheric Backdrop */}
                   {anime.poster ? (
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none transform-gpu">
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
                       <img
                         src={anime.poster}
                         alt=""
                         aria-hidden="true"
                         decoding="async"
                         loading="lazy"
-                        className="h-full w-full object-cover object-center scale-110 blur-2xl opacity-20 dark:opacity-25 will-change-transform"
+                        className="h-full w-full object-cover object-center opacity-15 dark:opacity-20"
                       />
                       {/* Gradient Masks for Clean Contrast */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/85 to-card/40" />
-                      <div className="absolute inset-0 bg-gradient-to-r from-card via-card/75 to-transparent hidden md:block" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/85 to-card/50" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-card via-card/80 to-transparent hidden md:block" />
                     </div>
                   ) : null}
 

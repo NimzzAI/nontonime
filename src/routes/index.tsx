@@ -6,6 +6,7 @@ import { TrendingSlider } from "@/components/anime/TrendingSlider";
 import { Shelf } from "@/components/anime/Shelf";
 import { ErrorState } from "@/components/anime/StateViews";
 import { AnimeGachaModal } from "@/components/anime/AnimeGachaModal";
+import { WelcomeModal } from "@/components/anime/WelcomeModal";
 import { FloatingTools } from "@/components/anime/FloatingTools";
 import { SearchFilterPanel } from "@/components/anime/SearchFilterPanel";
 import { homeQuery, currentDayName } from "@/lib/queries";
@@ -85,7 +86,32 @@ function HomePage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-12 sm:space-y-16 px-4 py-6 sm:py-8">
+    <div className="mx-auto max-w-7xl space-y-10 sm:space-y-14 px-4 py-6 sm:py-8">
+      {/* Welcome & Site Introduction Popup Modal */}
+      <WelcomeModal />
+
+      {/* Top Welcome Announcement Pill */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-background to-secondary/30 px-4 py-2.5 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/20 text-primary text-xs font-black">
+            👋
+          </span>
+          <span className="text-xs font-semibold text-foreground">
+            Selamat Datang di <strong className="text-primary font-black">Nontonime</strong> —
+            Streaming Bebas Iklan & Cepat
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event("open-welcome-modal"))}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer shadow-xs"
+        >
+          <Sparkles className="h-3 w-3" />
+          <span>Buka Pengenalan & Fitur</span>
+        </button>
+      </div>
+
       {/* Hero Section Loading / Carousel */}
       {isPending ? (
         <div className="aspect-[16/9] w-full animate-pulse rounded-3xl bg-muted/60 sm:aspect-[21/9]" />

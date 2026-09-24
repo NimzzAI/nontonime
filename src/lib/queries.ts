@@ -14,7 +14,12 @@ import {
 } from "./anime.functions";
 import type { AnimeSummary } from "./anime-types";
 
-const common = { staleTime: 5 * 60 * 1000, retry: 1 };
+const common = {
+  staleTime: 15 * 60 * 1000,
+  gcTime: 60 * 60 * 1000,
+  retry: 1,
+  refetchOnWindowFocus: false,
+};
 
 const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
