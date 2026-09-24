@@ -20,6 +20,8 @@ import {
   EyeOff,
   Sparkles,
   Loader2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +43,7 @@ export function AuthModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [forgotMode, setForgotMode] = useState(false);
+  const [copiedDomain, setCopiedDomain] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -60,13 +63,21 @@ export function AuthModal({
       onOpenChange(false);
     } catch (err: unknown) {
       console.error(err);
-      setErrorMsg(
-        err instanceof Error
-          ? err.message.includes("popup-closed-by-user")
-            ? "Jendela login Google ditutup sebelum selesai."
-            : err.message
-          : "Gagal masuk dengan Google.",
-      );
+      let msg = "Gagal masuk dengan Google.";
+      if (err instanceof Error) {
+        if (err.message.includes("popup-closed-by-user")) {
+          msg = "Jendela login Google ditutup sebelum selesai.";
+        } else if (err.message.includes("unauthorized-domain")) {
+          const domain = typeof window !== "undefined" ? window.location.hostname : "";
+          msg = `Domain (${domain}) belum didaftarkan di Firebase Console. Tambahkan '${domain}' di Firebase Console > Authentication > Settings > Authorized domains.`;
+        } else if (err.message.includes("operation-not-allowed")) {
+          msg =
+            "Metode login Google belum diaktifkan di Firebase Console. Aktifkan 'Google' di Firebase Console > Authentication > Sign-in method.";
+        } else {
+          msg = err.message;
+        }
+      }
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -87,13 +98,18 @@ export function AuthModal({
         await resetPassword(email.trim());
         setSuccessMsg("Tautan pemulihan kata sandi telah dikirim ke email Anda!");
       } catch (err: unknown) {
-        setErrorMsg(
-          err instanceof Error
-            ? err.message.includes("user-not-found")
-              ? "Akun dengan email tersebut tidak ditemukan."
-              : err.message
-            : "Gagal mengirim email pemulihan.",
-        );
+        let msg = "Gagal mengirim email pemulihan.";
+        if (err instanceof Error) {
+          if (err.message.includes("user-not-found")) {
+            msg = "Akun dengan email tersebut tidak ditemukan.";
+          } else if (err.message.includes("unauthorized-domain")) {
+            const domain = typeof window !== "undefined" ? window.location.hostname : "";
+            msg = `Domain (${domain}) belum diizinkan di Firebase Console > Settings > Authorized domains.`;
+          } else {
+            msg = err.message;
+          }
+        }
+        setErrorMsg(msg);
       } finally {
         setLoading(false);
       }
@@ -124,7 +140,13 @@ export function AuthModal({
       console.error(err);
       let friendly = "Terjadi kesalahan saat memproses.";
       if (err instanceof Error) {
-        if (err.message.includes("email-already-in-use")) {
+        if (err.message.includes("unauthorized-domain")) {
+          const domain = typeof window !== "undefined" ? window.location.hostname : "";
+          friendly = `Domain (${domain}) belum didaftarkan di Firebase Console. Buka Firebase Console > Authentication > Settings > Authorized domains dan tambahkan '${domain}'.`;
+        } else if (err.message.includes("operation-not-allowed")) {
+          friendly =
+            "Metode Email/Password belum diaktifkan di Firebase Console. Buka Firebase Console > Authentication > Sign-in method dan aktifkan 'Email/Password'.";
+        } else if (err.message.includes("email-already-in-use")) {
           friendly = "Email ini sudah terdaftar. Silakan pilih tab Masuk.";
         } else if (
           err.message.includes("wrong-password") ||
@@ -215,9 +237,30 @@ export function AuthModal({
         {/* Form Body */}
         <div className="p-5 sm:p-6 space-y-4">
           {errorMsg && (
-            <div className="flex items-start gap-2.5 rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
+            <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive space-y-2">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">{errorMsg}</span>
+              </div>
+              {typeof window !== "undefined" && errorMsg.includes("Authorized domains") && (
+                <div className="pt-1 flex items-center justify-between gap-2 border-t border-destructive/20">
+                  <span className="font-mono text-[11px] text-foreground bg-background/80 px-2 py-1 rounded-md border border-border truncate select-all">
+                    {window.location.hostname}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.hostname);
+                      setCopiedDomain(true);
+                      setTimeout(() => setCopiedDomain(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-md transition-colors shrink-0 cursor-pointer"
+                  >
+                    {copiedDomain ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    <span>{copiedDomain ? "Tersalin!" : "Salin Domain"}</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
