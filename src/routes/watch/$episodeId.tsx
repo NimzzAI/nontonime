@@ -46,8 +46,6 @@ function WatchPage() {
     return localStorage.getItem("nonton-auto-next") !== "false";
   });
   const [isAutoPlayActive, setIsAutoPlayActive] = useState<boolean>(() => Boolean(searchAutoplay));
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stream = useQuery(streamQuery(episodeId));
 
@@ -167,14 +165,31 @@ function WatchPage() {
   const prevEpisodeId = prevEp?.id ?? stream.data?.prevEpisodeId ?? null;
   const nextEpisodeId = nextEp?.id ?? stream.data?.nextEpisodeId ?? null;
 
-  // Auto-play next episode handlers
+  // Derive next episode metadata from current series state
+  const nextEpisodeMetadata = useMemo(() => {
+    if (nextEp) {
+      return {
+        id: nextEp.id,
+        number: nextEp.number,
+        title: nextEp.title,
+      };
+    }
+    if (stream.data?.nextEpisodeId) {
+      const match = stream.data.info?.episodeList?.find(
+        (e) => e.episodeId === stream.data?.nextEpisodeId,
+      );
+      return {
+        id: stream.data.nextEpisodeId,
+        number: match?.eps || (activeIndex >= 0 ? activeIndex + 2 : 2),
+        title: match?.title || `Episode Berikutnya`,
+      };
+    }
+    return null;
+  }, [nextEp, stream.data, activeIndex]);
+
+  // Silent auto-transition next episode handler without full page reload
   const triggerNextEpisode = () => {
     if (!nextEpisodeId) return;
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-    setCountdown(null);
     setIsAutoPlayActive(true);
     navigate({
       to: "/watch/$episodeId",
@@ -183,40 +198,12 @@ function WatchPage() {
     });
   };
 
-  const cancelAutoNext = () => {
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-    setCountdown(null);
-  };
-
+  // Robust ended handler: fetch next episode from series state and perform silent auto-transition
   const handleEpisodeEnded = () => {
     if (!nextEpisodeId || !autoNext) return;
-    setCountdown(4);
-    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-    countdownIntervalRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
-          triggerNextEpisode();
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    setIsAutoPlayActive(true);
+    triggerNextEpisode();
   };
-
-  useEffect(() => {
-    return () => {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-      }
-    };
-  }, []);
 
   const toggleAutoNext = () => {
     const nextVal = !autoNext;
@@ -318,37 +305,6 @@ function WatchPage() {
             ) : null}
 
             <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black border border-border/80">
-              {/* Auto-Next Episode Overlay */}
-              {countdown !== null ? (
-                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xs p-6 text-center text-white animate-in fade-in duration-200">
-                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/25 text-primary border border-primary/40 animate-pulse">
-                    <i className="fa-solid fa-forward-step text-2xl" />
-                  </div>
-                  <h3 className="font-display text-lg font-bold">Episode Selesai!</h3>
-                  <p className="mt-1.5 text-xs text-muted-foreground max-w-xs">
-                    Memutar episode berikutnya otomatis dalam{" "}
-                    <span className="font-extrabold text-primary text-base">{countdown}</span>{" "}
-                    detik...
-                  </p>
-                  <div className="mt-5 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={cancelAutoNext}
-                      className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/20 transition-colors cursor-pointer"
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={triggerNextEpisode}
-                      className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg cursor-pointer"
-                    >
-                      Putar Sekarang
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
               {isSleepTriggered ? (
                 <div className="flex aspect-video w-full flex-col items-center justify-center bg-black/95 p-6 text-center text-white space-y-3">
                   <span className="text-4xl">🌙</span>
@@ -374,6 +330,8 @@ function WatchPage() {
                   autoPlay={isAutoPlayActive}
                   episodeTitle={episodeData.title}
                   isLoading={stream.isFetching && !currentStreamUrl}
+                  nextEpisode={nextEpisodeMetadata}
+                  onPlayNext={triggerNextEpisode}
                 />
               )}
             </div>

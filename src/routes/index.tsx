@@ -9,8 +9,8 @@ import { AnimeGachaModal } from "@/components/anime/AnimeGachaModal";
 import { WelcomeModal } from "@/components/anime/WelcomeModal";
 import { FloatingTools } from "@/components/anime/FloatingTools";
 import { SearchFilterPanel } from "@/components/anime/SearchFilterPanel";
+import { RecentlyWatchedSection } from "@/components/anime/RecentlyWatchedSection";
 import { homeQuery, currentDayName } from "@/lib/queries";
-import { readHistory, type HistoryItem } from "@/lib/history";
 import {
   ArrowRight,
   Bookmark,
@@ -73,17 +73,9 @@ const POPULAR_GENRES = [
 
 function HomePage() {
   const { data, isPending, error, refetch } = useQuery(homeQuery());
-  const [continueItems, setContinueItems] = useState<HistoryItem[]>([]);
   const [gachaOpen, setGachaOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const todayDay = currentDayName();
-
-  useEffect(() => {
-    const sync = () => setContinueItems(readHistory().slice(0, 10));
-    sync();
-    window.addEventListener("history-updated", sync);
-    return () => window.removeEventListener("history-updated", sync);
-  }, []);
 
   return (
     <div className="mx-auto max-w-7xl space-y-10 sm:space-y-14 px-4 py-6 sm:py-8">
@@ -156,59 +148,8 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Continue Watching Section */}
-      {continueItems.length > 0 ? (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">
-              <History className="h-5 w-5 text-primary" />
-              <span>Lanjutkan Nonton</span>
-            </h2>
-            <Link
-              to="/riwayat"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-            >
-              <span>Semua Riwayat</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-
-          <div className="edge-fade no-scrollbar -mx-4 flex gap-3.5 overflow-x-auto px-4 pb-2">
-            {continueItems.map((item) => (
-              <Link
-                key={item.episodeId}
-                to="/watch/$episodeId"
-                params={{ episodeId: item.episodeId }}
-                search={{ a: item.animeId }}
-                className="group w-32 shrink-0 space-y-2 sm:w-40"
-              >
-                <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border/80 bg-muted shadow-xs transition group-hover:border-primary group-hover:shadow-md">
-                  <img
-                    src={item.poster}
-                    alt={item.animeTitle}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
-                      <Play className="h-4 w-4 fill-current ml-0.5" />
-                    </div>
-                  </div>
-                  <div className="absolute bottom-1.5 inset-x-1.5 rounded-md bg-black/75 px-1.5 py-0.5 text-center text-[10px] font-bold text-white backdrop-blur-xs truncate">
-                    Lanjut
-                  </div>
-                </div>
-                <p className="line-clamp-1 text-xs font-semibold text-card-foreground group-hover:text-primary transition-colors">
-                  {item.animeTitle}
-                </p>
-                <p className="line-clamp-1 text-[10px] text-muted-foreground">
-                  {item.episodeTitle}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {/* Recently Watched Section: Fetches and displays the last 5 anime episodes played */}
+      <RecentlyWatchedSection />
 
       {/* Popular Genres Quick Navigation Bar (Clean typography, no icons) */}
       <section className="space-y-3.5">
