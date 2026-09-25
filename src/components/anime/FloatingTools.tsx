@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dices, ArrowUp, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Dices, ArrowUp, SlidersHorizontal, Sparkles, DownloadCloud } from "lucide-react";
 import { AnimeGachaModal } from "./AnimeGachaModal";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,17 @@ export function FloatingTools({ onOpenFilter }: { onOpenFilter?: () => void }) {
         id="floating-quick-tools"
         className="fixed bottom-20 right-4 z-40 flex flex-col items-center gap-2 sm:bottom-6 sm:right-6"
       >
+        {/* Offline Download Manager Floating Shortcut */}
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("open-download-manager"))}
+          title="Download Manager & Koleksi Offline"
+          aria-label="Download Manager"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-md transition-all hover:border-primary/50 hover:text-primary active:scale-95 cursor-pointer"
+        >
+          <DownloadCloud className="h-4 w-4" />
+        </button>
+
         {/* Surprise Gacha Button */}
         <button
           type="button"

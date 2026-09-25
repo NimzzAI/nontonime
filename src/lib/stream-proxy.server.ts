@@ -277,6 +277,7 @@ export async function handleStreamCheckRequest(request: Request): Promise<Respon
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
+    const startTime = Date.now();
     const res = await fetch(parsed.toString(), {
       method: "GET",
       headers: {
@@ -288,6 +289,7 @@ export async function handleStreamCheckRequest(request: Request): Promise<Respon
       redirect: "follow",
       signal: controller.signal,
     });
+    const latencyMs = Date.now() - startTime;
 
     clearTimeout(timeoutId);
 
@@ -302,6 +304,8 @@ export async function handleStreamCheckRequest(request: Request): Promise<Respon
       JSON.stringify({
         ok: res.ok || res.status === 206,
         status: res.status,
+        statusText: res.statusText,
+        latencyMs,
         contentType,
         isDirectMedia: isDirect,
         isIframeEmbed: !isDirect && contentType.includes("text/html"),
@@ -310,6 +314,9 @@ export async function handleStreamCheckRequest(request: Request): Promise<Respon
         contentLength: res.headers.get("content-length")
           ? parseInt(res.headers.get("content-length")!, 10)
           : null,
+        contentRange: res.headers.get("content-range") || null,
+        serverHeader: res.headers.get("server") || null,
+        corsHeader: res.headers.get("access-control-allow-origin") || null,
       }),
       {
         status: 200,

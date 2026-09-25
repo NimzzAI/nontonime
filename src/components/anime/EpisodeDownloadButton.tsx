@@ -27,7 +27,19 @@ export function EpisodeDownloadButton({
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 space-y-3">
-        <p className="text-sm font-semibold text-popover-foreground">Episode {episode.number}</p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-popover-foreground">Episode {episode.number}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              window.dispatchEvent(new CustomEvent("open-download-manager"));
+            }}
+            className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+          >
+            Download Manager
+          </button>
+        </div>
         {isPending ? (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

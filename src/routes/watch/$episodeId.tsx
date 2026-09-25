@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { VideoPlayer } from "@/components/anime/VideoPlayer";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { VideoPlayer, type FailedServerLog } from "@/components/anime/VideoPlayer";
 import { ShareButton } from "@/components/anime/ShareButton";
 import { WatchEnhancements } from "@/components/anime/WatchEnhancements";
 import { ErrorState, LoadingState } from "@/components/anime/StateViews";
@@ -10,6 +10,21 @@ import { fetchResolveServer } from "@/lib/anime.functions";
 import { saveHistory } from "@/lib/history";
 import { addExp } from "@/lib/gamification";
 import { cn } from "@/lib/utils";
+import {
+  DownloadCloud,
+  Layers,
+  HardDrive,
+  CheckCircle2,
+  Play,
+  WifiOff,
+  Sparkles,
+} from "lucide-react";
+import {
+  startOrResumeDownload,
+  getOfflineEpisodes,
+  type OfflineEpisode,
+} from "@/lib/download-manager";
+import { OfflinePlayerModal } from "@/components/anime/OfflinePlayerModal";
 
 export const Route = createFileRoute("/watch/$episodeId")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -96,7 +111,48 @@ function WatchPage() {
     return qualityGroups.find((q) => q.quality === selectedQuality) ?? qualityGroups[0];
   }, [qualityGroups, selectedQuality]);
 
-  // Handle server switch
+  // Automated Failover Tracking
+  const [failedServerList, setFailedServerList] = useState<FailedServerLog[]>([]);
+  const [autoFailoverEnabled, setAutoFailoverEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("nonton-auto-failover");
+      return saved !== null ? saved === "true" : true;
+    }
+    return true;
+  });
+
+  const toggleAutoFailover = useCallback(() => {
+    setAutoFailoverEnabled((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("nonton-auto-failover", String(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const handleRecordFailedServer = useCallback(
+    (serverId: string, reason?: string) => {
+      const srv = activeGroup?.serverList?.find((s) => s.serverId === serverId);
+      const title = srv?.title || serverId;
+      setFailedServerList((prev) => {
+        if (prev.some((f) => f.id === serverId)) return prev;
+        return [...prev, { id: serverId, title, reason, timestamp: Date.now() }];
+      });
+    },
+    [activeGroup?.serverList],
+  );
+
+  const handleResetFailedServers = useCallback(() => {
+    setFailedServerList([]);
+  }, []);
+
+  // Reset failed servers when episode changes
+  useEffect(() => {
+    setFailedServerList([]);
+  }, [episodeId]);
+
+  // Handle server switch with automated failover support
   const handleServerSelect = async (serverId: string) => {
     if (serverId === selectedServerId || isResolving) return;
     setSelectedServerId(serverId);
@@ -105,9 +161,26 @@ function WatchPage() {
       const res = await fetchResolveServer({ data: { serverId } });
       if (res.url) {
         setCurrentStreamUrl(res.url);
+      } else {
+        throw new Error("URL stream kosong dari penyedia server");
       }
     } catch (err) {
       console.error("Gagal mengganti server:", err);
+      const errReason = err instanceof Error ? err.message : "Gagal me-resolve server";
+      handleRecordFailedServer(serverId, errReason);
+
+      // Automated Error-Handling: Switch to next available server if enabled
+      if (autoFailoverEnabled) {
+        const serverList = activeGroup?.serverList ?? [];
+        const nextServer = serverList.find(
+          (s) => s.serverId !== serverId && !failedServerList.some((f) => f.id === s.serverId),
+        );
+        if (nextServer) {
+          setTimeout(() => {
+            handleServerSelect(nextServer.serverId);
+          }, 500);
+        }
+      }
     } finally {
       setIsResolving(false);
     }
@@ -228,6 +301,61 @@ function WatchPage() {
     addExp(25, `Nonton ${stream.data.title || "Episode"}`);
   }, [stream.data, anime.data, resolvedAnimeId, episodeId]);
 
+  // Offline Episode State & Synchronization
+  const [offlineEpisode, setOfflineEpisode] = useState<OfflineEpisode | null>(null);
+  const [offlinePlayerOpen, setOfflinePlayerOpen] = useState(false);
+  const [isStartingDownload, setIsStartingDownload] = useState(false);
+
+  useEffect(() => {
+    const checkOffline = async () => {
+      try {
+        const all = await getOfflineEpisodes();
+        const found = all.find((e) => e.episodeId === episodeId);
+        setOfflineEpisode(found || null);
+      } catch {
+        // no-op
+      }
+    };
+    checkOffline();
+    window.addEventListener("nonton-downloads-updated", checkOffline);
+    return () => window.removeEventListener("nonton-downloads-updated", checkOffline);
+  }, [episodeId]);
+
+  const handleStartOfflineDownload = async (customUrl?: string, customQuality?: string) => {
+    const targetUrl = customUrl || currentStreamUrl;
+    if (!targetUrl) {
+      alert("Stream URL belum tersedia. Silakan tunggu hingga server terhubung.");
+      return;
+    }
+    const quality = customQuality || selectedQuality || "720p";
+    setIsStartingDownload(true);
+    try {
+      const animeName = anime.data?.title || episodeData.title;
+      const poster = anime.data?.poster || "";
+      let epsNum = 1;
+      const match = episodeId.match(/episode-(\d+)/i) || episodeData.title?.match(/(\d+)/);
+      if (match?.[1]) epsNum = parseInt(match[1], 10);
+
+      await startOrResumeDownload({
+        episodeId,
+        animeId: resolvedAnimeId,
+        animeTitle: animeName,
+        episodeTitle: episodeData.title,
+        episodeNumber: epsNum,
+        poster,
+        quality,
+        sourceUrl: targetUrl,
+      });
+
+      // Open download manager modal via global custom event
+      window.dispatchEvent(new CustomEvent("open-download-manager"));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Gagal memulai unduhan");
+    } finally {
+      setIsStartingDownload(false);
+    }
+  };
+
   const isInitialLoading = stream.isPending && !stream.data && !currentStreamUrl;
   if (isInitialLoading) return <LoadingState label="Menyiapkan episode & server streaming..." />;
   if (stream.error && !stream.data) {
@@ -344,6 +472,11 @@ function WatchPage() {
                   }
                   onSelectServer={handleServerSelect}
                   isResolvingServer={isResolving}
+                  autoFailoverEnabled={autoFailoverEnabled}
+                  onToggleAutoFailover={toggleAutoFailover}
+                  failedServerList={failedServerList}
+                  onRecordFailedServer={handleRecordFailedServer}
+                  onResetFailedServers={handleResetFailedServers}
                 />
               )}
             </div>
@@ -524,16 +657,101 @@ function WatchPage() {
             ) : null}
           </div>
 
+          {/* Range Request Segmented Offline Download Section */}
+          <div className="rounded-2xl border border-primary/40 bg-gradient-to-br from-card via-card to-primary/5 p-4 sm:p-5 space-y-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 text-primary border border-primary/30">
+                  <DownloadCloud className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-sm font-bold text-foreground">
+                      Tonton Offline (Range Segmented Download)
+                    </h3>
+                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/30">
+                      RFC 7233
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Unduh file besar per segmen byte tanpa putus untuk ditonton tanpa internet.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-download-manager"))}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-secondary/80 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary transition cursor-pointer"
+              >
+                <Layers className="h-3.5 w-3.5 text-primary" />
+                <span>Buka Download Manager</span>
+              </button>
+            </div>
+
+            {offlineEpisode ? (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3.5">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                  <div>
+                    <span className="font-bold text-xs sm:text-sm text-foreground">
+                      Episode Ini Sudah Tersimpan di Memori Perangkat
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      Kualitas:{" "}
+                      <strong className="text-emerald-500">{offlineEpisode.quality}</strong> •
+                      Ukuran: {(offlineEpisode.sizeBytes / (1024 * 1024)).toFixed(1)} MB • Siap
+                      diputar 100% offline.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOfflinePlayerOpen(true)}
+                  className="press-soft inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-sm cursor-pointer shrink-0"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                  <span>Tonton Offline Sekarang</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+                <div className="space-y-1">
+                  <span className="font-semibold text-xs text-foreground">
+                    Kualitas Aktif:{" "}
+                    <strong className="text-primary">{selectedQuality || "720p"}</strong>
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Video akan diunduh dalam blok segmen 2MB menggunakan streaming proxy lokal.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isStartingDownload || !currentStreamUrl}
+                    onClick={() => handleStartOfflineDownload()}
+                    className="press-soft inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-sm cursor-pointer disabled:opacity-50"
+                  >
+                    <DownloadCloud className="h-4 w-4" />
+                    <span>{isStartingDownload ? "Memulai..." : "Unduh Episode Ini (Range)"}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Download Links Section */}
           {episodeData.downloads && episodeData.downloads.length > 0 ? (
             <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 space-y-4 shadow-sm">
               <div className="flex items-center gap-2 border-b border-border/60 pb-3">
                 <i className="fa-solid fa-download text-primary" />
                 <h3 className="font-display text-sm font-bold text-foreground">
-                  Unduh Episode Ini
+                  Tautan Unduh Eksternal
                 </h3>
                 <span className="text-xs text-muted-foreground ml-auto">
-                  Berbagai pilihan resolusi & penyedia
+                  Penyedia cloud pihak ketiga
                 </span>
               </div>
 
@@ -553,6 +771,17 @@ function WatchPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
+                      {/* Direct Segmented Download for this quality if stream available */}
+                      <button
+                        type="button"
+                        onClick={() => handleStartOfflineDownload(undefined, dl.quality)}
+                        className="press-soft inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/15 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition cursor-pointer"
+                        title={`Simpan ${dl.quality} ke penyimpanan offline`}
+                      >
+                        <DownloadCloud className="h-3 w-3" />
+                        <span>Range Offline</span>
+                      </button>
+
                       {dl.urls.map((link) => (
                         <a
                           key={link.title + link.url}
@@ -649,6 +878,13 @@ function WatchPage() {
           </div>
         </div>
       </div>
+
+      {/* Offline Playback Modal */}
+      <OfflinePlayerModal
+        episode={offlineEpisode}
+        isOpen={offlinePlayerOpen}
+        onClose={() => setOfflinePlayerOpen(false)}
+      />
     </div>
   );
 }

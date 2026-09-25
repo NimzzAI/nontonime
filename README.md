@@ -112,19 +112,60 @@ Untuk mengatasi keluhan beban memori dan lag pada peramban berdaya rendah ataupu
 
 ---
 
+## // Lapisan Penanganan Error Otomatis & Diagnostik Stream
+
+Aplikasi kini dilengkapi dengan arsitektur pemutar video mandiri yang tangguh untuk mengatasi berbagai kendala sumber video (seperti CDN down, CORS blocking, atau ISP filtering):
+
+### 1. Penanganan Error Otomatis (Automated Failover Layer)
+
+- **Deteksi Kegagalan Multilapis**: Mendeteksi otomatis error native HTML5/Video.js (`MEDIA_ERR_NETWORK`, `MEDIA_ERR_SRC_NOT_SUPPORTED`, `MEDIA_ERR_DECODE`), buffer macet berkepanjangan (_stall_ > 10 detik), maupun kegagalan koneksi frame iframe.
+- **Peralihan Server Tanpa Intervensi**: Saat server aktif mengalami kendala, sistem akan memicu _countdown_ visual 2 detik dan secara otomatis mengalihkan pemutaran ke server cadangan berikutnya (`Odstream`, `Filedon`, `Mega`, dll.) tanpa perlu tindakan manual dari pengguna.
+- **Pencegahan Infinite Loop**: Menyimpan daftar server yang telah gagal pada sesi episode berjalan agar server rusak tidak dicoba berulang-ulang. Jika seluruh server telah habis dicoba, pemutar menampilkan kartu diagnosa komprehensif dengan opsi coba ulang atau pembukaan di tab baru.
+- **Kendali Pengguna**: Opsi **Auto-Failover** dapat dinyalakan/dimatikan kapan saja melalui tombol toggle di bilah kontrol pemutar.
+
+### 2. Panel Diagnostik Stream Real-Time (Live HUD)
+
+Dapat diakses langsung melalui tombol **"Diagnostik"** pada pemutar video untuk membantu proses debugging:
+
+- **Sumber Streaming Aktif**: Menampilkan URL target lengkap, domain host penyedia, dan mode pemutar aktif (`Native HTML5`, `Local Range Proxy`, `MEGA Decrypted`, atau `Iframe Embed`).
+- **Validasi Content-Type**: Memeriksa tipe konten upstream (`video/mp4`, `application/x-mpegURL`, `text/html`) untuk memastikan sumber merupakan file media riil dan bukan halaman web yang diblokir.
+- **Status HTTP Range Request (RFC 7233)**: Menampilkan status header `Accept-Ranges: bytes`, status respons `HTTP 206 Partial Content`, dan offset `Content-Range` byte untuk verifikasi kemampuan seeking instan.
+- **Konektivitas & Buffer Health**: Mengukur latensi ping round-trip (ms), posisi detik pemutaran, durasi buffer ke depan (_buffered ahead seconds_), dan resolusi video riil.
+- **Log Riwayat Failover & Ekspor JSON**: Mencatat kronologi kegagalan server serta menyediakan tombol satu-klik **"Salin Laporan (JSON)"** untuk pelaporan bug teknis.
+
+### 3. Proxy Streaming Lokal Tanpa Buffering (`src/lib/stream-proxy.server.ts`)
+
+- **Forwarding HTTP Range Request**: Mendukung penuh potongan byte acak (`Range: bytes=X-Y`) sehingga fitur seek, pause, dan resume pada file video besar (>500MB) berjalan lancar.
+- **Zero In-Memory Buffering**: Meneruskan stream byte secara langsung sebagai `ReadableStream` ke peramban tanpa membebani memori server.
+- **Bypass CORS & Proteksi SSRF**: Menginjeksi header `Access-Control-Allow-Origin: *` sembari memblokir akses ke host privat/internal.
+
+### 4. Pengunduh Segmen Range HTTP & Penyimpanan Offline (`src/lib/download-manager.ts`)
+
+- **Segmented Range Requests (RFC 7233)**: Memecah file video besar (>500MB) menjadi blok-blok segmen 2MB yang diunduh secara independen melalui proxy streaming.
+- **Jeda & Lanjutkan (Pause & Resume)**: Karena setiap segmen byte tersimpan bertahap ke IndexedDB (`task_chunks`), pengunduhan dapat dijeda dan dilanjutkan kapan saja tanpa harus mengulang dari 0%.
+- **Penyimpanan Lokal IndexedDB**: Segmen yang selesai diunduh dirakit menjadi objek `Blob` terpadu dan disimpan dalam object store `offline_episodes` untuk pemutaran bebas kuota.
+- **Pemutar Video Offline Bawaan (`OfflinePlayerModal`)**: Memutar file hasil unduhan langsung melalui Blob URL dengan kendali kecepatan putar (0.75x–2x), mode bioskop, dan opsi ekspor file MP4 ke disk komputer/ponsel.
+- **Download Manager Dialog (`DownloadManagerModal`) & Rute `/download`**: Antarmuka terpadu untuk memantau progress bar riil, estimasi waktu (ETA), kecepatan (MB/s), serta sisa ruang penyimpanan perangkat.
+
+---
+
 ## // Fitur Utama & Fungsionalitas
 
-| Kategori           | Fitur                                 | Penjelasan Teknis                                                                                                                                               |
-| :----------------- | :------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Pencarian**      | **Spotlight Search (`Ctrl+K` / `/`)** | Modal pencarian cepat dengan filter status, tahun rilis, dan genre, serta navigasi pintasan keyboard instan.                                                    |
-| **Pemutar Video**  | **Watch Enhancements**                | Pencahayaan dinamis bioskop (_Ambient Light_), Timer Mati Otomatis (_Sleep Timer_ 15–60 menit), Mode Bioskop (_Theater_), dan tombol loncat episode berikutnya. |
-| **Koleksi**        | **Watchlist Manajemen Penuh**         | Pengelompokan status (Rencana Tonton, Sedang Nonton, Selesai Ditonton), rating personal, catatan episode, serta fitur **Ekspor & Impor Cadangan JSON**.         |
-| **Riwayat**        | **Statistik Tontonan**                | Perhitungan otomatis total episode yang diselesaikan, estimasi durasi tontonan, dan pencarian riwayat berbasis kata kunci.                                      |
-| **Pratinjau**      | **Quick Preview Modal**               | Menampilkan sinopsis, skor, status, dan tombol aksi cepat tanpa perlu memuat halaman detail anime.                                                              |
-| **Katalog**        | **Hero & Trending Slider**            | Showcase visual dinamis berkecepatan tinggi dengan navigasi responsif dan indikator radar tayang langsung.                                                      |
-| **Jadwal & Genre** | **Direktori Komprehensif**            | Jadwal rilis mingguan terstruktur per hari serta indeks kategori genre lengkap.                                                                                 |
-| **Notifikasi**     | **Web Push Native**                   | Berlangganan pengingat rilis episode anime favorit langsung ke peramban tanpa memerlukan akun pengguna.                                                         |
-| **PWA**            | **Aksesibilitas PWA**                 | Kemampuan instalasi sebagai aplikasi mandiri di perangkat seluler dan desktop dengan dukungan offline state view.                                               |
+| Kategori           | Fitur                                 | Penjelasan Teknis                                                                                                                                                      |
+| :----------------- | :------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pencarian**      | **Spotlight Search (`Ctrl+K` / `/`)** | Modal pencarian cepat dengan filter status, tahun rilis, dan genre, serta navigasi pintasan keyboard instan.                                                           |
+| **Pemutar Video**  | **Watch Enhancements**                | Pencahayaan dinamis bioskop (_Ambient Light_), Timer Mati Otomatis (_Sleep Timer_ 15–60 menit), Mode Bioskop (_Theater_), dan tombol loncat episode berikutnya.        |
+| **Pemutar Video**  | **Automated Failover Layer**          | Deteksi kegagalan playback otomatis (error media, stall timeout, upstream blokir) dan peralihan otomatis ke server cadangan berikutnya tanpa intervensi manual.        |
+| **Pemutar Video**  | **Stream Diagnostic Overlay (HUD)**   | Panel diagnostik live: pemantauan sumber streaming aktif, validasi `Content-Type`, verifikasi status `HTTP Range Request (RFC 7233)`, latensi ping, dan buffer health. |
+| **Unduhan**        | **Segmented Range Downloader**        | Pengunduh file video besar per blok segmen 2MB via `HTTP Range (RFC 7233)` dengan fitur jeda (pause), lanjutkan (resume), dan perhitungan kecepatan transfer riil.     |
+| **Penyimpanan**    | **Koleksi Offline (IndexedDB)**       | Penyimpanan episode anime langsung ke memori lokal peramban untuk pemutaran offline 100% tanpa kuota internet dengan pemutar video bawaan & ekspor file.               |
+| **Koleksi**        | **Watchlist Manajemen Penuh**         | Pengelompokan status (Rencana Tonton, Sedang Nonton, Selesai Ditonton), rating personal, catatan episode, serta fitur **Ekspor & Impor Cadangan JSON**.                |
+| **Riwayat**        | **Statistik Tontonan**                | Perhitungan otomatis total episode yang diselesaikan, estimasi durasi tontonan, dan pencarian riwayat berbasis kata kunci.                                             |
+| **Pratinjau**      | **Quick Preview Modal**               | Menampilkan sinopsis, skor, status, dan tombol aksi cepat tanpa perlu memuat halaman detail anime.                                                                     |
+| **Katalog**        | **Hero & Trending Slider**            | Showcase visual dinamis berkecepatan tinggi dengan navigasi responsif dan indikator radar tayang langsung.                                                             |
+| **Jadwal & Genre** | **Direktori Komprehensif**            | Jadwal rilis mingguan terstruktur per hari serta indeks kategori genre lengkap.                                                                                        |
+| **Notifikasi**     | **Web Push Native**                   | Berlangganan pengingat rilis episode anime favorit langsung ke peramban tanpa memerlukan akun pengguna.                                                                |
+| **PWA**            | **Aksesibilitas PWA**                 | Kemampuan instalasi sebagai aplikasi mandiri di perangkat seluler dan desktop dengan dukungan offline state view.                                                      |
 
 ---
 

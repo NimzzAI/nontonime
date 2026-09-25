@@ -18,6 +18,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Dices,
+  DownloadCloud,
   Flame,
   History,
   Home,
@@ -33,6 +34,9 @@ import {
   User as UserIcon,
   X,
 } from "lucide-react";
+import { DownloadManagerModal } from "./DownloadManagerModal";
+import { getActiveTasks, getOfflineEpisodes } from "@/lib/download-manager";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   to: string;
@@ -72,6 +76,31 @@ export function SiteHeader() {
   const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [gamification, setGamification] = useState<UserGamification>(readGamification());
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const [activeDownloadsCount, setActiveDownloadsCount] = useState(0);
+  const [offlineCount, setOfflineCount] = useState(0);
+
+  useEffect(() => {
+    const syncDownloads = async () => {
+      try {
+        const running = getActiveTasks().filter((t) => t.status === "downloading");
+        setActiveDownloadsCount(running.length);
+        const saved = await getOfflineEpisodes();
+        setOfflineCount(saved.length);
+      } catch {
+        // no-op
+      }
+    };
+    syncDownloads();
+    window.addEventListener("nonton-downloads-updated", syncDownloads);
+    const handleOpenDownloads = () => setDownloadModalOpen(true);
+    window.addEventListener("open-download-manager", handleOpenDownloads);
+
+    return () => {
+      window.removeEventListener("nonton-downloads-updated", syncDownloads);
+      window.removeEventListener("open-download-manager", handleOpenDownloads);
+    };
+  }, []);
 
   useEffect(() => {
     const updateCount = () => {
@@ -379,6 +408,32 @@ export function SiteHeader() {
             {/* Theme Toggle */}
             <ThemeToggle />
 
+            {/* Download Manager Quick Button */}
+            <button
+              type="button"
+              id="header-downloads-btn"
+              onClick={() => setDownloadModalOpen(true)}
+              title="Download Manager & Koleksi Offline"
+              aria-label="Download Manager"
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-secondary/40 text-foreground transition-colors hover:bg-secondary cursor-pointer"
+            >
+              <DownloadCloud
+                className={cn(
+                  "h-4 w-4",
+                  activeDownloadsCount > 0 ? "text-primary animate-bounce" : "text-foreground",
+                )}
+              />
+              {activeDownloadsCount > 0 ? (
+                <span className="absolute -top-1 -right-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-black text-primary-foreground shadow-xs animate-pulse">
+                  {activeDownloadsCount}
+                </span>
+              ) : offlineCount > 0 ? (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/90 px-1 text-[8px] font-bold text-white shadow-xs">
+                  {offlineCount}
+                </span>
+              ) : null}
+            </button>
+
             {/* Notification Bell Button */}
             <button
               type="button"
@@ -677,6 +732,12 @@ export function SiteHeader() {
 
       {/* Notifications & Site Updates Modal */}
       <NotificationsModal open={notificationsModalOpen} onOpenChange={setNotificationsModalOpen} />
+
+      {/* Download Manager & Offline Library Modal */}
+      <DownloadManagerModal
+        isOpen={downloadModalOpen}
+        onClose={() => setDownloadModalOpen(false)}
+      />
     </>
   );
 }

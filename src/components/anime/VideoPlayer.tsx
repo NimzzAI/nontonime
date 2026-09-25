@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import videojs from "video.js";
 import type Player from "video.js/dist/types/player";
 import "video.js/dist/video-js.css";
@@ -17,10 +17,14 @@ import {
   FastForward,
   Server,
   Zap,
-  Info,
   Radio,
+  Activity,
+  ArrowRight,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StreamDiagnosticOverlay, type DiagnosticData } from "./StreamDiagnosticOverlay";
 
 export interface NextEpisodeMeta {
   id: string;
@@ -34,12 +38,19 @@ export interface StreamServerOption {
   href?: string;
 }
 
-export function isDirectSource(url: string): boolean {
+export interface FailedServerLog {
+  id: string;
+  title: string;
+  reason?: string;
+  timestamp: number;
+}
+
+function isDirectSource(url: string): boolean {
   if (!url) return false;
   return /\.(m3u8|mp4|webm|mkv)(\?|$)/i.test(url) || url.startsWith("/api/stream-proxy");
 }
 
-export function isMegaSource(url: string): boolean {
+function isMegaSource(url: string): boolean {
   if (!url) return false;
   return /mega\.(nz|io)\/(embed|file)\//i.test(url);
 }
@@ -64,7 +75,7 @@ function formatIframeAutoplayUrl(url: string, shouldAutoplay: boolean): string {
 }
 
 /**
- * Native HTML5 / Video.js Player with automatic Streaming Proxy Fallback & HTTP Range Request support.
+ * Native HTML5 / Video.js Player with HTTP Range Request support & Live Metrics Reporting.
  */
 function NativePlayer({
   src,
@@ -76,6 +87,10 @@ function NativePlayer({
   servers = [],
   activeServerId,
   onSelectServer,
+  onMetricsUpdate,
+  onErrorDetected,
+  useProxy,
+  onToggleProxy,
 }: {
   src: string;
   onEnded?: () => void;
@@ -86,13 +101,23 @@ function NativePlayer({
   servers?: StreamServerOption[];
   activeServerId?: string | null;
   onSelectServer?: (serverId: string) => void;
+  onMetricsUpdate?: (metrics: {
+    currentTime: number;
+    duration: number;
+    bufferedAhead: number;
+    videoWidth: number;
+    videoHeight: number;
+    playerState: "playing" | "paused" | "buffering" | "error" | "idle";
+  }) => void;
+  onErrorDetected?: (errorMsg: string) => void;
+  useProxy: boolean;
+  onToggleProxy: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<Player | null>(null);
   const endedFiredRef = useRef(false);
   const stallTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const [useProxy, setUseProxy] = useState(false);
   const [isMutedAutoplay, setIsMutedAutoplay] = useState(false);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
   const [playbackError, setPlaybackError] = useState<{ code?: number; message: string } | null>(
@@ -100,7 +125,6 @@ function NativePlayer({
   );
   const playbackErrorRef = useRef(playbackError);
   playbackErrorRef.current = playbackError;
-  const [isBuffering, setIsBuffering] = useState(true);
 
   // Active playback source (switches between direct and backend streaming proxy)
   const activeSourceUrl = useMemo(() => {
@@ -116,7 +140,6 @@ function NativePlayer({
     setIsMutedAutoplay(false);
     setAutoplayFailed(false);
     setPlaybackError(null);
-    setIsBuffering(true);
   }, [src]);
 
   useEffect(() => {
@@ -166,55 +189,119 @@ function NativePlayer({
       }
     });
 
-    // 3. Backup threshold monitor
+    // Helper to calculate buffered ahead seconds
+    const getBufferedAhead = (p: Player): number => {
+      try {
+        const cur = p.currentTime() || 0;
+        const buf = p.buffered();
+        if (buf && buf.length > 0) {
+          for (let i = 0; i < buf.length; i++) {
+            if (buf.start(i) <= cur && cur <= buf.end(i)) {
+              return Math.max(0, buf.end(i) - cur);
+            }
+          }
+        }
+      } catch {
+        // no-op
+      }
+      return 0;
+    };
+
+    // 3. Timeupdate & Live metrics reporting
     player.on("timeupdate", () => {
-      const dur = player.duration();
-      const cur = player.currentTime();
+      const dur = player.duration() || 0;
+      const cur = player.currentTime() || 0;
       if (dur > 5 && cur >= dur - 0.35) {
         fireEnded();
       }
+
+      onMetricsUpdate?.({
+        currentTime: cur,
+        duration: dur,
+        bufferedAhead: getBufferedAhead(player),
+        videoWidth: player.videoWidth() || 0,
+        videoHeight: player.videoHeight() || 0,
+        playerState: player.paused() ? "paused" : "playing",
+      });
     });
 
     // Buffering & Stall Monitoring
     player.on("waiting", () => {
-      setIsBuffering(true);
+      onMetricsUpdate?.({
+        currentTime: player.currentTime() || 0,
+        duration: player.duration() || 0,
+        bufferedAhead: getBufferedAhead(player),
+        videoWidth: player.videoWidth() || 0,
+        videoHeight: player.videoHeight() || 0,
+        playerState: "buffering",
+      });
+
       if (stallTimeoutRef.current) clearTimeout(stallTimeoutRef.current);
       stallTimeoutRef.current = setTimeout(() => {
-        // If stalled for over 12s on direct source, try auto-fallback to proxy
+        // If stalled for over 10s on direct source, try auto-fallback to proxy first
         if (!useProxy && !playbackErrorRef.current) {
           console.warn("Direct stream stalled, attempting automatic proxy fallback...");
-          setUseProxy(true);
+          onToggleProxy();
+        } else if (useProxy && !playbackErrorRef.current) {
+          // If already on proxy and still stalled for 10s, report error for automated failover
+          const msg = "Buffer macet berkepanjangan (stalled >10 detik) pada server ini.";
+          setPlaybackError({ code: 2, message: msg });
+          onErrorDetected?.(msg);
         }
-      }, 12000);
+      }, 10000);
     });
 
     player.on("playing", () => {
-      setIsBuffering(false);
       setPlaybackError(null);
       if (stallTimeoutRef.current) clearTimeout(stallTimeoutRef.current);
+      onMetricsUpdate?.({
+        currentTime: player.currentTime() || 0,
+        duration: player.duration() || 0,
+        bufferedAhead: getBufferedAhead(player),
+        videoWidth: player.videoWidth() || 0,
+        videoHeight: player.videoHeight() || 0,
+        playerState: "playing",
+      });
     });
 
-    player.on("canplay", () => {
-      setIsBuffering(false);
+    player.on("pause", () => {
+      onMetricsUpdate?.({
+        currentTime: player.currentTime() || 0,
+        duration: player.duration() || 0,
+        bufferedAhead: getBufferedAhead(player),
+        videoWidth: player.videoWidth() || 0,
+        videoHeight: player.videoHeight() || 0,
+        playerState: "paused",
+      });
     });
 
-    // Error handling with automatic fallback to Backend Streaming Proxy
+    // Error handling with automated fallback and notification
     player.on("error", () => {
       const err = player.error();
-      console.warn("Video playback error encountered:", err);
+      const errDetail =
+        err?.message ||
+        `Kesalahan media (Kode: ${err?.code || "Unknown"}) - Koneksi upstream ditolak`;
+      console.warn("Video playback error encountered:", errDetail);
 
       if (!useProxy) {
-        // Auto-switch to backend streaming proxy (supports HTTP Range requests & handles CORS)
+        // Step 1: seamless auto-switch to local streaming proxy first
         console.info("Direct playback failed. Switching seamlessly to Local Streaming Proxy...");
-        setUseProxy(true);
+        onToggleProxy();
       } else {
-        // If proxy also failed, present clear diagnostic to user with server switcher
+        // Step 2: Proxy also failed -> notify outer layer for automated server failover!
         setPlaybackError({
           code: err?.code,
-          message:
-            err?.message ||
-            "Server streaming ini menolak koneksi atau tidak kompatibel dengan browser. Silakan coba server lain.",
+          message: errDetail,
         });
+        onMetricsUpdate?.({
+          currentTime: player.currentTime() || 0,
+          duration: player.duration() || 0,
+          bufferedAhead: 0,
+          videoWidth: player.videoWidth() || 0,
+          videoHeight: player.videoHeight() || 0,
+          playerState: "error",
+        });
+        onErrorDetected?.(errDetail);
       }
     });
 
@@ -253,7 +340,15 @@ function NativePlayer({
       player.dispose();
       playerRef.current = null;
     };
-  }, [activeSourceUrl, autoPlay, onEnded, useProxy]);
+  }, [
+    activeSourceUrl,
+    autoPlay,
+    onEnded,
+    useProxy,
+    onMetricsUpdate,
+    onErrorDetected,
+    onToggleProxy,
+  ]);
 
   const handleUnmute = () => {
     if (playerRef.current) {
@@ -270,16 +365,6 @@ function NativePlayer({
       playerRef.current.volume(1);
       playerRef.current.play();
     }
-  };
-
-  const handleRetryWithProxy = () => {
-    setPlaybackError(null);
-    setUseProxy(true);
-  };
-
-  const handleRetryDirect = () => {
-    setPlaybackError(null);
-    setUseProxy(false);
   };
 
   return (
@@ -312,7 +397,7 @@ function NativePlayer({
         </div>
       )}
 
-      {/* Autoplay-Failed Fallback Overlay: "Next Episode" Play Button */}
+      {/* Autoplay-Failed Fallback Overlay */}
       {autoplayFailed && (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 backdrop-blur-xs p-4 text-center animate-in fade-in duration-200">
           <div className="rounded-2xl border border-white/20 bg-black/95 p-6 max-w-md w-full space-y-4 shadow-2xl">
@@ -331,8 +416,7 @@ function NativePlayer({
                   : "Episode Berikutnya"}
               </h4>
               <p className="text-xs text-muted-foreground">
-                Browser membatasi pemutaran otomatis. Klik tombol di bawah untuk melanjutkan
-                menonton.
+                Browser membatasi pemutaran otomatis. Klik tombol di bawah untuk melanjutkan.
               </p>
             </div>
 
@@ -360,100 +444,18 @@ function NativePlayer({
           </div>
         </div>
       )}
-
-      {/* Playback Error Overlay with Interactive Server Switcher */}
-      {playbackError && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xs p-4 sm:p-6 text-center animate-in fade-in duration-200">
-          <div className="rounded-2xl border border-destructive/40 bg-black/95 p-6 max-w-lg w-full space-y-4 shadow-2xl">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/20 text-destructive border border-destructive/30">
-              <AlertTriangle className="h-6 w-6" />
-            </div>
-
-            <div className="space-y-1.5">
-              <h4 className="font-display font-bold text-white text-base">
-                Kendala Pemutaran Server
-              </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {playbackError.message}
-              </p>
-            </div>
-
-            {/* Quick Actions: Retry with Proxy / Direct */}
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {!useProxy ? (
-                <button
-                  type="button"
-                  onClick={handleRetryWithProxy}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer shadow-sm"
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  Coba Lewat Proxy Lokal
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleRetryDirect}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Coba Stream Langsung
-                </button>
-              )}
-
-              <a
-                href={src}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Buka Stream Tab Baru
-              </a>
-            </div>
-
-            {/* Alternative Server Switcher directly inside Player */}
-            {servers.length > 0 && onSelectServer && (
-              <div className="pt-3 border-t border-white/15 space-y-2">
-                <p className="text-[11px] font-semibold text-muted-foreground flex items-center justify-center gap-1.5">
-                  <Server className="h-3.5 w-3.5 text-primary" />
-                  <span>Pilih server alternatif untuk melanjutkan:</span>
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-1.5">
-                  {servers.map((srv) => {
-                    const isCurrent = srv.serverId === activeServerId;
-                    return (
-                      <button
-                        key={srv.serverId}
-                        type="button"
-                        onClick={() => onSelectServer(srv.serverId)}
-                        className={cn(
-                          "rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
-                          isCurrent
-                            ? "bg-primary/30 text-primary border border-primary/50"
-                            : "bg-white/10 text-white hover:bg-primary hover:text-primary-foreground",
-                        )}
-                      >
-                        {srv.title}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 /**
  * Main VideoPlayer Component.
- * Supports:
- * 1. Direct HTML5 stream with Video.js (and backend Range proxy)
- * 2. MEGA.nz End-to-End client-decrypted embed with optimized sandbox and clear fallbacks
- * 3. Iframe Embed with Ad Shield
- * 4. Per-server error handling & instant server switching
+ *
+ * Features:
+ * 1. Automated Error-Handling Layer: Detects playback failures and automatically switches to the next available server URL.
+ * 2. Diagnostic Overlay: Displays active streaming source, content-type, HTTP range support, and buffer health.
+ * 3. Local HTTP Range Proxy Fallback for zero-buffering seeking.
+ * 4. MEGA Client-side decrypted embed with sandbox protection.
  */
 export function VideoPlayer({
   src,
@@ -470,6 +472,11 @@ export function VideoPlayer({
   activeServerTitle,
   onSelectServer,
   isResolvingServer = false,
+  autoFailoverEnabled = true,
+  onToggleAutoFailover,
+  failedServerList = [],
+  onRecordFailedServer,
+  onResetFailedServers,
 }: {
   src: string | null;
   onToggleTheater?: () => void;
@@ -485,14 +492,65 @@ export function VideoPlayer({
   activeServerTitle?: string;
   onSelectServer?: (serverId: string) => void;
   isResolvingServer?: boolean;
+  autoFailoverEnabled?: boolean;
+  onToggleAutoFailover?: () => void;
+  failedServerList?: FailedServerLog[];
+  onRecordFailedServer?: (serverId: string, reason?: string) => void;
+  onResetFailedServers?: () => void;
 }) {
   const [hasError, setHasError] = useState(false);
   const [adShieldActive, setAdShieldActive] = useState(true);
   const [proxyEnabled, setProxyEnabled] = useState(false);
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
 
+  // Automated Failover State
+  const [autoFailoverState, setAutoFailoverState] = useState<{
+    isTriggering: boolean;
+    nextServerId: string | null;
+    nextServerTitle: string | null;
+    countdownSec: number;
+    reason: string;
+  } | null>(null);
+
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Live Metrics State for Diagnostic HUD
+  const [metrics, setMetrics] = useState<{
+    currentTime: number;
+    duration: number;
+    bufferedAhead: number;
+    videoWidth: number;
+    videoHeight: number;
+    playerState: "playing" | "paused" | "buffering" | "error" | "idle";
+  }>({
+    currentTime: 0,
+    duration: 0,
+    bufferedAhead: 0,
+    videoWidth: 0,
+    videoHeight: 0,
+    playerState: "idle",
+  });
+
+  const clearFailoverCountdown = useCallback(() => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setAutoFailoverState(null);
+  }, []);
+
+  // Reset error states when server/src changes
   useEffect(() => {
     setHasError(false);
-  }, [src]);
+    clearFailoverCountdown();
+  }, [src, activeServerId, clearFailoverCountdown]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    };
+  }, []);
 
   // Listen for iframe postMessage player events (ended, completed)
   useEffect(() => {
@@ -520,9 +578,138 @@ export function VideoPlayer({
   const isMega = src ? isMegaSource(src) : false;
   const iframeSrc = src ? formatIframeAutoplayUrl(src, autoPlay) : "";
 
+  // Helper: Find next unfailed server in the available server list
+  const findNextAvailableServer = useCallback((): StreamServerOption | null => {
+    if (!servers || servers.length === 0) return null;
+    const failedIds = new Set(failedServerList.map((f) => f.id));
+    if (activeServerId) {
+      failedIds.add(activeServerId);
+    }
+
+    // Try finding next server sequentially after current server index
+    const currentIndex = servers.findIndex((s) => s.serverId === activeServerId);
+    if (currentIndex >= 0) {
+      for (let i = currentIndex + 1; i < servers.length; i++) {
+        if (!failedIds.has(servers[i].serverId)) {
+          return servers[i];
+        }
+      }
+      for (let i = 0; i < currentIndex; i++) {
+        if (!failedIds.has(servers[i].serverId)) {
+          return servers[i];
+        }
+      }
+    } else {
+      for (const s of servers) {
+        if (!failedIds.has(s.serverId)) {
+          return s;
+        }
+      }
+    }
+    return null;
+  }, [servers, failedServerList, activeServerId]);
+
+  // Core Automated Error-Handling Layer
+  const triggerAutomatedFailover = useCallback(
+    (reason: string) => {
+      setHasError(true);
+      if (activeServerId) {
+        onRecordFailedServer?.(activeServerId, reason);
+      }
+
+      if (!autoFailoverEnabled || !onSelectServer) {
+        return;
+      }
+
+      const next = findNextAvailableServer();
+      if (!next) {
+        // All servers exhausted!
+        console.warn("Automated failover: All available servers have failed.");
+        setAutoFailoverState(null);
+        return;
+      }
+
+      console.info(
+        `Automated failover triggered: ${activeServerTitle || "Server"} failed. Auto-switching to next server: ${next.title}...`,
+      );
+
+      // Start seamless 2.5s countdown before switching
+      let count = 2;
+      setAutoFailoverState({
+        isTriggering: true,
+        nextServerId: next.serverId,
+        nextServerTitle: next.title,
+        countdownSec: count,
+        reason,
+      });
+
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = setInterval(() => {
+        count -= 1;
+        if (count <= 0) {
+          if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+          setAutoFailoverState(null);
+          setHasError(false);
+          onSelectServer(next.serverId);
+        } else {
+          setAutoFailoverState((prev) => (prev ? { ...prev, countdownSec: count } : null));
+        }
+      }, 1000);
+    },
+    [
+      activeServerId,
+      activeServerTitle,
+      autoFailoverEnabled,
+      findNextAvailableServer,
+      onRecordFailedServer,
+      onSelectServer,
+    ],
+  );
+
+  const handleExecuteImmediateSwitch = () => {
+    if (autoFailoverState?.nextServerId && onSelectServer) {
+      const nextId = autoFailoverState.nextServerId;
+      clearFailoverCountdown();
+      setHasError(false);
+      onSelectServer(nextId);
+    }
+  };
+
+  const handleCancelFailover = () => {
+    clearFailoverCountdown();
+  };
+
+  const currentServerIndex = servers.findIndex((s) => s.serverId === activeServerId);
+
+  // Diagnostic Payload
+  const diagnosticData: DiagnosticData = {
+    url: src || "",
+    sourceMode: proxyEnabled ? "proxy" : isDirect ? "direct" : isMega ? "mega" : "iframe",
+    serverTitle: activeServerTitle || "Server Utama",
+    serverId: activeServerId,
+    serverIndex: currentServerIndex >= 0 ? currentServerIndex : 0,
+    totalServers: servers.length,
+    currentTime: metrics.currentTime,
+    duration: metrics.duration,
+    bufferedAhead: metrics.bufferedAhead,
+    videoWidth: metrics.videoWidth,
+    videoHeight: metrics.videoHeight,
+    playerState: metrics.playerState,
+    errorMessage: hasError ? "Koneksi stream ditolak atau gagal memuat" : null,
+    autoFailoverEnabled,
+    failedServers: failedServerList,
+  };
+
+  const allServersFailed =
+    servers.length > 0 &&
+    failedServerList.length >= servers.length &&
+    Boolean(activeServerId && failedServerList.some((f) => f.id === activeServerId));
+
   return (
     <div className="space-y-2">
       <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border/80 bg-black shadow-2xl">
+        {/* Loading Screen */}
         {isLoading || isResolvingServer || !src ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground bg-black/90 p-4 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -534,10 +721,11 @@ export function VideoPlayer({
                   : "Memilih server terbaik..."}
             </span>
             <p className="text-[11px] text-muted-foreground max-w-xs">
-              Mempersiapkan jalur streaming dan kompatibilitas peramban...
+              Mempersiapkan jalur streaming dan verifikasi failover otomatis...
             </p>
           </div>
         ) : isDirect ? (
+          /* Native Player (HTML5 / Video.js) */
           <NativePlayer
             src={proxyEnabled ? getProxiedStreamUrl(src) : src}
             onEnded={onEnded}
@@ -548,11 +736,14 @@ export function VideoPlayer({
             servers={servers}
             activeServerId={activeServerId}
             onSelectServer={onSelectServer}
+            onMetricsUpdate={setMetrics}
+            onErrorDetected={(reason) => triggerAutomatedFailover(reason)}
+            useProxy={proxyEnabled}
+            onToggleProxy={() => setProxyEnabled((prev) => !prev)}
           />
         ) : isMega ? (
-          /* Specialized MEGA.nz Embed Player with Client-Side Decryption Support */
+          /* MEGA Encrypted Player with Client-side Decryption */
           <div className="relative h-full w-full bg-black">
-            {/* Top helper notification bar for MEGA */}
             <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-black/85 backdrop-blur-md border border-white/20 px-3 py-1.5 text-xs text-white shadow-xl">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
@@ -582,74 +773,11 @@ export function VideoPlayer({
               allow="autoplay; encrypted-media; fullscreen"
               referrerPolicy="origin"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-presentation"
-              onError={() => setHasError(true)}
+              onError={() => triggerAutomatedFailover("Server MEGA menolak memuat iframe")}
             />
           </div>
-        ) : hasError ? (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground bg-black/95">
-            <AlertTriangle className="h-10 w-10 text-amber-500" />
-            <div className="space-y-1 max-w-md">
-              <h4 className="font-display font-bold text-white text-sm">
-                Server Menolak Koneksi Pemutaran
-              </h4>
-              <p className="text-xs text-muted-foreground">
-                Server ini memiliki proteksi frame atau sedang mengalami gangguan dari penyedia.
-              </p>
-            </div>
-
-            {/* Quick Server Switcher in Error State */}
-            {servers.length > 0 && onSelectServer && (
-              <div className="w-full max-w-sm space-y-2 pt-1 border-t border-white/10">
-                <p className="text-[11px] font-semibold text-white/90">
-                  Ganti ke Server Alternatif:
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-1.5">
-                  {servers.map((srv) => (
-                    <button
-                      key={srv.serverId}
-                      type="button"
-                      onClick={() => {
-                        setHasError(false);
-                        onSelectServer(srv.serverId);
-                      }}
-                      className={cn(
-                        "rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
-                        srv.serverId === activeServerId
-                          ? "bg-primary/25 text-primary border border-primary/40"
-                          : "bg-white/10 text-white hover:bg-primary hover:text-primary-foreground",
-                      )}
-                    >
-                      {srv.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setAdShieldActive(false);
-                  setHasError(false);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-accent cursor-pointer"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Muat Ulang
-              </button>
-              <a
-                href={src}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Buka Stream di Tab Baru
-              </a>
-            </div>
-          </div>
         ) : (
+          /* Standard Embed Player with Ad Shield */
           <iframe
             key={`${iframeSrc}-${adShieldActive}`}
             src={iframeSrc}
@@ -663,26 +791,209 @@ export function VideoPlayer({
                 ? "allow-scripts allow-same-origin allow-forms allow-presentation"
                 : undefined
             }
-            onError={() => setHasError(true)}
+            onError={() => triggerAutomatedFailover("Server Embed menolak koneksi frame")}
           />
         )}
+
+        {/* AUTOMATED FAILOVER COUNTDOWN OVERLAY BANNER */}
+        {autoFailoverState?.isTriggering && (
+          <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between gap-2 rounded-2xl bg-black/90 backdrop-blur-md border border-primary/50 p-3 text-white shadow-2xl animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 text-primary border border-primary/30 shrink-0">
+                <Server className="h-5 w-5 animate-pulse" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs text-white">
+                    Mengalihkan Otomatis ke: {autoFailoverState.nextServerTitle}
+                  </span>
+                  <span className="rounded-full bg-primary/25 border border-primary/40 px-2 py-0.2 text-[10px] font-bold text-primary">
+                    {autoFailoverState.countdownSec}s
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate max-w-xs sm:max-w-md">
+                  Server {activeServerTitle || "saat ini"} mengalami kendala. Mengalihkan tanpa
+                  intervensi manual...
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleExecuteImmediateSwitch}
+                className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition cursor-pointer shadow-sm"
+              >
+                <span>Beralih Sekarang</span>
+                <ArrowRight className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelFailover}
+                className="rounded-xl border border-white/20 bg-white/10 p-1.5 text-white/80 hover:text-white hover:bg-white/20 transition cursor-pointer"
+                title="Batalkan peralihan otomatis"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ALL SERVERS FAILED OR PLAYBACK HALTED ERROR CARD */}
+        {hasError && !autoFailoverState?.isTriggering && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xs p-4 sm:p-6 text-center animate-in fade-in duration-200">
+            <div className="rounded-2xl border border-destructive/40 bg-black/95 p-6 max-w-lg w-full space-y-4 shadow-2xl">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/20 text-destructive border border-destructive/30">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="font-display font-bold text-white text-base">
+                  {allServersFailed
+                    ? "Semua Server Telah Dicoba & Gagal"
+                    : "Kendala Pemutaran Server"}
+                </h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {allServersFailed
+                    ? "Sistem telah mencoba seluruh server video yang tersedia untuk episode ini namun semuanya ditolak atau tidak merespons."
+                    : "Server ini sedang mengalami gangguan dari penyedia. Anda dapat memilih server lain di bawah atau membuka diagnostik."}
+                </p>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {allServersFailed && onResetFailedServers && servers.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onResetFailedServers();
+                      setHasError(false);
+                      if (servers[0] && onSelectServer) {
+                        onSelectServer(servers[0].serverId);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition cursor-pointer shadow-sm"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Coba Ulang Semua Server
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasError(false);
+                      setProxyEnabled((prev) => !prev);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition cursor-pointer shadow-sm"
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    {proxyEnabled ? "Coba Stream Langsung" : "Coba Lewat Proxy Lokal"}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsDiagnosticOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition cursor-pointer"
+                >
+                  <Activity className="h-3.5 w-3.5 text-emerald-400" />
+                  Buka Diagnostik Stream
+                </button>
+
+                {src && (
+                  <a
+                    href={src}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Buka Tab Baru
+                  </a>
+                )}
+              </div>
+
+              {/* Alternative Server Grid Switcher */}
+              {servers.length > 0 && onSelectServer && (
+                <div className="pt-3 border-t border-white/15 space-y-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground flex items-center justify-center gap-1.5">
+                    <Server className="h-3.5 w-3.5 text-primary" />
+                    <span>Pilih server alternatif:</span>
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-1.5">
+                    {servers.map((srv) => {
+                      const isCurrent = srv.serverId === activeServerId;
+                      const hasFailed = failedServerList.some((f) => f.id === srv.serverId);
+                      return (
+                        <button
+                          key={srv.serverId}
+                          type="button"
+                          onClick={() => {
+                            setHasError(false);
+                            onSelectServer(srv.serverId);
+                          }}
+                          className={cn(
+                            "rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
+                            isCurrent
+                              ? "bg-primary/30 text-primary border border-primary/50"
+                              : hasFailed
+                                ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30"
+                                : "bg-white/10 text-white hover:bg-primary hover:text-primary-foreground",
+                          )}
+                        >
+                          <span>{srv.title}</span>
+                          {hasFailed && <span className="ml-1 text-[9px] opacity-70">(Gagal)</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* REAL-TIME DIAGNOSTIC OVERLAY MODAL */}
+        <StreamDiagnosticOverlay
+          isOpen={isDiagnosticOpen}
+          onClose={() => setIsDiagnosticOpen(false)}
+          data={diagnosticData}
+          isProxyActive={proxyEnabled}
+          onToggleProxy={() => setProxyEnabled((prev) => !prev)}
+          onToggleAutoFailover={onToggleAutoFailover}
+          onRetryCurrentServer={() => {
+            setHasError(false);
+            if (activeServerId && onSelectServer) {
+              onSelectServer(activeServerId);
+            }
+          }}
+          onSwitchToNextServer={() => {
+            const next = findNextAvailableServer();
+            if (next && onSelectServer) {
+              setHasError(false);
+              onSelectServer(next.serverId);
+            }
+          }}
+        />
       </div>
 
+      {/* Control & Indicator Toolbar Beneath Player */}
       {src ? (
         <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
           <div className="flex flex-wrap items-center gap-3">
+            {/* Status Dot & Stream Mode */}
             <span className="flex items-center gap-1.5 font-medium text-emerald-500">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               {isDirect
                 ? proxyEnabled
-                  ? "Stream Proxy Lokal (Anti-Blokir Range)"
-                  : "Stream Langsung (Native HD)"
+                  ? "Proxy Lokal (HTTP Range RFC 7233)"
+                  : "Stream Native HD (Direct)"
                 : isMega
                   ? "MEGA Encrypted Stream"
-                  : "Streaming Embed Siap"}
+                  : "Embed Stream Siap"}
             </span>
 
-            {/* Direct Proxy Toggle (gives user full control) */}
+            {/* Direct Proxy Toggle */}
             {isDirect && (
               <button
                 type="button"
@@ -704,7 +1015,25 @@ export function VideoPlayer({
               </button>
             )}
 
-            {/* Ad Shield Toggle Indicator for iframes */}
+            {/* Auto-Failover Status Badge */}
+            {onToggleAutoFailover && (
+              <button
+                type="button"
+                onClick={onToggleAutoFailover}
+                title="Lapisan penanganan error otomatis: Otomatis berpindah ke server berikutnya jika playback gagal tanpa intervensi manual"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
+                  autoFailoverEnabled
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                    : "bg-muted text-muted-foreground hover:bg-accent",
+                )}
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                <span>Auto-Failover: {autoFailoverEnabled ? "On" : "Off"}</span>
+              </button>
+            )}
+
+            {/* Ad Shield Toggle for Iframes */}
             {!isDirect && !isMega && (
               <button
                 type="button"
@@ -737,6 +1066,22 @@ export function VideoPlayer({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* DIAGNOSTIC OVERLAY TOGGLE BUTTON */}
+            <button
+              type="button"
+              onClick={() => setIsDiagnosticOpen((prev) => !prev)}
+              title="Buka panel diagnostik stream: Memantau sumber aktif, content-type, HTTP Range, latensi, dan riwayat failover"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-card-foreground transition cursor-pointer",
+                isDiagnosticOpen
+                  ? "border-primary bg-primary/20 text-primary font-bold"
+                  : "border-border bg-card hover:bg-accent",
+              )}
+            >
+              <Activity className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Diagnostik</span>
+            </button>
+
             {onToggleTheater ? (
               <button
                 type="button"
@@ -748,9 +1093,10 @@ export function VideoPlayer({
                 ) : (
                   <Maximize className="h-3.5 w-3.5" />
                 )}
-                {isTheater ? "Tampilan Normal" : "Mode Bioskop"}
+                {isTheater ? "Normal" : "Bioskop"}
               </button>
             ) : null}
+
             <a
               href={src}
               target="_blank"
@@ -758,7 +1104,7 @@ export function VideoPlayer({
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-card-foreground transition hover:bg-accent hover:text-primary"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              Buka di Tab Baru
+              Buka Tab Baru
             </a>
           </div>
         </div>
