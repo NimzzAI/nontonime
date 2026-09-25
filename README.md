@@ -24,16 +24,18 @@ Platform streaming anime subtitle Indonesia modern — cepat, tanpa iklan mengga
 
 **nontonime** adalah aplikasi web generasi baru untuk menonton anime berbahasa Indonesia yang dirancang dengan arsitektur modern berbasis TanStack Start (React 19 SSR) dan Nitro Engine. Aplikasi ini memadukan desain visual sinematik dengan efisiensi eksekusi tinggi, privasi lokal penuh, dan tanpa beban pelacakan atau registrasi akun.
 
-Seluruh data anime, jadwal rilis harian, direktori genre, hingga resolusi multi-server diintegrasikan secara *server-side* melalui Sanka API Proxy dengan lapisan proteksi WAF, failover cadangan, dan konfigurasi IP kustom.
+Seluruh data anime, jadwal rilis harian, direktori genre, hingga resolusi multi-server diintegrasikan secara _server-side_ melalui Sanka API Proxy dengan lapisan proteksi WAF, failover cadangan, dan konfigurasi IP kustom.
 
 ---
 
 ## // Penanganan Error 403 Forbidden di Vercel & Rotasi IP
 
 ### [+] Penyebab Utama Error 403
+
 Saat melakukan deployment ke **Vercel**, serverless function Vercel menggunakan IP range datacenter (AWS/GCP edge) yang sering kali teridentifikasi sebagai bot dan otomatis diblokir oleh Cloudflare WAF pada host upstream (`sankavollerei.web.id`).
 
 ### [+] Solusi: Konfigurasi Environment Variable `SANKA_API_BASE`
+
 Lapisan server `src/lib/animein.server.ts` telah dilengkapi mekanisme **Dynamic Base URL** dan **Automatic Fallback**. Anda dapat mengganti IP atau domain proxy langsung tanpa perlu menyunting kode sumber.
 
 Tambahkan variabel berikut pada menu **Settings -> Environment Variables** di dashboard Vercel Anda:
@@ -47,6 +49,7 @@ SANKA_API_FALLBACK=https://www.sankavollerei.web.id/anime
 ```
 
 ### [+] Cara Membuat Cloudflare Worker Reverse Proxy (Gratis & Cepat)
+
 Jika Anda tidak memiliki VPS, buat Cloudflare Worker sederhana untuk meneruskan request ke API Sanka:
 
 ```javascript
@@ -56,7 +59,10 @@ export default {
     const targetUrl = "https://www.sankavollerei.web.id" + url.pathname + url.search;
 
     const modifiedHeaders = new Headers(request.headers);
-    modifiedHeaders.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+    modifiedHeaders.set(
+      "User-Agent",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    );
     modifiedHeaders.set("Referer", "https://www.sankavollerei.web.id/");
     modifiedHeaders.set("Origin", "https://www.sankavollerei.web.id");
 
@@ -76,7 +82,9 @@ export default {
   },
 };
 ```
+
 Setelah worker aktif (misal `https://sanka-proxy.worker-anda.workers.dev`), atur pada Vercel:
+
 ```env
 SANKA_API_BASE=https://sanka-proxy.worker-anda.workers.dev/anime
 ```
@@ -91,14 +99,14 @@ Untuk mengatasi keluhan beban memori dan lag pada peramban berdaya rendah ataupu
    - Menggantikan pembacaan berulang `localStorage.getItem` dan `JSON.parse` yang sebelumnya terpanggil puluhan kali per render kartu.
    - Menggunakan `Set<string>` terindeks untuk pengecekan status anime dalam waktu konstan $O(1)$.
 2. **Komponen Termemoisasi (`React.memo`)**
-   - `AnimeCard` dan `AnimeListRow` dibungkus dengan `memo` untuk mencegah siklus *re-render* massal saat status UI lokal berubah.
+   - `AnimeCard` dan `AnimeListRow` dibungkus dengan `memo` untuk mencegah siklus _re-render_ massal saat status UI lokal berubah.
 3. **Pemuatan Aset Asinkron (`decoding="async"` & `loading="lazy"`)**
-   - Menghilangkan *frame drops* saat menggulir (*scrolling*) katalog ratusan judul anime.
+   - Menghilangkan _frame drops_ saat menggulir (_scrolling_) katalog ratusan judul anime.
 4. **Optimasi Render Siklus & CPU (`HeroSlider` & `TrendingSlider`)**
-   - Event listener pengguliran di-*throttle* menggunakan `requestAnimationFrame`.
-   - Timer putar otomatis (*auto-slide*) dijeda saat tab berada di latar belakang (`document.hidden`) guna menghemat daya baterai dan memori CPU.
+   - Event listener pengguliran di-_throttle_ menggunakan `requestAnimationFrame`.
+   - Timer putar otomatis (_auto-slide_) dijeda saat tab berada di latar belakang (`document.hidden`) guna menghemat daya baterai dan memori CPU.
 5. **Konfigurasi Cache TanStack Query yang Terukur**
-   - `staleTime: 5 menit` dan `gcTime: 15 menit` dengan mematikan `refetchOnWindowFocus` yang tidak perlu, memangkas lonjakan *network waterfall* yang memicu lag.
+   - `staleTime: 5 menit` dan `gcTime: 15 menit` dengan mematikan `refetchOnWindowFocus` yang tidak perlu, memangkas lonjakan _network waterfall_ yang memicu lag.
 6. **Penghapusan FontAwesome CDN Eksternal**
    - Seluruh ikon dimigrasikan secara penuh ke pustaka ringan `lucide-react`, memotong dependensi stylesheet eksternal yang memblokir rendering awal halaman.
 
@@ -106,17 +114,17 @@ Untuk mengatasi keluhan beban memori dan lag pada peramban berdaya rendah ataupu
 
 ## // Fitur Utama & Fungsionalitas
 
-| Kategori | Fitur | Penjelasan Teknis |
-| :--- | :--- | :--- |
-| **Pencarian** | **Spotlight Search (`Ctrl+K` / `/`)** | Modal pencarian cepat dengan filter status, tahun rilis, dan genre, serta navigasi pintasan keyboard instan. |
-| **Pemutar Video** | **Watch Enhancements** | Pencahayaan dinamis bioskop (*Ambient Light*), Timer Mati Otomatis (*Sleep Timer* 15–60 menit), Mode Bioskop (*Theater*), dan tombol loncat episode berikutnya. |
-| **Koleksi** | **Watchlist Manajemen Penuh** | Pengelompokan status (Rencana Tonton, Sedang Nonton, Selesai Ditonton), rating personal, catatan episode, serta fitur **Ekspor & Impor Cadangan JSON**. |
-| **Riwayat** | **Statistik Tontonan** | Perhitungan otomatis total episode yang diselesaikan, estimasi durasi tontonan, dan pencarian riwayat berbasis kata kunci. |
-| **Pratinjau** | **Quick Preview Modal** | Menampilkan sinopsis, skor, status, dan tombol aksi cepat tanpa perlu memuat halaman detail anime. |
-| **Katalog** | **Hero & Trending Slider** | Showcase visual dinamis berkecepatan tinggi dengan navigasi responsif dan indikator radar tayang langsung. |
-| **Jadwal & Genre** | **Direktori Komprehensif** | Jadwal rilis mingguan terstruktur per hari serta indeks kategori genre lengkap. |
-| **Notifikasi** | **Web Push Native** | Berlangganan pengingat rilis episode anime favorit langsung ke peramban tanpa memerlukan akun pengguna. |
-| **PWA** | **Aksesibilitas PWA** | Kemampuan instalasi sebagai aplikasi mandiri di perangkat seluler dan desktop dengan dukungan offline state view. |
+| Kategori           | Fitur                                 | Penjelasan Teknis                                                                                                                                               |
+| :----------------- | :------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pencarian**      | **Spotlight Search (`Ctrl+K` / `/`)** | Modal pencarian cepat dengan filter status, tahun rilis, dan genre, serta navigasi pintasan keyboard instan.                                                    |
+| **Pemutar Video**  | **Watch Enhancements**                | Pencahayaan dinamis bioskop (_Ambient Light_), Timer Mati Otomatis (_Sleep Timer_ 15–60 menit), Mode Bioskop (_Theater_), dan tombol loncat episode berikutnya. |
+| **Koleksi**        | **Watchlist Manajemen Penuh**         | Pengelompokan status (Rencana Tonton, Sedang Nonton, Selesai Ditonton), rating personal, catatan episode, serta fitur **Ekspor & Impor Cadangan JSON**.         |
+| **Riwayat**        | **Statistik Tontonan**                | Perhitungan otomatis total episode yang diselesaikan, estimasi durasi tontonan, dan pencarian riwayat berbasis kata kunci.                                      |
+| **Pratinjau**      | **Quick Preview Modal**               | Menampilkan sinopsis, skor, status, dan tombol aksi cepat tanpa perlu memuat halaman detail anime.                                                              |
+| **Katalog**        | **Hero & Trending Slider**            | Showcase visual dinamis berkecepatan tinggi dengan navigasi responsif dan indikator radar tayang langsung.                                                      |
+| **Jadwal & Genre** | **Direktori Komprehensif**            | Jadwal rilis mingguan terstruktur per hari serta indeks kategori genre lengkap.                                                                                 |
+| **Notifikasi**     | **Web Push Native**                   | Berlangganan pengingat rilis episode anime favorit langsung ke peramban tanpa memerlukan akun pengguna.                                                         |
+| **PWA**            | **Aksesibilitas PWA**                 | Kemampuan instalasi sebagai aplikasi mandiri di perangkat seluler dan desktop dengan dukungan offline state view.                                               |
 
 ---
 
@@ -138,10 +146,12 @@ Untuk mengatasi keluhan beban memori dan lag pada peramban berdaya rendah ataupu
 ## // Panduan Penginstalan & Eksekusi Lokal
 
 ### Prasyarat
+
 - **Node.js**: versi 20.x atau lebih baru
 - **npm**, **pnpm**, atau **yarn**
 
 ### Langkah Instalasi
+
 ```bash
 # 1. Kloning repositori
 git clone https://github.com/NimzzAI/nontonime.git
@@ -180,13 +190,13 @@ SANKA_API_FALLBACK=
 
 ## // Perintah Eksekusi Proyek
 
-| Perintah | Fungsi |
-| :--- | :--- |
-| `npm run dev` | Menjalankan server pengembangan lokal (port 3000) |
-| `npm run build` | Melakukan kompilasi produksi berkas klien dan server |
+| Perintah          | Fungsi                                                  |
+| :---------------- | :------------------------------------------------------ |
+| `npm run dev`     | Menjalankan server pengembangan lokal (port 3000)       |
+| `npm run build`   | Melakukan kompilasi produksi berkas klien dan server    |
 | `npm run preview` | Menjalankan pratinjau hasil build produksi secara lokal |
-| `npm run lint` | Memeriksa kepatuhan kode dan sintaks dengan ESLint |
-| `npm run format` | Merapikan format kode dengan Prettier |
+| `npm run lint`    | Memeriksa kepatuhan kode dan sintaks dengan ESLint      |
+| `npm run format`  | Merapikan format kode dengan Prettier                   |
 
 ---
 

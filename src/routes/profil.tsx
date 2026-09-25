@@ -82,6 +82,8 @@ function UserProfileHeader({ onOpenAuth }: { onOpenAuth: (mode: "login" | "regis
   }
 
   if (user) {
+    const isGuest = user.uid.startsWith("guest_") || (user as { isGuest?: boolean })?.isGuest;
+
     return (
       <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-sm space-y-4">
         {/* Top background accent */}
@@ -107,12 +109,21 @@ function UserProfileHeader({ onOpenAuth }: { onOpenAuth: (mode: "login" | "regis
                 <h2 className="font-display text-lg font-black text-foreground">
                   {user.displayName || user.email?.split("@")[0] || "Pengguna Nontonime"}
                 </h2>
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  <UserCheck className="h-3 w-3" />
-                  Firestore Aktif
-                </span>
+                {isGuest ? (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    <UserCheck className="h-3 w-3" />
+                    Mode Tamu (Lokal)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <UserCheck className="h-3 w-3" />
+                    Firestore Aktif
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
+              <p className="text-xs text-muted-foreground">
+                {isGuest ? "Data tersimpan di browser ini" : user.email}
+              </p>
 
               {/* Firestore gamification badges */}
               <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -131,29 +142,52 @@ function UserProfileHeader({ onOpenAuth }: { onOpenAuth: (mode: "login" | "regis
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-background px-3.5 py-2 text-xs font-bold text-muted-foreground hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors cursor-pointer self-start sm:self-center"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            <span>Keluar Akun</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            {isGuest && (
+              <button
+                type="button"
+                onClick={() => onOpenAuth("login")}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90 transition-colors cursor-pointer"
+              >
+                <span>Hubungkan Akun</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-background px-3.5 py-2 text-xs font-bold text-muted-foreground hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors cursor-pointer"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Keluar</span>
+            </button>
+          </div>
         </div>
 
         {/* Cloud sync banner */}
-        <div className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground border border-border/60">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
-            <span>
-              Tersambung ke Cloud Firestore. Rank, level, total XP, dan daftar tontonan
-              tersinkronisasi otomatis.
+        {isGuest ? (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 border border-amber-500/20">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0" />
+              <span>
+                Sedang menggunakan <strong>Mode Tamu</strong>. EXP dan watchlist tersimpan aman di
+                browser Anda. Hubungkan ke Firebase untuk sinkronisasi cloud.
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground border border-border/60">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+              <span>
+                Tersambung ke Cloud Firestore. Rank, level, total XP, dan daftar tontonan
+                tersinkronisasi otomatis.
+              </span>
+            </div>
+            <span className="text-[10px] font-mono opacity-60 shrink-0 hidden md:inline">
+              UID: {user.uid.slice(0, 8)}...
             </span>
           </div>
-          <span className="text-[10px] font-mono opacity-60 shrink-0 hidden md:inline">
-            UID: {user.uid.slice(0, 8)}...
-          </span>
-        </div>
+        )}
       </div>
     );
   }

@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/watch/$episodeId")({
   validateSearch: (search: Record<string, unknown>) => ({
     a: search["a"] ? String(search["a"]) : undefined,
+    autoplay:
+      search["autoplay"] === "1" || search["autoplay"] === "true" || search["autoplay"] === true,
   }),
   head: ({ params }) => {
     const name = params.episodeId.replace(/-/g, " ");
@@ -34,7 +36,7 @@ export const Route = createFileRoute("/watch/$episodeId")({
 
 function WatchPage() {
   const { episodeId } = Route.useParams();
-  const { a: searchAnimeId } = Route.useSearch();
+  const { a: searchAnimeId, autoplay: searchAutoplay } = Route.useSearch();
   const navigate = useNavigate();
   const [isTheater, setIsTheater] = useState(false);
   const [isAmbient, setIsAmbient] = useState(false);
@@ -43,6 +45,7 @@ function WatchPage() {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("nonton-auto-next") !== "false";
   });
+  const [isAutoPlayActive, setIsAutoPlayActive] = useState<boolean>(() => Boolean(searchAutoplay));
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -67,7 +70,10 @@ function WatchPage() {
     }
     setSelectedServerId(null);
     setSelectedQuality(null);
-  }, [episodeId, stream.data?.defaultStreamingUrl]);
+    if (searchAutoplay) {
+      setIsAutoPlayActive(true);
+    }
+  }, [episodeId, stream.data?.defaultStreamingUrl, searchAutoplay]);
 
   // Server qualities
   const qualityGroups = useMemo(() => {
@@ -109,19 +115,34 @@ function WatchPage() {
     }
   };
 
-  // Episodes list from either anime detail query or stream info
+  // Episodes list from either anime detail query or stream info with accurate numbering
   const episodeList = useMemo(() => {
-    if (anime.data?.episodes && anime.data.episodes.length > 0) {
-      return anime.data.episodes;
-    }
-    if (stream.data?.info?.episodeList && stream.data.info.episodeList.length > 0) {
-      return stream.data.info.episodeList.map((ep) => ({
-        id: ep.episodeId,
-        number: ep.eps,
-        title: ep.title,
-      }));
-    }
-    return [];
+    const rawList =
+      anime.data?.episodes && anime.data.episodes.length > 0
+        ? anime.data.episodes
+        : stream.data?.info?.episodeList && stream.data.info.episodeList.length > 0
+          ? stream.data.info.episodeList.map((ep) => ({
+              id: ep.episodeId,
+              number: ep.eps,
+              title: ep.title,
+            }))
+          : [];
+
+    return rawList.map((ep) => {
+      let num = ep.number;
+      if (!num || num <= 0) {
+        const match =
+          ep.title?.match(/(?:episode|eps)[\s-]*(\d+)/i) ||
+          ep.id?.match(/(?:episode|eps)[\s-]*(\d+)/i);
+        if (match?.[1]) {
+          num = parseInt(match[1], 10);
+        }
+      }
+      return {
+        ...ep,
+        number: num || 0,
+      };
+    });
   }, [anime.data?.episodes, stream.data?.info?.episodeList]);
 
   const sortedEpisodes = useMemo(() => {
@@ -154,10 +175,11 @@ function WatchPage() {
       countdownIntervalRef.current = null;
     }
     setCountdown(null);
+    setIsAutoPlayActive(true);
     navigate({
       to: "/watch/$episodeId",
       params: { episodeId: nextEpisodeId },
-      search: { a: resolvedAnimeId },
+      search: { a: resolvedAnimeId, autoplay: true },
     });
   };
 
@@ -171,7 +193,7 @@ function WatchPage() {
 
   const handleEpisodeEnded = () => {
     if (!nextEpisodeId || !autoNext) return;
-    setCountdown(5);
+    setCountdown(4);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     countdownIntervalRef.current = setInterval(() => {
       setCountdown((prev) => {
@@ -219,8 +241,9 @@ function WatchPage() {
     addExp(25, `Nonton ${stream.data.title || "Episode"}`);
   }, [stream.data, anime.data, resolvedAnimeId, episodeId]);
 
-  if (stream.isPending) return <LoadingState label="Menyiapkan episode & server streaming..." />;
-  if (stream.error) {
+  const isInitialLoading = stream.isPending && !stream.data && !currentStreamUrl;
+  if (isInitialLoading) return <LoadingState label="Menyiapkan episode & server streaming..." />;
+  if (stream.error && !stream.data) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <ErrorState error={stream.error} onRetry={() => stream.refetch()} />
@@ -228,7 +251,11 @@ function WatchPage() {
     );
   }
 
-  const episodeData = stream.data;
+  const episodeData = stream.data || {
+    title: episodeId.replace(/-/g, " "),
+    releaseTime: null,
+    downloads: [],
+  };
   const animeTitle = anime.data?.title || episodeData.title;
 
   return (
@@ -344,6 +371,9 @@ function WatchPage() {
                   isTheater={isTheater}
                   onToggleTheater={() => setIsTheater((prev) => !prev)}
                   onEnded={handleEpisodeEnded}
+                  autoPlay={isAutoPlayActive}
+                  episodeTitle={episodeData.title}
+                  isLoading={stream.isFetching && !currentStreamUrl}
                 />
               )}
             </div>
@@ -369,8 +399,9 @@ function WatchPage() {
                     <Link
                       to="/watch/$episodeId"
                       params={{ episodeId: prevEpisodeId }}
-                      search={{ a: resolvedAnimeId }}
-                      className="press-soft inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent"
+                      search={{ a: resolvedAnimeId, autoplay: true }}
+                      onClick={() => setIsAutoPlayActive(true)}
+                      className="press-soft inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent cursor-pointer"
                     >
                       <i className="fa-solid fa-backward-step" />
                       Eps Sebelumnya
@@ -389,8 +420,9 @@ function WatchPage() {
                     <Link
                       to="/watch/$episodeId"
                       params={{ episodeId: nextEpisodeId }}
-                      search={{ a: resolvedAnimeId }}
-                      className="press-soft inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
+                      search={{ a: resolvedAnimeId, autoplay: true }}
+                      onClick={() => setIsAutoPlayActive(true)}
+                      className="press-soft inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 cursor-pointer"
                     >
                       Eps Berikutnya
                       <i className="fa-solid fa-forward-step" />
@@ -610,7 +642,8 @@ function WatchPage() {
                       key={ep.id}
                       to="/watch/$episodeId"
                       params={{ episodeId: ep.id }}
-                      search={{ a: resolvedAnimeId }}
+                      search={{ a: resolvedAnimeId, autoplay: true }}
+                      onClick={() => setIsAutoPlayActive(true)}
                       className={cn(
                         "press-soft flex items-center justify-between gap-2 rounded-xl p-2.5 text-xs font-medium transition-all",
                         isActive

@@ -669,6 +669,41 @@ interface ApiEpisodeResponse {
   };
 }
 
+export async function extractDirectStreamUrl(embedUrl: string): Promise<string | null> {
+  if (!embedUrl) return null;
+  // If already direct mp4/m3u8, return as is
+  if (/\.(m3u8|mp4)(\?|$)/i.test(embedUrl)) {
+    return embedUrl;
+  }
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(embedUrl, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Referer: "https://otakudesu.cloud/",
+      },
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const html = await res.text();
+    // 1. Look for videoURL = "..." (common in Desustream/ODCDN)
+    const matchVar = html.match(/videoURL\s*=\s*["']([^"']+)["']/i);
+    if (matchVar?.[1]) return matchVar[1];
+    // 2. Look for <source src="..." or <video src="..."
+    const matchSrc = html.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
+    if (matchSrc?.[1]) return matchSrc[1];
+    // 3. Look for file: "..." or source: "..."
+    const matchFile = html.match(/(?:file|source|src)\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
+    if (matchFile?.[1]) return matchFile[1];
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getStream(episodeId: string): Promise<StreamResult> {
   try {
     const json = await fetchJson<ApiEpisodeResponse>(
@@ -694,12 +729,19 @@ export async function getStream(episodeId: string): Promise<StreamResult> {
       })),
     }));
 
+    let directUrl: string | null = null;
+    if (d.defaultStreamingUrl) {
+      directUrl = await extractDirectStreamUrl(d.defaultStreamingUrl);
+    }
+
     return {
       title: d.title,
       animeId: d.animeId,
       episodeId,
       releaseTime: d.releaseTime ?? null,
-      defaultStreamingUrl: d.defaultStreamingUrl || null,
+      defaultStreamingUrl: directUrl || d.defaultStreamingUrl || null,
+      directUrl: directUrl || null,
+      embedUrl: d.defaultStreamingUrl || null,
       hasPrevEpisode: Boolean(d.hasPrevEpisode),
       prevEpisodeId: d.prevEpisode?.episodeId ?? null,
       hasNextEpisode: Boolean(d.hasNextEpisode),
@@ -728,7 +770,10 @@ export async function resolveServer(serverId: string): Promise<{ url: string }> 
     const json = await fetchJson<ApiServerResponse>(
       `${getApiBase()}/server/${encodeURIComponent(serverId)}`,
     );
-    return { url: json.data?.url || "" };
+    const rawUrl = json.data?.url || "";
+    if (!rawUrl) return { url: "" };
+    const direct = await extractDirectStreamUrl(rawUrl);
+    return { url: direct || rawUrl };
   } catch (error) {
     console.error(`Error resolving server ${serverId}:`, error);
     return { url: "" };

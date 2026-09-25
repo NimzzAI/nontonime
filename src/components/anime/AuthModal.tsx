@@ -6,7 +6,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } from "@/lib/firebase";
+import {
+  signInWithEmail,
+  signUpWithEmail,
+  signInWithGoogle,
+  signInWithGoogleRedirect,
+  loginAsGuest,
+  resetPassword,
+} from "@/lib/firebase";
 import { addExp } from "@/lib/gamification";
 import {
   LogIn,
@@ -22,6 +29,9 @@ import {
   Loader2,
   Copy,
   Check,
+  ExternalLink,
+  ShieldAlert,
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +64,12 @@ export function AuthModal({
     }
   }, [open, initialTab]);
 
+  const handleGuestLogin = () => {
+    loginAsGuest(displayName.trim() || (tab === "register" ? "Wibu Baru" : "Wibu Tamu"));
+    addExp(30, "Masuk Mode Tamu");
+    onOpenChange(false);
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     setErrorMsg(null);
@@ -62,23 +78,49 @@ export function AuthModal({
       addExp(50, "Login Berhasil");
       onOpenChange(false);
     } catch (err: unknown) {
-      console.error(err);
+      console.error("Google login error:", err);
       let msg = "Gagal masuk dengan Google.";
       if (err instanceof Error) {
         if (err.message.includes("popup-closed-by-user")) {
-          msg = "Jendela login Google ditutup sebelum selesai.";
+          msg = "Jendela popup login Google ditutup sebelum proses selesai.";
         } else if (err.message.includes("unauthorized-domain")) {
-          const domain = typeof window !== "undefined" ? window.location.hostname : "";
-          msg = `Domain (${domain}) belum didaftarkan di Firebase Console. Tambahkan '${domain}' di Firebase Console > Authentication > Settings > Authorized domains.`;
+          const domain =
+            typeof window !== "undefined" ? window.location.hostname : "nontonime.vercel.app";
+          msg = `Domain (${domain}) belum diizinkan di Firebase Console. Tambahkan domain '${domain}' ke daftar Authorized domains di Firebase Console.`;
         } else if (err.message.includes("operation-not-allowed")) {
           msg =
-            "Metode login Google belum diaktifkan di Firebase Console. Aktifkan 'Google' di Firebase Console > Authentication > Sign-in method.";
+            "Metode login Google belum diaktifkan di Firebase Console. Aktifkan provider 'Google' di Sign-in method Firebase Console.";
+        } else if (err.message.includes("popup-blocked")) {
+          msg =
+            "Jendela popup diblokir oleh browser. Gunakan opsi 'Login Google via Redirect' di bawah.";
         } else {
           msg = err.message;
         }
       }
       setErrorMsg(msg);
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleRedirect = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      await signInWithGoogleRedirect();
+    } catch (err: unknown) {
+      console.error("Google redirect login error:", err);
+      let msg = "Gagal mengalihkan ke Google.";
+      if (err instanceof Error) {
+        if (err.message.includes("unauthorized-domain")) {
+          const domain =
+            typeof window !== "undefined" ? window.location.hostname : "nontonime.vercel.app";
+          msg = `Domain (${domain}) belum diizinkan di Firebase Console. Tambahkan domain '${domain}' ke daftar Authorized domains.`;
+        } else {
+          msg = err.message;
+        }
+      }
+      setErrorMsg(msg);
       setLoading(false);
     }
   };
@@ -237,30 +279,85 @@ export function AuthModal({
         {/* Form Body */}
         <div className="p-5 sm:p-6 space-y-4">
           {errorMsg && (
-            <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive space-y-2">
+            <div className="rounded-2xl bg-destructive/10 border border-destructive/25 p-3.5 text-xs text-destructive space-y-3">
               <div className="flex items-start gap-2.5">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{errorMsg}</span>
-              </div>
-              {typeof window !== "undefined" && errorMsg.includes("Authorized domains") && (
-                <div className="pt-1 flex items-center justify-between gap-2 border-t border-destructive/20">
-                  <span className="font-mono text-[11px] text-foreground bg-background/80 px-2 py-1 rounded-md border border-border truncate select-all">
-                    {window.location.hostname}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.hostname);
-                      setCopiedDomain(true);
-                      setTimeout(() => setCopiedDomain(false), 2000);
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-md transition-colors shrink-0 cursor-pointer"
-                  >
-                    {copiedDomain ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                    <span>{copiedDomain ? "Tersalin!" : "Salin Domain"}</span>
-                  </button>
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
+                <div className="space-y-1">
+                  <p className="font-bold text-destructive">Gagal Memproses Autentikasi</p>
+                  <p className="leading-relaxed opacity-90">{errorMsg}</p>
                 </div>
-              )}
+              </div>
+
+              {/* Special interactive guide for unauthorized-domain or operation-not-allowed */}
+              {typeof window !== "undefined" &&
+                (errorMsg.includes("Authorized domains") ||
+                  errorMsg.includes("diizinkan di Firebase") ||
+                  errorMsg.includes("Sign-in method") ||
+                  errorMsg.includes("belum diaktifkan")) && (
+                  <div className="rounded-xl bg-background/90 p-3 border border-border/80 text-foreground space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-amber-500">
+                      <ShieldAlert className="h-3.5 w-3.5" />
+                      <span>Langkah Memperbaiki di Firebase Console:</span>
+                    </div>
+
+                    <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between gap-2 bg-secondary/60 px-2.5 py-1.5 rounded-lg border border-border/60">
+                        <span className="font-mono text-[10px] text-foreground truncate select-all">
+                          {window.location.hostname}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(window.location.hostname);
+                            setCopiedDomain(true);
+                            setTimeout(() => setCopiedDomain(false), 2000);
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-colors shrink-0 cursor-pointer"
+                        >
+                          {copiedDomain ? (
+                            <Check className="h-2.5 w-2.5" />
+                          ) : (
+                            <Copy className="h-2.5 w-2.5" />
+                          )}
+                          <span>{copiedDomain ? "Tersalin!" : "Salin Domain"}</span>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                        <a
+                          href="https://console.firebase.google.com/project/gen-lang-client-0276722527/authentication/settings"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-bold border border-primary/20 transition-colors"
+                        >
+                          <span>1. Authorized Domains</span>
+                          <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                        <a
+                          href="https://console.firebase.google.com/project/gen-lang-client-0276722527/authentication/providers"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-bold border border-primary/20 transition-colors"
+                        >
+                          <span>2. Aktifkan Provider</span>
+                          <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-muted-foreground">Atau lewati login:</span>
+                      <button
+                        type="button"
+                        onClick={handleGuestLogin}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        <span>Masuk Mode Tamu (Offline)</span>
+                        <ArrowRight className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
             </div>
           )}
 
@@ -302,6 +399,17 @@ export function AuthModal({
                   {tab === "login" ? "Lanjut dengan Akun Google" : "Daftar Cepat dengan Google"}
                 </span>
               </button>
+
+              <div className="flex items-center justify-center -mt-1">
+                <button
+                  type="button"
+                  onClick={handleGoogleRedirect}
+                  disabled={loading}
+                  className="text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                >
+                  Popup diblokir? Klik untuk Login Google via Pengalihan (Redirect)
+                </button>
+              </div>
 
               <div className="relative flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">
@@ -417,6 +525,23 @@ export function AuthModal({
               )}
             </button>
           </form>
+
+          {!forgotMode && (
+            <div className="pt-2 border-t border-border/60 text-center space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
+                <span>Mau coba langsung tanpa akun cloud?</span>
+                <span className="text-emerald-500 font-semibold">Tersimpan di browser</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleGuestLogin}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-dashed border-border/90 hover:border-primary/50 bg-secondary/40 hover:bg-secondary/70 text-xs font-bold text-foreground transition-all cursor-pointer"
+              >
+                <User className="h-4 w-4 text-primary" />
+                <span>Masuk sebagai Akun Tamu / Offline (+30 EXP)</span>
+              </button>
+            </div>
+          )}
 
           {forgotMode && (
             <div className="text-center pt-2">

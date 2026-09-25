@@ -70,6 +70,8 @@ export interface StreamResult {
   episodeId: string;
   releaseTime?: string | null;
   defaultStreamingUrl: string | null;
+  directUrl?: string | null;
+  embedUrl?: string | null;
   hasPrevEpisode: boolean;
   prevEpisodeId?: string | null;
   hasNextEpisode: boolean;

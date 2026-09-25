@@ -3,6 +3,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
@@ -25,7 +27,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import { useState, useEffect } from "react";
-import firebaseConfig from "../../firebase-applet-config.json";
+import rawFirebaseConfig from "../../firebase-applet-config.json";
 import { readWatchlist, type WatchlistItem, type WatchlistStatus } from "./watchlist";
 import { readHistory, type HistoryItem } from "./history";
 import {
@@ -35,6 +37,22 @@ import {
   getRankInfo,
   getMaxExpForLevel,
 } from "./gamification";
+
+const env =
+  typeof import.meta !== "undefined" && import.meta.env
+    ? import.meta.env
+    : ({} as Record<string, string>);
+
+export const firebaseConfig = {
+  apiKey: env.VITE_FIREBASE_API_KEY || rawFirebaseConfig.apiKey,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || rawFirebaseConfig.authDomain,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || rawFirebaseConfig.projectId,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || rawFirebaseConfig.storageBucket,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || rawFirebaseConfig.messagingSenderId,
+  appId: env.VITE_FIREBASE_APP_ID || rawFirebaseConfig.appId,
+  firestoreDatabaseId:
+    env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || rawFirebaseConfig.firestoreDatabaseId,
+};
 
 let app: FirebaseApp;
 if (!getApps().length) {
@@ -118,6 +136,33 @@ export function handleFirestoreError(
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 
+export interface LocalGuestUser {
+  uid: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  isGuest: true;
+}
+
+export function isGuestUser(user: unknown): boolean {
+  if (!user || typeof user !== "object") return false;
+  return "isGuest" in user && (user as { isGuest?: boolean }).isGuest === true;
+}
+
+export function loginAsGuest(name?: string): LocalGuestUser {
+  const guest: LocalGuestUser = {
+    uid: "guest_" + Math.random().toString(36).substring(2, 9),
+    displayName: name?.trim() || "Wibu Tamu",
+    email: "tamu@nontonime.local",
+    isGuest: true,
+  };
+  if (typeof window !== "undefined") {
+    localStorage.setItem("nonton-guest-user", JSON.stringify(guest));
+    window.dispatchEvent(new Event("guest-auth-changed"));
+  }
+  return guest;
+}
+
 export interface FirestoreUserProfile {
   uid: string;
   displayName: string;
@@ -130,6 +175,7 @@ export interface FirestoreUserProfile {
 
 // Helper to save or update user doc in Firestore
 export async function persistUserDoc(user: User, customDisplayName?: string) {
+  if (!user.uid || user.uid.startsWith("guest_")) return;
   const path = `users/${user.uid}`;
   try {
     const userRef = doc(db, "users", user.uid);
@@ -178,9 +224,24 @@ export async function persistUserDoc(user: User, customDisplayName?: string) {
 }
 
 export async function signInWithGoogle(): Promise<User> {
-  const result = await signInWithPopup(auth, googleProvider);
-  await persistUserDoc(result.user);
-  return result.user;
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    await persistUserDoc(result.user);
+    return result.user;
+  } catch (err: unknown) {
+    const error = err as { code?: string; message?: string };
+    // If browser blocks popups (e.g. on mobile/Safari), trigger redirect flow
+    if (error?.code === "auth/popup-blocked") {
+      console.warn("Popup blocked, falling back to redirect flow...");
+      await signInWithRedirect(auth, googleProvider);
+      throw new Error("Membuka login Google via pengalihan halaman...");
+    }
+    throw err;
+  }
+}
+
+export async function signInWithGoogleRedirect(): Promise<void> {
+  await signInWithRedirect(auth, googleProvider);
 }
 
 export async function signUpWithEmail(
@@ -207,7 +268,13 @@ export async function resetPassword(email: string): Promise<void> {
 }
 
 export async function signOutUser(): Promise<void> {
-  await signOut(auth);
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("nonton-guest-user");
+    window.dispatchEvent(new Event("guest-auth-changed"));
+  }
+  if (auth.currentUser) {
+    await signOut(auth);
+  }
 }
 
 // Bidirectional sync between LocalStorage and Firestore
@@ -356,7 +423,7 @@ export function useFirestoreUserProfile(userId: string | undefined | null) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId || userId.startsWith("guest_")) {
       setLoading(false);
       setGamification(readGamification());
       return;
@@ -422,11 +489,11 @@ export function useFirestoreUserProfile(userId: string | undefined | null) {
 // Hook for real-time syncing user's Watchlist from Firestore
 export function useFirestoreWatchlist(userId: string | undefined | null) {
   const [items, setItems] = useState<WatchlistItem[]>(readWatchlist());
-  const [loading, setLoading] = useState(Boolean(userId));
+  const [loading, setLoading] = useState(Boolean(userId && !userId.startsWith("guest_")));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId || userId.startsWith("guest_")) {
       setItems(readWatchlist());
       setLoading(false);
       return;
@@ -471,23 +538,70 @@ export function useFirestoreWatchlist(userId: string | undefined | null) {
 
 // Hook for Auth state
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | LocalGuestUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const getStoredGuest = (): LocalGuestUser | null => {
+      if (typeof window === "undefined") return null;
+      try {
+        const item = localStorage.getItem("nonton-guest-user");
+        return item ? (JSON.parse(item) as LocalGuestUser) : null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Handle Google redirect sign-in result (mobile/popup-blocked browsers)
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("nonton-guest-user");
+          }
+          await persistUserDoc(result.user);
+          setUser(result.user);
+        }
+      })
+      .catch((err) => {
+        console.warn("Redirect sign-in error:", err);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      if (currentUser) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("nonton-guest-user");
+        }
+        setUser(currentUser);
+      } else {
+        const guest = getStoredGuest();
+        setUser(guest);
+      }
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    const handleGuestChange = () => {
+      if (!auth.currentUser) {
+        const guest = getStoredGuest();
+        setUser(guest);
+      }
+    };
+    window.addEventListener("guest-auth-changed", handleGuestChange);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("guest-auth-changed", handleGuestChange);
+    };
   }, []);
 
   return {
     user,
     loading,
     signInWithGoogle,
+    signInWithGoogleRedirect,
     signInWithEmail,
     signUpWithEmail,
+    loginAsGuest,
     resetPassword,
     signOutUser,
   };
