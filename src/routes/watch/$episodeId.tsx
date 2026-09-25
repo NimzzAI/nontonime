@@ -332,6 +332,18 @@ function WatchPage() {
                   isLoading={stream.isFetching && !currentStreamUrl}
                   nextEpisode={nextEpisodeMetadata}
                   onPlayNext={triggerNextEpisode}
+                  servers={activeGroup?.serverList ?? []}
+                  activeServerId={selectedServerId}
+                  activeServerTitle={
+                    activeGroup?.serverList?.find((s) => s.serverId === selectedServerId)?.title ||
+                    (currentStreamUrl?.includes("mega")
+                      ? "MEGA"
+                      : currentStreamUrl?.includes("archive.org")
+                        ? "Odstream"
+                        : "Server Bawaan")
+                  }
+                  onSelectServer={handleServerSelect}
+                  isResolvingServer={isResolving}
                 />
               )}
             </div>
