@@ -39,11 +39,6 @@ function getFallbackApiBase(): string | null {
   return null;
 }
 
-function buildApiUrl(path: string, base = getApiBase()): string {
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${base}${cleanPath}`;
-}
-
 const BROWSER_HEADERS: Record<string, string> = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
@@ -115,7 +110,6 @@ async function fetchJson<T>(url: string, ttlMs = 15 * 60 * 1000): Promise<T> {
           );
           return await fetchJson<T>(fallbackUrl, ttlMs);
         }
-        // Fallback to stale if available
         const stale = lastSuccessfulResponse.get(url);
         if (stale) {
           console.warn(`[API] 403 Forbidden on ${url}. Serving stale fallback response.`);
@@ -149,6 +143,10 @@ async function fetchJson<T>(url: string, ttlMs = 15 * 60 * 1000): Promise<T> {
   return fetchPromise;
 }
 
+/* ========================================================================== */
+/*                              HOME SECTIONS                                 */
+/* ========================================================================== */
+
 interface ApiHomeResponse {
   status: string;
   data: {
@@ -175,7 +173,110 @@ interface ApiHomeResponse {
   };
 }
 
-export async function getHome(dayFilter?: string | null): Promise<HomeSections> {
+interface SamehadakuHomeResponse {
+  status: string;
+  data: {
+    recent?: {
+      animeList?: {
+        title: string;
+        poster: string;
+        episodes?: string | number;
+        releasedOn?: string;
+        animeId: string;
+        href?: string;
+      }[];
+    };
+    batch?: {
+      batchList?: unknown[];
+    };
+    movie?: {
+      animeList?: {
+        title: string;
+        poster: string;
+        releaseDate?: string;
+        animeId: string;
+        href?: string;
+        genreList?: { title: string; genreId: string }[];
+      }[];
+    };
+    top10?: {
+      animeList?: {
+        rank: number;
+        title: string;
+        poster: string;
+        score?: string;
+        animeId: string;
+        href?: string;
+      }[];
+    };
+  };
+}
+
+export async function getHome(
+  dayFilter?: string | null,
+  provider = "otakudesu",
+): Promise<HomeSections> {
+  const isSamehadaku = provider === "samehadaku";
+
+  if (isSamehadaku) {
+    try {
+      const json = await fetchJson<SamehadakuHomeResponse>(`${getApiBase()}/samehadaku/home`);
+      const recentRaw = json.data?.recent?.animeList ?? [];
+      const top10Raw = json.data?.top10?.animeList ?? [];
+      const movieRaw = json.data?.movie?.animeList ?? [];
+
+      const recent: AnimeSummary[] = recentRaw.map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        episodeCount:
+          typeof a.episodes === "number"
+            ? a.episodes
+            : parseInt(String(a.episodes || 0), 10) || null,
+        status: "Ongoing",
+        type: "TV",
+        latestReleaseDate: a.releasedOn ?? null,
+        genres: [],
+      }));
+
+      const top10: AnimeSummary[] = top10Raw.map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        score: a.score ?? null,
+        status: "Popular",
+        type: "TV",
+        genres: [],
+      }));
+
+      const movies: AnimeSummary[] = movieRaw.map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        status: "Movie",
+        type: "Movie",
+        latestReleaseDate: a.releaseDate ?? null,
+        genres: (a.genreList ?? []).map((g) => g.title),
+      }));
+
+      // Combined and balanced sections for Samehadaku
+      const slider = top10.length > 0 ? top10.slice(0, 6) : recent.slice(0, 6);
+
+      return {
+        slider,
+        today: recent.slice(0, 12),
+        hot: top10.slice(0, 10),
+        popular: top10.slice(0, 10),
+        new: recent.slice(0, 12),
+        waiting: movies.length > 0 ? movies.slice(0, 8) : recent.slice(6, 12),
+      };
+    } catch (err) {
+      console.error("Error fetching Samehadaku home, falling back to Otakudesu:", err);
+      // Fallback seamlessly to Otakudesu
+    }
+  }
+
+  // Default: Otakudesu Home
   try {
     const json = await fetchJson<ApiHomeResponse>(`${getApiBase()}/home`);
     const ongoingRaw = json.data?.ongoing?.animeList ?? [];
@@ -231,16 +332,23 @@ export async function getHome(dayFilter?: string | null): Promise<HomeSections> 
   }
 }
 
+/* ========================================================================== */
+/*                             LATEST & POPULAR                               */
+/* ========================================================================== */
+
 interface ApiOngoingResponse {
   status: string;
   data: {
     animeList: {
       title: string;
       poster: string;
-      episodes?: number;
+      episodes?: number | string;
       releaseDay?: string;
       latestReleaseDate?: string;
       animeId: string;
+      type?: string;
+      score?: string;
+      genreList?: { title: string; genreId: string }[];
     }[];
   };
   pagination: {
@@ -253,8 +361,41 @@ interface ApiOngoingResponse {
   } | null;
 }
 
-export async function getLatest(page = 1): Promise<ListResult> {
+export async function getLatest(page = 1, provider = "otakudesu"): Promise<ListResult> {
   const safePage = Math.max(1, page);
+
+  if (provider === "samehadaku") {
+    try {
+      const json = await fetchJson<ApiOngoingResponse>(
+        `${getApiBase()}/samehadaku/ongoing?page=${safePage}`,
+      );
+      const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        episodeCount:
+          typeof a.episodes === "number"
+            ? a.episodes
+            : parseInt(String(a.episodes || 0), 10) || null,
+        status: "Ongoing",
+        score: a.score ?? null,
+        type: a.type ?? "TV",
+        genres: (a.genreList ?? []).map((g) => g.title),
+      }));
+
+      return {
+        items,
+        page: safePage,
+        hasNext: Boolean(json.pagination?.hasNextPage),
+        totalPages: json.pagination?.totalPages ?? 1,
+        pagination: json.pagination,
+      };
+    } catch (err) {
+      console.warn("Failed fetching Samehadaku ongoing, falling back to Otakudesu:", err);
+    }
+  }
+
+  // Otakudesu Ongoing
   try {
     const json = await fetchJson<ApiOngoingResponse>(
       `${getApiBase()}/ongoing-anime?page=${safePage}`,
@@ -263,7 +404,8 @@ export async function getLatest(page = 1): Promise<ListResult> {
       id: a.animeId,
       title: a.title,
       poster: a.poster,
-      episodeCount: a.episodes ?? null,
+      episodeCount:
+        typeof a.episodes === "number" ? a.episodes : parseInt(String(a.episodes || 0), 10) || null,
       status: "Ongoing",
       type: "TV",
       releaseDay: a.releaseDay ?? null,
@@ -291,10 +433,12 @@ interface ApiCompletedResponse {
     animeList: {
       title: string;
       poster: string;
-      episodes?: number;
+      episodes?: number | string;
       score?: string;
       lastReleaseDate?: string;
       animeId: string;
+      type?: string;
+      genreList?: { title: string; genreId: string }[];
     }[];
   };
   pagination: {
@@ -307,8 +451,37 @@ interface ApiCompletedResponse {
   } | null;
 }
 
-export async function getPopular(page = 1): Promise<ListResult> {
+export async function getPopular(page = 1, provider = "otakudesu"): Promise<ListResult> {
   const safePage = Math.max(1, page);
+
+  if (provider === "samehadaku") {
+    try {
+      const json = await fetchJson<ApiCompletedResponse>(
+        `${getApiBase()}/samehadaku/popular?page=${safePage}`,
+      );
+      const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        score: a.score ?? null,
+        status: "Popular",
+        type: a.type ?? "TV",
+        genres: (a.genreList ?? []).map((g) => g.title),
+      }));
+
+      return {
+        items,
+        page: safePage,
+        hasNext: Boolean(json.pagination?.hasNextPage),
+        totalPages: json.pagination?.totalPages ?? 1,
+        pagination: json.pagination,
+      };
+    } catch (err) {
+      console.warn("Failed fetching Samehadaku popular, falling back to Otakudesu:", err);
+    }
+  }
+
+  // Otakudesu Completed / Popular
   try {
     const json = await fetchJson<ApiCompletedResponse>(
       `${getApiBase()}/complete-anime?page=${safePage}`,
@@ -317,7 +490,8 @@ export async function getPopular(page = 1): Promise<ListResult> {
       id: a.animeId,
       title: a.title,
       poster: a.poster,
-      episodeCount: a.episodes ?? null,
+      episodeCount:
+        typeof a.episodes === "number" ? a.episodes : parseInt(String(a.episodes || 0), 10) || null,
       score: a.score ?? null,
       status: "Completed",
       type: "TV",
@@ -338,6 +512,43 @@ export async function getPopular(page = 1): Promise<ListResult> {
   }
 }
 
+export async function getCompleted(page = 1, provider = "otakudesu"): Promise<ListResult> {
+  const safePage = Math.max(1, page);
+
+  if (provider === "samehadaku") {
+    try {
+      const json = await fetchJson<ApiCompletedResponse>(
+        `${getApiBase()}/samehadaku/completed?page=${safePage}`,
+      );
+      const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        score: a.score ?? null,
+        status: "Completed",
+        type: a.type ?? "TV",
+        genres: (a.genreList ?? []).map((g) => g.title),
+      }));
+
+      return {
+        items,
+        page: safePage,
+        hasNext: Boolean(json.pagination?.hasNextPage),
+        totalPages: json.pagination?.totalPages ?? 1,
+        pagination: json.pagination,
+      };
+    } catch (err) {
+      console.warn("Failed fetching Samehadaku completed, falling back:", err);
+    }
+  }
+
+  return getPopular(safePage, "otakudesu");
+}
+
+/* ========================================================================== */
+/*                                   SEARCH                                   */
+/* ========================================================================== */
+
 interface ApiSearchResponse {
   status: string;
   data: {
@@ -352,14 +563,44 @@ interface ApiSearchResponse {
   };
 }
 
-export async function search(keyword: string, _page = 1): Promise<ListResult> {
+export async function search(keyword: string, page = 1, provider = "otakudesu"): Promise<ListResult> {
   if (!keyword || !keyword.trim()) {
     return { items: [], page: 1, hasNext: false };
   }
 
+  const safeKeyword = keyword.trim();
+
+  if (provider === "samehadaku") {
+    try {
+      const json = await fetchJson<ApiOngoingResponse>(
+        `${getApiBase()}/samehadaku/search?q=${encodeURIComponent(safeKeyword)}&page=${page}`,
+      );
+      const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        status: a.status ?? null,
+        score: a.score ?? null,
+        type: a.type ?? "TV",
+        genres: (a.genreList ?? []).map((g) => g.title),
+      }));
+
+      return {
+        items,
+        page,
+        hasNext: Boolean(json.pagination?.hasNextPage),
+        totalPages: json.pagination?.totalPages ?? 1,
+        pagination: json.pagination,
+      };
+    } catch (err) {
+      console.warn("Samehadaku search failed, falling back to Otakudesu:", err);
+    }
+  }
+
+  // Otakudesu Search
   try {
     const json = await fetchJson<ApiSearchResponse>(
-      `${getApiBase()}/search/${encodeURIComponent(keyword.trim())}`,
+      `${getApiBase()}/search/${encodeURIComponent(safeKeyword)}`,
     );
     const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
       id: a.animeId,
@@ -383,6 +624,10 @@ export async function search(keyword: string, _page = 1): Promise<ListResult> {
   }
 }
 
+/* ========================================================================== */
+/*                                   GENRES                                   */
+/* ========================================================================== */
+
 interface ApiGenreResponse {
   status: string;
   data: {
@@ -393,15 +638,20 @@ interface ApiGenreResponse {
   };
 }
 
-export async function getGenres(): Promise<GenreItem[]> {
+export async function getGenres(provider = "otakudesu"): Promise<GenreItem[]> {
+  const endpoint = provider === "samehadaku" ? "/samehadaku/genres" : "/genre";
   try {
-    const json = await fetchJson<ApiGenreResponse>(`${getApiBase()}/genre`);
+    const json = await fetchJson<ApiGenreResponse>(`${getApiBase()}${endpoint}`);
     return (json.data?.genreList ?? []).map((g) => ({
       id: g.genreId,
       name: g.title,
     }));
   } catch (error) {
-    console.error("Error in getGenres:", error);
+    console.error(`Error in getGenres (${provider}):`, error);
+    // fallback if samehadaku failed
+    if (provider === "samehadaku") {
+      return getGenres("otakudesu");
+    }
     throw error;
   }
 }
@@ -433,19 +683,27 @@ interface ApiByGenreResponse {
   } | null;
 }
 
-export async function getByGenre(genreId: string, page = 1, _sort = "views"): Promise<ListResult> {
+export async function getByGenre(
+  genreId: string,
+  page = 1,
+  _sort = "views",
+  provider = "otakudesu",
+): Promise<ListResult> {
   const safePage = Math.max(1, page);
+  const endpoint =
+    provider === "samehadaku"
+      ? `/samehadaku/genres/${encodeURIComponent(genreId)}?page=${safePage}`
+      : `/genre/${encodeURIComponent(genreId)}?page=${safePage}`;
+
   try {
-    const json = await fetchJson<ApiByGenreResponse>(
-      `${getApiBase()}/genre/${encodeURIComponent(genreId)}?page=${safePage}`,
-    );
+    const json = await fetchJson<ApiByGenreResponse>(`${getApiBase()}${endpoint}`);
 
     const items: AnimeSummary[] = (json.data?.animeList ?? []).map((a) => ({
       id: a.animeId,
       title: a.title,
       poster: a.poster,
       score: a.score ?? null,
-      episodeCount: a.episodes ?? null,
+      episodeCount: typeof a.episodes === "number" ? a.episodes : null,
       studios: a.studios ?? null,
       genres: (a.genreList ?? []).map((g) => g.title),
       synopsis: a.synopsis?.paragraphs?.join("\n\n") ?? null,
@@ -460,9 +718,45 @@ export async function getByGenre(genreId: string, page = 1, _sort = "views"): Pr
       pagination: json.pagination,
     };
   } catch (error) {
-    console.error("Error in getByGenre:", error);
+    console.error(`Error in getByGenre (${provider}):`, error);
+    if (provider === "samehadaku") {
+      return getByGenre(genreId, page, _sort, "otakudesu");
+    }
     throw error;
   }
+}
+
+/* ========================================================================== */
+/*                                  SCHEDULE                                  */
+/* ========================================================================== */
+
+const SAMEHADAKU_DAY_MAP: Record<string, string> = {
+  sunday: "Minggu",
+  monday: "Senin",
+  tuesday: "Selasa",
+  wednesday: "Rabu",
+  thursday: "Kamis",
+  friday: "Jumat",
+  saturday: "Sabtu",
+};
+
+interface SamehadakuScheduleResponse {
+  status: string;
+  data: {
+    days?: {
+      day: string;
+      animeList?: {
+        title: string;
+        poster: string;
+        type?: string;
+        score?: string;
+        estimation?: string;
+        genres?: string;
+        animeId: string;
+        href?: string;
+      }[];
+    }[];
+  };
 }
 
 interface ApiScheduleResponse {
@@ -478,7 +772,36 @@ interface ApiScheduleResponse {
   }[];
 }
 
-export async function getSchedule(): Promise<ScheduleMap> {
+export async function getSchedule(provider = "otakudesu"): Promise<ScheduleMap> {
+  if (provider === "samehadaku") {
+    try {
+      const json = await fetchJson<SamehadakuScheduleResponse>(
+        `${getApiBase()}/samehadaku/schedule`,
+      );
+      const map: ScheduleMap = {};
+
+      for (const item of json.data?.days ?? []) {
+        const rawDay = (item.day || "").toLowerCase().trim();
+        const indoDay = SAMEHADAKU_DAY_MAP[rawDay] || item.day;
+        map[indoDay] = (item.animeList ?? []).map((a) => ({
+          id: a.animeId,
+          title: a.title,
+          poster: a.poster,
+          releaseDay: indoDay,
+          day: indoDay,
+          status: "Ongoing",
+          score: a.score ?? null,
+          genres: a.genres ? a.genres.split(",").map((s) => s.trim()) : [],
+        }));
+      }
+
+      return map;
+    } catch (err) {
+      console.warn("Failed fetching Samehadaku schedule, falling back to Otakudesu:", err);
+    }
+  }
+
+  // Otakudesu Schedule
   try {
     const json = await fetchJson<ApiScheduleResponse>(`${getApiBase()}/schedule`);
     const map: ScheduleMap = {};
@@ -503,6 +826,10 @@ export async function getSchedule(): Promise<ScheduleMap> {
   }
 }
 
+/* ========================================================================== */
+/*                                 DIRECTORY                                  */
+/* ========================================================================== */
+
 interface ApiUnlimitedResponse {
   status: string;
   data: {
@@ -510,14 +837,55 @@ interface ApiUnlimitedResponse {
   };
 }
 
-export async function getDirectory(): Promise<DirectoryGroup[]> {
+export async function getDirectory(provider = "otakudesu"): Promise<DirectoryGroup[]> {
+  const endpoint = provider === "samehadaku" ? "/samehadaku/list" : "/unlimited";
   try {
-    const json = await fetchJson<ApiUnlimitedResponse>(`${getApiBase()}/unlimited`);
+    const json = await fetchJson<ApiUnlimitedResponse>(`${getApiBase()}${endpoint}`);
     return json.data?.list ?? [];
   } catch (error) {
-    console.error("Error in getDirectory:", error);
+    console.error(`Error in getDirectory (${provider}):`, error);
+    if (provider === "samehadaku") {
+      return getDirectory("otakudesu");
+    }
     return [];
   }
+}
+
+/* ========================================================================== */
+/*                                ANIME DETAIL                                */
+/* ========================================================================== */
+
+interface SamehadakuDetailResponse {
+  status: string;
+  data: {
+    title?: string;
+    poster: string;
+    score?: { value: string; users?: string } | string;
+    japanese?: string;
+    synonyms?: string;
+    english?: string;
+    status?: string;
+    type?: string;
+    source?: string;
+    duration?: string;
+    episodes?: number | string;
+    season?: string;
+    studios?: string;
+    producers?: string;
+    aired?: string;
+    trailer?: string;
+    synopsis?: {
+      paragraphs?: string[];
+      connections?: { title: string; animeId: string; href?: string }[];
+    };
+    genreList?: { title: string; genreId: string }[];
+    batchList?: { title: string; batchId: string; href?: string }[];
+    episodeList?: {
+      title: string | number;
+      episodeId: string;
+      href?: string;
+    }[];
+  };
 }
 
 interface ApiDetailResponse {
@@ -549,7 +917,6 @@ interface ApiDetailResponse {
       eps: number;
       date?: string;
       episodeId: string;
-      href?: string;
     }[];
     recommendedAnimeList?: {
       title: string;
@@ -559,28 +926,79 @@ interface ApiDetailResponse {
   };
 }
 
-export async function getDetail(id: string): Promise<AnimeDetail> {
+export async function getDetail(id: string, provider = "otakudesu"): Promise<AnimeDetail> {
+  const isSamehadaku = provider === "samehadaku";
+
+  if (isSamehadaku) {
+    try {
+      const json = await fetchJson<SamehadakuDetailResponse>(
+        `${getApiBase()}/samehadaku/anime/${encodeURIComponent(id)}`,
+      );
+      const d = json.data;
+
+      const title =
+        d.title && d.title.trim().length > 0
+          ? d.title.trim()
+          : d.english?.trim() ||
+            d.synonyms?.trim() ||
+            d.japanese?.trim() ||
+            id.replace(/-/g, " ");
+
+      const scoreVal = typeof d.score === "object" ? d.score?.value : d.score;
+      const batchItem = d.batchList && d.batchList.length > 0 ? d.batchList[0] : null;
+
+      const episodes: EpisodeSummary[] = (d.episodeList ?? []).map((ep) => {
+        let num = typeof ep.title === "number" ? ep.title : 0;
+        if (!num) {
+          const match =
+            String(ep.title).match(/(?:episode|eps|\b)(\d+)/i) ||
+            ep.episodeId.match(/(?:episode|eps|\b)(\d+)/i);
+          if (match?.[1]) num = parseInt(match[1], 10);
+        }
+        return {
+          id: ep.episodeId,
+          number: num || 1,
+          title:
+            typeof ep.title === "number"
+              ? `Episode ${ep.title}`
+              : String(ep.title || `Episode ${num || 1}`),
+        };
+      });
+
+      return {
+        id,
+        title,
+        poster: d.poster || null,
+        japanese: d.japanese ?? null,
+        score: scoreVal ?? null,
+        producers: d.producers ?? null,
+        type: d.type ?? "TV",
+        status: d.status ?? null,
+        episodeCount:
+          typeof d.episodes === "number"
+            ? d.episodes
+            : parseInt(String(d.episodes || 0), 10) || episodes.length,
+        duration: d.duration ?? null,
+        aired: d.aired ?? null,
+        studio: d.studios ?? null,
+        studios: d.studios ?? null,
+        batch: batchItem ? { title: batchItem.title, batchId: batchItem.batchId } : null,
+        synopsis: d.synopsis?.paragraphs?.join("\n\n") ?? null,
+        genres: (d.genreList ?? []).map((g) => g.title),
+        episodes,
+        recommended: [],
+      };
+    } catch (err) {
+      console.warn(`Samehadaku anime detail failed for ${id}, trying Otakudesu:`, err);
+    }
+  }
+
+  // Otakudesu Detail
   try {
     const json = await fetchJson<ApiDetailResponse>(
       `${getApiBase()}/anime/${encodeURIComponent(id)}`,
     );
     const d = json.data;
-
-    const episodes: EpisodeSummary[] = (d.episodeList ?? []).map((ep) => ({
-      id: ep.episodeId,
-      number: ep.eps || 0,
-      title: ep.title,
-      releaseDate: ep.date ?? null,
-    }));
-
-    const recommended: AnimeSummary[] = (d.recommendedAnimeList ?? []).map((r) => ({
-      id: r.animeId,
-      title: r.title,
-      poster: r.poster,
-      genres: [],
-    }));
-
-    const synopsisText = d.synopsis?.paragraphs?.join("\n\n") || null;
 
     return {
       id,
@@ -589,16 +1007,13 @@ export async function getDetail(id: string): Promise<AnimeDetail> {
       japanese: d.japanese ?? null,
       score: d.score ?? null,
       producers: d.producers ?? null,
-      type: d.type ?? "TV",
-      status: d.status ?? "Unknown",
-      episodes,
-      totalEpisodes: d.episodes ?? episodes.length,
+      type: d.type ?? null,
+      status: d.status ?? null,
+      episodeCount: d.episodes ?? null,
       duration: d.duration ?? null,
       aired: d.aired ?? null,
       studio: d.studios ?? null,
       studios: d.studios ?? null,
-      synopsis: synopsisText,
-      genres: (d.genreList ?? []).map((g) => g.title),
       batch: d.batch
         ? {
             title: d.batch.title,
@@ -607,12 +1022,79 @@ export async function getDetail(id: string): Promise<AnimeDetail> {
             otakudesuUrl: d.batch.otakudesuUrl,
           }
         : null,
-      recommended,
+      synopsis: d.synopsis?.paragraphs?.join("\n\n") ?? null,
+      genres: (d.genreList ?? []).map((g) => g.title),
+      episodes: (d.episodeList ?? []).map((e) => ({
+        id: e.episodeId,
+        number: e.eps,
+        title: e.title,
+        releaseDate: e.date ?? null,
+      })),
+      recommended: (d.recommendedAnimeList ?? []).map((r) => ({
+        id: r.animeId,
+        title: r.title,
+        poster: r.poster,
+      })),
     };
   } catch (error) {
+    // If Otakudesu failed and provider was not explicitly samehadaku, try samehadaku as fallback
+    if (!isSamehadaku) {
+      try {
+        return await getDetail(id, "samehadaku");
+      } catch {
+        // no-op
+      }
+    }
     console.error(`Error in getDetail for ${id}:`, error);
     throw error;
   }
+}
+
+/* ========================================================================== */
+/*                               STREAM & RESOLVE                             */
+/* ========================================================================== */
+
+interface SamehadakuEpisodeResponse {
+  status: string;
+  data: {
+    title: string;
+    animeId: string;
+    poster: string;
+    releasedOn?: string;
+    defaultStreamingUrl?: string;
+    hasPrevEpisode: boolean;
+    prevEpisode?: { title?: string; episodeId: string; href?: string } | null;
+    hasNextEpisode: boolean;
+    nextEpisode?: { title?: string; episodeId: string; href?: string } | null;
+    synopsis?: {
+      paragraphs?: string[];
+    };
+    genreList?: { title: string; genreId: string }[];
+    server?: {
+      qualities?: {
+        title: string;
+        serverList?: {
+          title: string;
+          serverId: string;
+          href?: string;
+        }[];
+      }[];
+    };
+    downloadUrl?: {
+      formats?: {
+        title: string;
+        qualities?: {
+          title: string;
+          urls?: { title: string; url: string }[];
+        }[];
+      }[];
+      qualities?: {
+        title: string;
+        size?: string;
+        urls?: { title: string; url: string }[];
+      }[];
+    };
+  };
 }
 
 interface ApiEpisodeResponse {
@@ -621,7 +1103,7 @@ interface ApiEpisodeResponse {
     title: string;
     animeId: string;
     releaseTime?: string;
-    defaultStreamingUrl: string;
+    defaultStreamingUrl?: string;
     hasPrevEpisode: boolean;
     prevEpisode?: {
       title?: string;
@@ -704,7 +1186,75 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
   }
 }
 
-export async function getStream(episodeId: string): Promise<StreamResult> {
+export async function getStream(episodeId: string, provider = "otakudesu"): Promise<StreamResult> {
+  const isSamehadaku = provider === "samehadaku";
+
+  if (isSamehadaku) {
+    try {
+      const json = await fetchJson<SamehadakuEpisodeResponse>(
+        `${getApiBase()}/samehadaku/episode/${encodeURIComponent(episodeId)}`,
+      );
+      const d = json.data;
+
+      const qualities = (d.server?.qualities ?? []).map((q) => ({
+        quality: q.title,
+        serverList: (q.serverList ?? []).map((s) => ({
+          title: s.title.trim(),
+          serverId: s.serverId,
+          href: s.href,
+        })),
+      }));
+
+      // Flatten formats from Samehadaku (MKV, MP4, x265) to DownloadQualityGroup
+      const downloads: { quality: string; size: string | null; urls: { title: string; url: string }[] }[] = [];
+      if (d.downloadUrl?.formats && Array.isArray(d.downloadUrl.formats)) {
+        for (const fmt of d.downloadUrl.formats) {
+          for (const q of fmt.qualities ?? []) {
+            downloads.push({
+              quality: `${fmt.title} ${q.title.trim()}`.trim(),
+              size: null,
+              urls: (q.urls ?? []).map((u) => ({ title: u.title.trim(), url: u.url })),
+            });
+          }
+        }
+      } else if (d.downloadUrl?.qualities && Array.isArray(d.downloadUrl.qualities)) {
+        for (const q of d.downloadUrl.qualities) {
+          downloads.push({
+            quality: q.title,
+            size: q.size ?? null,
+            urls: (q.urls ?? []).map((u) => ({ title: u.title.trim(), url: u.url })),
+          });
+        }
+      }
+
+      let directUrl: string | null = null;
+      if (d.defaultStreamingUrl) {
+        directUrl = await extractDirectStreamUrl(d.defaultStreamingUrl);
+      }
+
+      return {
+        title: d.title,
+        animeId: d.animeId,
+        episodeId,
+        releaseTime: d.releasedOn ?? null,
+        defaultStreamingUrl: directUrl || d.defaultStreamingUrl || null,
+        directUrl: directUrl || null,
+        embedUrl: d.defaultStreamingUrl || null,
+        hasPrevEpisode: Boolean(d.hasPrevEpisode),
+        prevEpisodeId: d.prevEpisode?.episodeId ?? null,
+        hasNextEpisode: Boolean(d.hasNextEpisode),
+        nextEpisodeId: d.nextEpisode?.episodeId ?? null,
+        servers: {
+          qualities,
+        },
+        downloads,
+      };
+    } catch (err) {
+      console.warn(`Samehadaku stream failed for ${episodeId}, trying Otakudesu:`, err);
+    }
+  }
+
+  // Otakudesu Stream
   try {
     const json = await fetchJson<ApiEpisodeResponse>(
       `${getApiBase()}/episode/${encodeURIComponent(episodeId)}`,
@@ -753,6 +1303,13 @@ export async function getStream(episodeId: string): Promise<StreamResult> {
       info: d.info,
     };
   } catch (error) {
+    if (!isSamehadaku) {
+      try {
+        return await getStream(episodeId, "samehadaku");
+      } catch {
+        // no-op
+      }
+    }
     console.error(`Error in getStream for ${episodeId}:`, error);
     throw error;
   }
@@ -765,34 +1322,104 @@ interface ApiServerResponse {
   };
 }
 
-export async function resolveServer(serverId: string): Promise<{ url: string }> {
+export async function resolveServer(
+  serverId: string,
+  provider = "otakudesu",
+): Promise<{ url: string }> {
+  // If provider is Samehadaku or serverId matches Samehadaku format (e.g. includes '-' with letters/digits)
+  const isSamehadaku = provider === "samehadaku";
+
+  if (isSamehadaku) {
+    try {
+      const json = await fetchJson<ApiServerResponse>(
+        `${getApiBase()}/samehadaku/server/${encodeURIComponent(serverId)}`,
+      );
+      const rawUrl = json.data?.url || "";
+      if (rawUrl) {
+        const direct = await extractDirectStreamUrl(rawUrl);
+        return { url: direct || rawUrl };
+      }
+    } catch (err) {
+      console.warn(`Samehadaku resolve failed for ${serverId}, trying Otakudesu:`, err);
+    }
+  }
+
+  // Otakudesu Resolve
   try {
     const json = await fetchJson<ApiServerResponse>(
       `${getApiBase()}/server/${encodeURIComponent(serverId)}`,
     );
     const rawUrl = json.data?.url || "";
-    if (!rawUrl) return { url: "" };
-    const direct = await extractDirectStreamUrl(rawUrl);
-    return { url: direct || rawUrl };
+    if (rawUrl) {
+      const direct = await extractDirectStreamUrl(rawUrl);
+      return { url: direct || rawUrl };
+    }
   } catch (error) {
+    // If Otakudesu failed and not tried samehadaku yet, try Samehadaku
+    if (!isSamehadaku) {
+      try {
+        const json = await fetchJson<ApiServerResponse>(
+          `${getApiBase()}/samehadaku/server/${encodeURIComponent(serverId)}`,
+        );
+        const rawUrl = json.data?.url || "";
+        if (rawUrl) {
+          const direct = await extractDirectStreamUrl(rawUrl);
+          return { url: direct || rawUrl };
+        }
+      } catch {
+        // no-op
+      }
+    }
     console.error(`Error resolving server ${serverId}:`, error);
     return { url: "" };
   }
+
+  return { url: "" };
 }
+
+/* ========================================================================== */
+/*                                   BATCH                                    */
+/* ========================================================================== */
 
 interface ApiBatchResponse {
   status: string;
   data: BatchDetail;
 }
 
-export async function getBatch(batchId: string): Promise<BatchDetail | null> {
+export async function getBatch(batchId: string, provider = "otakudesu"): Promise<BatchDetail | null> {
+  const isSamehadaku = provider === "samehadaku";
+
+  if (isSamehadaku) {
+    try {
+      const json = await fetchJson<ApiBatchResponse>(
+        `${getApiBase()}/samehadaku/batch/${encodeURIComponent(batchId)}`,
+      );
+      if (json.data) return json.data;
+    } catch (err) {
+      console.warn(`Samehadaku batch failed for ${batchId}:`, err);
+    }
+  }
+
+  // Otakudesu Batch
   try {
     const json = await fetchJson<ApiBatchResponse>(
       `${getApiBase()}/batch/${encodeURIComponent(batchId)}`,
     );
-    return json.data ?? null;
+    if (json.data) return json.data;
   } catch (error) {
+    if (!isSamehadaku) {
+      try {
+        const json = await fetchJson<ApiBatchResponse>(
+          `${getApiBase()}/samehadaku/batch/${encodeURIComponent(batchId)}`,
+        );
+        if (json.data) return json.data;
+      } catch {
+        // no-op
+      }
+    }
     console.error(`Error in getBatch for ${batchId}:`, error);
     return null;
   }
+
+  return null;
 }

@@ -35,6 +35,7 @@ import {
   X,
 } from "lucide-react";
 import { DownloadManagerModal } from "./DownloadManagerModal";
+import { ProviderSwitcher } from "./ProviderSwitcher";
 import { getActiveTasks, getOfflineEpisodes } from "@/lib/download-manager";
 import { cn } from "@/lib/utils";
 
