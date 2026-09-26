@@ -40,13 +40,13 @@ import {
 export const Route = createFileRoute("/profil")({
   head: () => ({
     meta: [
-      { title: "Profil Pengguna & Level — Nontonime" },
+      { title: "Profil Pengguna & Level : Nontonime" },
       {
         name: "description",
         content:
           "Pantau rank wibu, total XP, level akun, dan daftar anime yang sedang ditonton dari Firestore.",
       },
-      { property: "og:title", content: "Profil Pengguna & Level — Nontonime" },
+      { property: "og:title", content: "Profil Pengguna & Level : Nontonime" },
       {
         property: "og:description",
         content:

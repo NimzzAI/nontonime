@@ -23,12 +23,12 @@ export const Route = createFileRoute("/ongoing")({
   },
   head: () => ({
     meta: [
-      { title: "Anime Ongoing (Sedang Tayang) — Nontonime" },
+      { title: "Anime Ongoing (Sedang Tayang) : Nontonime" },
       {
         name: "description",
         content: "Daftar anime yang sedang tayang musim ini dengan subtitle Indonesia.",
       },
-      { property: "og:title", content: "Anime Ongoing — Nontonime" },
+      { property: "og:title", content: "Anime Ongoing : Nontonime" },
       {
         property: "og:description",
         content: "Daftar anime yang sedang tayang musim ini subtitle Indonesia.",

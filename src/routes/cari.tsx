@@ -14,12 +14,12 @@ export const Route = createFileRoute("/cari")({
   }),
   head: () => ({
     meta: [
-      { title: "Cari Anime — Nontonime" },
+      { title: "Cari Anime : Nontonime" },
       {
         name: "description",
         content: "Cari judul anime subtitle Indonesia dari katalog Nontonime.",
       },
-      { property: "og:title", content: "Cari Anime — Nontonime" },
+      { property: "og:title", content: "Cari Anime : Nontonime" },
       {
         property: "og:description",
         content: "Cari judul anime subtitle Indonesia dari katalog Nontonime.",

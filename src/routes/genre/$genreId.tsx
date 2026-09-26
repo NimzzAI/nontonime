@@ -15,12 +15,12 @@ export const Route = createFileRoute("/genre/$genreId")({
     const name = search.name ?? `#${params.genreId}`;
     return {
       meta: [
-        { title: `Anime Genre ${name} — Nontonime` },
+        { title: `Anime Genre ${name} : Nontonime` },
         {
           name: "description",
           content: `Kumpulan anime bergenre ${name} dengan subtitle Indonesia.`,
         },
-        { property: "og:title", content: `Anime Genre ${name} — Nontonime` },
+        { property: "og:title", content: `Anime Genre ${name} : Nontonime` },
         {
           property: "og:description",
           content: `Kumpulan anime bergenre ${name} subtitle Indonesia.`,

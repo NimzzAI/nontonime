@@ -7,12 +7,12 @@ import { Tags } from "lucide-react";
 export const Route = createFileRoute("/genre/")({
   head: () => ({
     meta: [
-      { title: "Daftar Genre Anime — Nontonime" },
+      { title: "Daftar Genre Anime : Nontonime" },
       {
         name: "description",
         content: "Jelajahi anime berdasarkan genre: action, romance, fantasy, dan lainnya.",
       },
-      { property: "og:title", content: "Daftar Genre Anime — Nontonime" },
+      { property: "og:title", content: "Daftar Genre Anime : Nontonime" },
       { property: "og:description", content: "Jelajahi anime berdasarkan genre favoritmu." },
     ],
   }),

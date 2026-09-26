@@ -23,9 +23,9 @@ export const Route = createFileRoute("/tamat")({
   },
   head: () => ({
     meta: [
-      { title: "Anime Tamat (Completed) — Nontonime" },
+      { title: "Anime Tamat (Completed) : Nontonime" },
       { name: "description", content: "Daftar anime yang sudah tamat dengan subtitle Indonesia." },
-      { property: "og:title", content: "Anime Tamat — Nontonime" },
+      { property: "og:title", content: "Anime Tamat : Nontonime" },
       { property: "og:description", content: "Daftar anime yang sudah tamat subtitle Indonesia." },
     ],
   }),

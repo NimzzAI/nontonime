@@ -180,7 +180,7 @@ export const AnimeCard = memo(function AnimeCard({
               params={{ animeId: anime.id }}
               className="text-[11px] font-semibold text-primary hover:underline"
             >
-              Detail →
+              Detail
             </Link>
           </div>
         </div>

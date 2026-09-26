@@ -30,12 +30,12 @@ export const Route = createFileRoute("/anime/$animeId")({
     const name = params.animeId.replace(/-/g, " ");
     return {
       meta: [
-        { title: `${name} — Nontonime` },
+        { title: `${name} : Nontonime` },
         {
           name: "description",
           content: `Streaming dan unduh anime ${name} subtitle Indonesia. Sinopsis lengkap, jadwal, dan daftar episode.`,
         },
-        { property: "og:title", content: `${name} — Nontonime` },
+        { property: "og:title", content: `${name} : Nontonime` },
         {
           property: "og:description",
           content: `Streaming anime ${name} subtitle Indonesia.`,

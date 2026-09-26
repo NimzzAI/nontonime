@@ -36,12 +36,12 @@ export const Route = createFileRoute("/watch/$episodeId")({
     const name = params.episodeId.replace(/-/g, " ");
     return {
       meta: [
-        { title: `Nonton ${name} — Nontonime` },
+        { title: `Nonton ${name} : Nontonime` },
         {
           name: "description",
           content: "Streaming anime subtitle Indonesia dengan pilihan resolusi dan server cepat.",
         },
-        { property: "og:title", content: `Nonton ${name} — Nontonime` },
+        { property: "og:title", content: `Nonton ${name} : Nontonime` },
         { property: "og:description", content: "Streaming anime subtitle Indonesia." },
       ],
     };

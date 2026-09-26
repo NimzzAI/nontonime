@@ -37,12 +37,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/watchlist")({
   head: () => ({
     meta: [
-      { title: "Watchlist Saya — Nontonime" },
+      { title: "Watchlist Saya : Nontonime" },
       {
         name: "description",
         content: "Daftar anime yang disimpan, sedang ditonton, dan episode tracking di Nontonime.",
       },
-      { property: "og:title", content: "Watchlist Saya — Nontonime" },
+      { property: "og:title", content: "Watchlist Saya : Nontonime" },
       {
         property: "og:description",
         content: "Daftar anime yang disimpan, sedang ditonton, dan episode tracking di Nontonime.",

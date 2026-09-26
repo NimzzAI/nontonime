@@ -127,10 +127,10 @@ export function AnimeGachaModal({
   }, [pool]);
 
   useEffect(() => {
-    if (open && (!result || isSpinning)) {
+    if (open && !result && !isSpinning) {
       spin();
     }
-  }, [open]);
+  }, [open, result, isSpinning, spin]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

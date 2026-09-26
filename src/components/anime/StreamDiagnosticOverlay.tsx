@@ -458,7 +458,7 @@ export function StreamDiagnosticOverlay({
                       <AlertCircle className="h-3 w-3 shrink-0 text-rose-400" />
                       <span className="font-semibold truncate">{fs.title}</span>
                       <span className="text-rose-300/70 truncate">
-                        — {fs.reason || "Koneksi terputus / status error"}
+                        : {fs.reason || "Koneksi terputus / status error"}
                       </span>
                     </div>
                     <span className="text-[9px] text-white/50 shrink-0 ml-2">

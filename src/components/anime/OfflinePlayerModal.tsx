@@ -101,7 +101,7 @@ export function OfflinePlayerModal({
               <span>Offline Ready</span>
             </span>
             <span className="font-bold text-sm text-foreground truncate">
-              {episode.animeTitle} — Episode {episode.episodeNumber}
+              {episode.animeTitle} : Episode {episode.episodeNumber}
             </span>
             <span className="rounded-md bg-primary/15 text-primary px-2 py-0.5 text-[10px] font-bold">
               {episode.quality}

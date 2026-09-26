@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { History, Play, ArrowRight, X, Clock, Sparkles } from "lucide-react";
+import { History, Play, ArrowRight, X, Clock } from "lucide-react";
 import { readHistory, removeHistory, type HistoryItem } from "@/lib/history";
 import { cn } from "@/lib/utils";
 

@@ -136,7 +136,7 @@ export async function enablePhoneNotifications(): Promise<{
 export async function sendTestUpdateNotification(): Promise<boolean> {
   const latest = RECENT_SITE_UPDATES[0];
   return showLocalNotification(`Nontonime Update: ${latest.version} 🚀`, {
-    body: `${latest.title} — ${latest.description}`,
+    body: `${latest.title}: ${latest.description}`,
     tag: "test-site-update",
   });
 }

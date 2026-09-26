@@ -9,12 +9,12 @@ export const Route = createFileRoute("/download/$batchId")({
     const name = params.batchId.replace(/-/g, " ");
     return {
       meta: [
-        { title: `Unduh Batch ${name} — Nontonime` },
+        { title: `Unduh Batch ${name} : Nontonime` },
         {
           name: "description",
           content: `Tautan unduhan paket lengkap batch ${name} subtitle Indonesia.`,
         },
-        { property: "og:title", content: `Unduh Batch ${name} — Nontonime` },
+        { property: "og:title", content: `Unduh Batch ${name} : Nontonime` },
         {
           property: "og:description",
           content: `Tautan unduhan batch ${name} subtitle Indonesia.`,

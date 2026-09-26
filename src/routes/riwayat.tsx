@@ -21,12 +21,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/riwayat")({
   head: () => ({
     meta: [
-      { title: "Riwayat Tontonan — Nontonime" },
+      { title: "Riwayat Tontonan : Nontonime" },
       {
         name: "description",
         content: "Daftar episode anime yang pernah kamu tonton di perangkat ini.",
       },
-      { property: "og:title", content: "Riwayat Tontonan — Nontonime" },
+      { property: "og:title", content: "Riwayat Tontonan : Nontonime" },
       {
         property: "og:description",
         content: "Daftar episode anime yang pernah kamu tonton di perangkat ini.",

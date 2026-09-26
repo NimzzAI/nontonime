@@ -33,12 +33,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/download/")({
   head: () => ({
     meta: [
-      { title: "Download Manager & Koleksi Offline — Nontonime" },
+      { title: "Download Manager & Koleksi Offline : Nontonime" },
       {
         name: "description",
         content: "Kelola unduhan anime segmen Range dan tonton episode anime offline tanpa kuota.",
       },
-      { property: "og:title", content: "Download Manager & Koleksi Offline — Nontonime" },
+      { property: "og:title", content: "Download Manager & Koleksi Offline : Nontonime" },
       {
         property: "og:description",
         content: "Unduh anime per segmen HTTP Range untuk tontonan offline tanpa internet.",

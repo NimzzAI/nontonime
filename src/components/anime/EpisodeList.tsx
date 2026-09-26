@@ -60,7 +60,7 @@ export function EpisodeList({
                 <p className="truncate text-sm font-semibold text-card-foreground">
                   Episode {episode.number}
                   {episode.title && episode.title !== `Episode ${episode.number}`
-                    ? ` — ${episode.title}`
+                    ? ` : ${episode.title}`
                     : ""}
                 </p>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">

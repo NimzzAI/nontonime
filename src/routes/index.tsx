@@ -36,13 +36,13 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "Nontonime — Streaming Anime Subtitle Indonesia Terbaru" },
+      { title: "Nontonime: Streaming Anime Subtitle Indonesia Terbaru" },
       {
         name: "description",
         content:
           "Nonton anime subtitle Indonesia terlengkap dan terupdate gratis. Streaming lancar dengan pilihan kualitas 360p, 480p, hingga 720p HD.",
       },
-      { property: "og:title", content: "Nontonime — Streaming Anime Subtitle Indonesia Terbaru" },
+      { property: "og:title", content: "Nontonime: Streaming Anime Subtitle Indonesia Terbaru" },
       {
         property: "og:description",
         content:
@@ -78,35 +78,40 @@ function HomePage() {
   const todayDay = currentDayName();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-10 sm:space-y-14 px-4 py-6 sm:py-8">
+    <div className="mx-auto max-w-7xl space-y-8 sm:space-y-12 px-4 py-4 sm:py-6">
       {/* Welcome & Site Introduction Popup Modal */}
       <WelcomeModal />
 
-      {/* Top Welcome Announcement Pill */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-background to-secondary/30 px-4 py-2.5 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/20 text-primary text-xs font-black">
-            👋
-          </span>
+      {/* Stream Curation & Broadcast Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-card/90 px-4 py-2.5 shadow-xs">
+        <div className="flex items-center gap-3">
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-xs font-semibold text-foreground">
-            Selamat Datang di <strong className="text-primary font-black">Nontonime</strong> —
-            Streaming Bebas Iklan & Cepat
+            Tayang Hari Ini ({todayDay}) : Update Episode Sub Indo Otomatis
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new Event("open-welcome-modal"))}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer shadow-xs"
-        >
-          <Sparkles className="h-3 w-3" />
-          <span>Buka Pengenalan & Fitur</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFilterOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-secondary/60 px-3 py-1 text-xs font-medium text-foreground hover:bg-secondary hover:text-primary transition-colors cursor-pointer"
+          >
+            <span>Filter Anime</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event("open-welcome-modal"))}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+          >
+            <span>Panduan & Info</span>
+          </button>
+        </div>
       </div>
 
       {/* Hero Section Loading / Carousel */}
       {isPending ? (
-        <div className="aspect-[16/9] w-full animate-pulse rounded-3xl bg-muted/60 sm:aspect-[21/9]" />
+        <div className="aspect-[16/9] w-full animate-pulse rounded-2xl sm:rounded-3xl bg-muted/60 sm:aspect-[21/9]" />
       ) : null}
 
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
@@ -121,38 +126,37 @@ function HomePage() {
       ) : null}
 
       {/* Interactive Surprise Anime Roulette Banner */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-card p-5 sm:p-6 shadow-lg backdrop-blur-xs">
+      <section className="relative overflow-hidden rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/30">
-              <Dices className="h-6 w-6" />
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary border border-primary/20">
+              <Dices className="h-5 w-5" />
             </span>
             <div>
-              <h3 className="font-display text-base sm:text-lg font-bold text-foreground">
+              <h3 className="font-display text-sm sm:text-base font-bold text-foreground">
                 Bingung Mau Nonton Apa Hari Ini?
               </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-snug">
-                Putar roda roulette takdir anime dan temukan serial menarik berikutnya secara
-                instan!
+              <p className="text-xs text-muted-foreground leading-snug">
+                Putar roda roulette takdir anime dan temukan serial menarik berikutnya secara instan.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setGachaOpen(true)}
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs sm:text-sm font-bold text-primary-foreground shadow-md shadow-primary/30 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer w-full sm:w-auto"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 active:scale-95 cursor-pointer w-full sm:w-auto"
           >
             <Dices className="h-4 w-4" />
-            <span>Putar Anime Acak 🎲</span>
+            <span>Putar Anime Acak</span>
           </button>
         </div>
       </section>
 
-      {/* Recently Watched Section: Fetches and displays the last 5 anime episodes played */}
+      {/* Recently Watched Section */}
       <RecentlyWatchedSection />
 
-      {/* Popular Genres Quick Navigation Bar (Clean typography, no icons) */}
-      <section className="space-y-3.5">
+      {/* Popular Genres Quick Navigation Bar */}
+      <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-display text-base sm:text-lg font-bold tracking-tight text-foreground">
@@ -177,14 +181,14 @@ function HomePage() {
               to="/genre/$genreId"
               params={{ genreId: g.id }}
               search={{ page: 1, name: g.name }}
-              className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground transition-all hover:border-primary/60 hover:bg-secondary hover:text-primary active:scale-95 shadow-2xs"
+              className="inline-flex h-8 shrink-0 items-center rounded-lg border border-border/80 bg-card px-3 text-xs font-medium text-foreground transition-colors hover:border-primary/60 hover:bg-secondary hover:text-primary active:scale-95 shadow-2xs"
             >
               {g.name}
             </Link>
           ))}
           <Link
             to="/genre"
-            className="inline-flex h-9 shrink-0 items-center rounded-lg border border-dashed border-border bg-secondary/40 px-3.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-primary hover:bg-secondary"
+            className="inline-flex h-8 shrink-0 items-center rounded-lg border border-dashed border-border bg-secondary/40 px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary hover:text-primary hover:bg-secondary"
           >
             +30 Genre Lainnya
           </Link>
@@ -220,7 +224,7 @@ function HomePage() {
 
       <Shelf
         title="Rekomendasi Pilihan"
-        icon={Sparkles}
+        icon={Film}
         items={data?.new ?? []}
         isLoading={isPending}
       />

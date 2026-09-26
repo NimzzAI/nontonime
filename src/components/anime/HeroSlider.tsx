@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Info,
   Play,
-  Sparkles,
   Star,
 } from "lucide-react";
 
@@ -114,9 +113,8 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                         </span>
                       )}
 
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-secondary/80 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-foreground">
-                        <Sparkles className="h-3 w-3 text-amber-500" />
-                        Unggulan
+                      <span className="inline-flex items-center rounded-full border border-border/80 bg-secondary/80 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-foreground">
+                        Pilihan Editor
                       </span>
 
                       {anime.episodeCount ? (

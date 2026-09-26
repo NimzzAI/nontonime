@@ -323,7 +323,7 @@ export function SiteHeader() {
                     onClick={handleSearchSubmit}
                     className="block w-full border-t border-border/60 pt-2 pb-1 text-center text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
                   >
-                    Lihat Semua Hasil Pencarian →
+                    Lihat Semua Hasil Pencarian
                   </button>
                 </div>
               ) : null}

@@ -10,7 +10,6 @@ import {
   Play,
   Star,
   Layers,
-  Sparkles,
   CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,9 +73,8 @@ export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
             <h2 className="font-display text-lg sm:text-xl font-bold tracking-tight text-foreground">
               Trending Anime
             </h2>
-            <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-400 border border-amber-500/20">
-              <Sparkles className="h-2.5 w-2.5" />
-              Paling Populer Minggu Ini
+            <span className="hidden sm:inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-500 border border-amber-500/20">
+              Paling Banyak Ditonton
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">

@@ -10,13 +10,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/jadwal")({
   head: () => ({
     meta: [
-      { title: "Jadwal Rilis Anime Mingguan — Nontonime" },
+      { title: "Jadwal Rilis Anime Mingguan : Nontonime" },
       {
         name: "description",
         content:
           "Jadwal rilis anime episode baru subtitle Indonesia setiap hari dari Senin sampai Minggu.",
       },
-      { property: "og:title", content: "Jadwal Rilis Anime Mingguan — Nontonime" },
+      { property: "og:title", content: "Jadwal Rilis Anime Mingguan : Nontonime" },
       { property: "og:description", content: "Jadwal rilis anime mingguan subtitle Indonesia." },
     ],
   }),
