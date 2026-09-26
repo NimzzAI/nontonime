@@ -10,14 +10,25 @@
  */
 
 function isInternalOrPrivateHost(hostname: string): boolean {
-  const lower = hostname.toLowerCase();
+  const lower = hostname.toLowerCase().trim();
   if (
     lower === "localhost" ||
     lower === "127.0.0.1" ||
     lower === "0.0.0.0" ||
     lower === "::1" ||
     lower.endsWith(".local") ||
-    lower.endsWith(".internal")
+    lower.endsWith(".internal") ||
+    lower === "metadata.google.internal" ||
+    lower === "instance-data"
+  ) {
+    return true;
+  }
+  // Check IPv6 loopback / private
+  if (
+    lower.startsWith("[::") ||
+    lower.startsWith("fe80:") ||
+    lower.startsWith("fc00:") ||
+    lower.startsWith("fd00:")
   ) {
     return true;
   }
@@ -34,6 +45,12 @@ function isInternalOrPrivateHost(hostname: string): boolean {
     if (b0 === 0) return true;
   }
   return false;
+}
+
+function isAllowedPort(port: string): boolean {
+  if (!port) return true; // default 80 or 443
+  const p = parseInt(port, 10);
+  return p === 80 || p === 443 || p === 8080 || p === 8443 || p === 8888;
 }
 
 export function isDirectMediaExtension(url: string): boolean {
@@ -103,6 +120,16 @@ export async function handleStreamProxyRequest(request: Request): Promise<Respon
   if (isInternalOrPrivateHost(parsedTarget.hostname)) {
     return new Response(
       JSON.stringify({ error: "RESTRICTED_HOST", message: "Akses ke host internal ditolak" }),
+      {
+        status: 403,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      },
+    );
+  }
+
+  if (!isAllowedPort(parsedTarget.port)) {
+    return new Response(
+      JSON.stringify({ error: "RESTRICTED_PORT", message: "Port yang diminta tidak diizinkan" }),
       {
         status: 403,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
@@ -252,6 +279,20 @@ export async function handleStreamCheckRequest(request: Request): Promise<Respon
   } catch {
     return new Response(JSON.stringify({ ok: false, error: "INVALID_URL" }), {
       status: 400,
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return new Response(JSON.stringify({ ok: false, error: "UNSUPPORTED_PROTOCOL" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  if (isInternalOrPrivateHost(parsed.hostname) || !isAllowedPort(parsed.port)) {
+    return new Response(JSON.stringify({ ok: false, error: "RESTRICTED_HOST" }), {
+      status: 403,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   }

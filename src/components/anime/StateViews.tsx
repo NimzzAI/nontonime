@@ -63,25 +63,15 @@ export function EmptyState({
   message,
   action,
 }: {
-  icon?: LucideIcon | React.ComponentType<{ className?: string }> | string;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
   message: string;
   action?: { label: string; to: string };
 }) {
-  const renderIcon = () => {
-    if (!IconProp) return <Inbox className="h-7 w-7 text-muted-foreground" />;
-    if (typeof IconProp === "string") {
-      if (IconProp.startsWith("fa-")) {
-        return <i className={`${IconProp} text-2xl text-muted-foreground`} />;
-      }
-      return <Inbox className="h-7 w-7 text-muted-foreground" />;
-    }
-    const IconComp = IconProp as React.ElementType;
-    return <IconComp className="h-7 w-7 text-muted-foreground" />;
-  };
+  const IconComp = (IconProp as React.ElementType) || Inbox;
 
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-14 text-center shadow-sm">
-      {renderIcon()}
+      <IconComp className="h-8 w-8 text-muted-foreground/60" />
       <p className="text-sm text-muted-foreground">{message}</p>
       {action ? (
         <a href={action.to} className="text-sm font-semibold text-primary hover:underline">
@@ -97,23 +87,13 @@ export function SectionTitle({
   icon: IconProp,
 }: {
   title: string;
-  icon?: LucideIcon | React.ComponentType<{ className?: string }> | string;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
 }) {
-  const renderIcon = () => {
-    if (!IconProp) return null;
-    if (typeof IconProp === "string") {
-      if (IconProp.startsWith("fa-")) {
-        return <i className={`${IconProp} text-primary`} />;
-      }
-      return null;
-    }
-    const IconComp = IconProp as React.ElementType;
-    return <IconComp className="h-5 w-5 text-primary" />;
-  };
+  const IconComp = IconProp as React.ElementType | undefined;
 
   return (
     <h2 className="flex items-center gap-2 font-display text-xl font-bold tracking-tight text-foreground">
-      {renderIcon()}
+      {IconComp ? <IconComp className="h-5 w-5 text-primary" /> : null}
       <span>{title}</span>
     </h2>
   );

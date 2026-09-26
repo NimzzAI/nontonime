@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Search } from "lucide-react";
 import { AnimeListRow } from "@/components/anime/AnimeListRow";
 import { Pagination } from "@/components/anime/Pagination";
 import { ErrorState, GridSkeleton, SectionTitle } from "@/components/anime/StateViews";
@@ -34,9 +35,13 @@ function SearchPage() {
   const [term, setTerm] = useState(q);
   const { data, isPending, error, refetch } = useQuery(searchQuery(q, page));
 
+  useEffect(() => {
+    setTerm(q);
+  }, [q]);
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
-      <SectionTitle title="Cari Anime" icon="fa-solid fa-magnifying-glass" />
+      <SectionTitle title="Cari Anime" icon={Search} />
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -47,11 +52,11 @@ function SearchPage() {
         <input
           value={term}
           onChange={(event) => setTerm(event.target.value)}
-          placeholder="Ketik judul anime"
+          placeholder="Ketik judul anime..."
           className="h-11 flex-1 rounded-full border border-border bg-card px-4 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
         />
-        <button className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
-          <i className="fa-solid fa-magnifying-glass" />
+        <button className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 cursor-pointer">
+          <Search className="h-4 w-4" />
           Cari
         </button>
       </form>

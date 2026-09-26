@@ -8,6 +8,7 @@ import {
   fetchHome,
   fetchLatest,
   fetchPopular,
+  fetchCompleted,
   fetchSchedule,
   fetchSearch,
   fetchStream,
@@ -68,7 +69,7 @@ export const ongoingQuery = (page: number, provider = "otakudesu") =>
 export const completedQuery = (page: number, provider = "otakudesu") =>
   queryOptions({
     queryKey: ["completed", page, provider],
-    queryFn: () => fetchPopular({ data: { page: Math.max(1, page), provider } }),
+    queryFn: () => fetchCompleted({ data: { page: Math.max(1, page), provider } }),
     ...common,
   });
 

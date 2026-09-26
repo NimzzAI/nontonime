@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Archive, ArrowLeft, Download } from "lucide-react";
 import { ErrorState, LoadingState } from "@/components/anime/StateViews";
 import { animeDetailQuery, batchQuery } from "@/lib/queries";
 
@@ -52,7 +53,7 @@ function BatchPage() {
           ) : null}
           <div className="space-y-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-3 py-0.5 text-xs font-bold">
-              <i className="fa-solid fa-box-archive" />
+              <Archive className="h-3.5 w-3.5" />
               PAKET BATCH LENGKAP
             </span>
             <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground">
@@ -67,7 +68,7 @@ function BatchPage() {
                 params={{ animeId: batchData.animeId }}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline pt-2"
               >
-                <i className="fa-solid fa-arrow-left text-xs" />
+                <ArrowLeft className="h-3.5 w-3.5" />
                 Kembali ke detail anime
               </Link>
             ) : null}
@@ -109,7 +110,7 @@ function BatchPage() {
                           rel="noopener noreferrer"
                           className="press-soft inline-flex items-center gap-1 rounded-lg border border-border/80 bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent hover:border-primary/50"
                         >
-                          <i className="fa-solid fa-download text-[10px] text-primary" />
+                          <Download className="h-3 w-3 text-primary" />
                           {link.title}
                         </a>
                       ))}
@@ -147,7 +148,7 @@ function BatchPage() {
               params={{ animeId: batchId }}
               className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
-              <i className="fa-solid fa-arrow-left" />
+              <ArrowLeft className="h-3.5 w-3.5" />
               Kembali ke detail anime
             </Link>
           </div>

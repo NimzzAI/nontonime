@@ -4,16 +4,14 @@
 
 # nontonime
 
-Platform streaming anime subtitle Indonesia modern — cepat, tanpa iklan mengganggu, tanpa registrasi, dan dioptimalkan untuk performa tinggi.
+**Platform Streaming & Pelacakan Anime Subtitle Indonesia Berperforma Tinggi**
+
+Cepat, responsif di ponsel berspesifikasi rendah, tanpa iklan mengganggu, ramah privasi, dan dioptimalkan secara menyeluruh.
 
 [![Demo](https://img.shields.io/badge/demo-nontonime.vercel.app-6366f1?style=for-the-badge&logo=vercel&logoColor=white)](https://nontonime.vercel.app/)
 [![Deploy](https://img.shields.io/github/deployments/NimzzAI/nontonime/production?style=for-the-badge&label=vercel&logo=vercel)](https://nontonime.vercel.app/)
 [![Repo](https://img.shields.io/badge/github-NimzzAI%2Fnontonime-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/NimzzAI/nontonime)
-
-[![Last Commit](https://img.shields.io/github/last-commit/NimzzAI/nontonime?style=flat-square)](https://github.com/NimzzAI/nontonime/commits/main)
-[![Repo Size](https://img.shields.io/github/repo-size/NimzzAI/nontonime?style=flat-square)](https://github.com/NimzzAI/nontonime)
-[![Top Language](https://img.shields.io/github/languages/top/NimzzAI/nontonime?style=flat-square)](https://github.com/NimzzAI/nontonime)
-[![Stars](https://img.shields.io/github/stars/NimzzAI/nontonime?style=flat-square)](https://github.com/NimzzAI/nontonime/stargazers)
+[![Status](https://img.shields.io/badge/status-active%20%2F%20production%20ready-brightgreen?style=flat-square)](#-status-proyek)
 [![License](https://img.shields.io/github/license/NimzzAI/nontonime?style=flat-square)](./LICENSE)
 
 </div>
@@ -22,35 +20,170 @@ Platform streaming anime subtitle Indonesia modern — cepat, tanpa iklan mengga
 
 ## // Ringkasan Proyek
 
-**nontonime** adalah aplikasi web generasi baru untuk menonton anime berbahasa Indonesia yang dirancang dengan arsitektur modern berbasis TanStack Start (React 19 SSR) dan Nitro Engine. Aplikasi ini memadukan desain visual sinematik dengan efisiensi eksekusi tinggi, privasi lokal penuh, dan tanpa beban pelacakan atau registrasi akun.
+**nontonime** adalah aplikasi web modern untuk menonton dan mengelola koleksi anime berbahasa Indonesia. Dibangun di atas arsitektur **TanStack Start (React 19 SSR)**, **TanStack Router**, dan **Tailwind CSS v4**, nontonime dirancang untuk memberikan pengalaman menonton sinematik yang mulus tanpa lag, konsumsi RAM yang hemat, dan rendering yang gesit bahkan di perangkat ponsel menengah ke bawah.
 
-Seluruh data anime, jadwal rilis harian, direktori genre, hingga resolusi multi-server diintegrasikan secara _server-side_ melalui Sanka API Proxy dengan lapisan proteksi WAF, failover cadangan, dan konfigurasi IP kustom.
+Seluruh data anime, jadwal tayang harian, genre, dan server streaming terhubung langsung dengan sumber terpercaya **Otakudesu** melalui lapisan Sanka Vollerei API dan server proxy cerdas nontonime.
 
 ---
 
-## // Penanganan Error 403 Forbidden di Vercel & Rotasi IP
+## // Status Proyek
 
-### [+] Penyebab Utama Error 403
+- **Status**: Aktif & Production-Ready (Versi 1.1 Upgrade).
+- **Fokus Utama**: Performa tinggi, kestabilan pemutaran streaming Otakudesu, ramah perangkat mobile, efisiensi memori (zero memory leaks), dan UX yang bersih dan konsisten.
+- **Provider Standar**: **Otakudesu** (Koleksi lengkap, episode rilis harian teratur, multi-server stabil).
 
-Saat melakukan deployment ke **Vercel**, serverless function Vercel menggunakan IP range datacenter (AWS/GCP edge) yang sering kali teridentifikasi sebagai bot dan otomatis diblokir oleh Cloudflare WAF pada host upstream (`sankavollerei.web.id`).
+---
 
-### [+] Solusi: Konfigurasi Environment Variable `SANKA_API_BASE`
+## // Fitur Utama
 
-Lapisan server `src/lib/animein.server.ts` telah dilengkapi mekanisme **Dynamic Base URL** dan **Automatic Fallback**. Anda dapat mengganti IP atau domain proxy langsung tanpa perlu menyunting kode sumber.
+| Kategori         | Fitur                                 | Penjelasan & Keunggulan                                                                                                                         |
+| :--------------- | :------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Streaming**    | **Player Adaptif Multi-Server**       | Pemutar video cerdas dengan dukungan server video langsung (MP4), HLS streaming, hingga embed cadangan.                                         |
+| **Streaming**    | **Auto-Failover & Auto-Retry**        | Deteksi otomatis saat stream gagal (network error, stall buffer >10 detik, upstream down) dengan peralihan otomatis ke server alternatif.       |
+| **Streaming**    | **Autoplay Episode Berikutnya**       | Menghitung dan melanjutkan tontonan ke episode selanjutnya secara mulus dengan countdown interaktif yang dapat dibatalkan.                      |
+| **Streaming**    | **Zero-Buffering Range Proxy**        | Proxy lokal berbasis RFC 7233 HTTP Range Request; hemat RAM, tidak membebani memori server, dan mendukung seeking instan untuk video >500MB.    |
+| **Streaming**    | **Live Stream Diagnostics HUD**       | Panel diagnostik real-time untuk memantau URL sumber, Content-Type upstream, status partial content 206, latensi ping, dan durasi buffer.       |
+| **Pencarian**    | **Spotlight Search (`Ctrl+K` / `/`)** | Modal pencarian cepat dengan navigasi keyboard, filter status anime, dan debounce query untuk mengurangi request API.                           |
+| **Offline**      | **Segmented Range Downloader**        | Pengunduh video per blok segmen 2MB via IndexedDB dengan fitur jeda (pause) & lanjutkan (resume) tanpa mengulang dari 0%.                       |
+| **Offline**      | **Offline Video Player**              | Pemutar episode tersimpan langsung di browser tanpa koneksi internet (100% offline) dan opsi unduh file MP4 ke penyimpanan lokal.               |
+| **Koleksi**      | **Watchlist & Riwayat Tontonan**      | Manajemen tontonan lokal (Rencana, Sedang Ditonton, Selesai) dengan pencarian, pemulihan posisi detik terakhir, serta Ekspor/Impor format JSON. |
+| **Gamifikasi**   | **Level & Badge Wibu**                | Sistem EXP dan badge pencapaian berdasarkan riwayat tontonan dan aktivitas di platform nontonime.                                               |
+| **Mobile & PWA** | **Mobile-First Experience**           | Desain navigasi bawah (bottom navigation) yang ergonomis, layout responsif sentuhan, safe-area-inset cover, dan dukungan PWA installable.       |
 
-Tambahkan variabel berikut pada menu **Settings -> Environment Variables** di dashboard Vercel Anda:
+---
 
-```env
-# URL API Utama (Ganti dengan Reverse Proxy / IP VPS Anda)
-SANKA_API_BASE=https://proxy-anime.domainanda.com/anime
+## // Arsitektur & Teknologi
 
-# URL API Cadangan (Otomatis digunakan jika URL utama mengembalikan 403 / timeout)
-SANKA_API_FALLBACK=https://www.sankavollerei.web.id/anime
+### Tumpukan Teknologi (Tech Stack)
+
+- **Frontend & SSR Framework**: [TanStack Start](https://tanstack.com/start) (React 19, Server Functions, SSR)
+- **Routing**: [TanStack Router](https://tanstack.com/router) (File-based, 100% Type-Safe)
+- **Data Fetching & State**: [TanStack Query v5](https://tanstack.com/query) dengan optimasi `staleTime` dan `gcTime`
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) dengan palet OKLCH dan utilitas performa tinggi
+- **Ikon**: [Lucide React](https://lucide.dev/) (menggantikan pustaka eksternal yang berat)
+- **Media Player**: [Video.js](https://videojs.com/) dengan custom lightweight controls & overlay
+- **Database / Auth Opsional**: [Firebase Firestore & Authentication](https://firebase.google.com/)
+- **Server Engine**: Express.js + Vite Dev Middlewares / Production build
+
+### Arsitektur Penting
+
+1. **In-Memory Server LRU Caching & Request Deduplication (`src/lib/animein.server.ts`)**:
+   - Membatasi entri cache pada 500 slot dengan TTL dinamis (15 menit untuk home/detail, 30 menit untuk list/jadwal).
+   - _In-flight Promise Coalescing_: Jika ada beberapa request simultan untuk episode atau anime yang sama, hanya 1 request yang diteruskan ke upstream API.
+   - _Stale-While-Revalidate Fallback_: Jika upstream mengembalikan timeout atau 403, cache sebelumnya langsung disajikan agar user tidak mengalami error layar kosong.
+
+2. **Zero-Buffering Stream Proxy (`src/lib/stream-proxy.server.ts`)**:
+   - Mem-bypass batasan CORS dan proteksi hotlinking tanpa menyimpan seluruh berkas di memori/disk server.
+   - Proteksi keamanan SSRF (memblokir akses ke `localhost`, IP privat, link metadata cloud).
+   - Meneruskan header `Range` secara transparan untuk penghematan data dan kemampuan seeking instan.
+
+3. **Client-Side Cache Indexing (`src/lib/watchlist.ts` & `src/lib/history.ts`)**:
+   - Pengecekan status anime dalam kompleksitas $O(1)$ menggunakan `Set<string>`, menghindari operasi `JSON.parse` berulang pada setiap render kartu anime.
+
+---
+
+## // Struktur Direktori
+
+```text
+nontonime/
+├── public/                  # Aset publik, favicon, manifest PWA, service worker
+├── src/
+│   ├── components/
+│   │   ├── anime/           # Komponen anime (Player, Card, Shelf, Modal, Navigasi)
+│   │   └── ui/              # Komponen primitif UI (Dialog, Dropdown, Button, Input)
+│   ├── hooks/               # Custom React hooks (useMobile, dll.)
+│   ├── lib/
+│   │   ├── animein.server.ts    # Lapisan API Otakudesu, caching, fallback
+│   │   ├── stream-proxy.server.ts # Proxy streaming video & RFC 7233 Range
+│   │   ├── download-manager.ts  # Segmented downloader & IndexedDB storage
+│   │   ├── anime-types.ts       # Definisi interface TypeScript terpadu
+│   │   ├── anime.functions.ts   # TanStack Start Server Functions
+│   │   ├── queries.ts           # Konfigurasi query data TanStack Query
+│   │   ├── watchlist.ts         # Pengelolaan watchlist & ekspor/impor
+│   │   ├── history.ts           # Pengelolaan riwayat dan posisi pemutaran
+│   │   ├── gamification.ts      # Logika EXP, level, dan badge pengguna
+│   │   └── site-config.ts       # Metadata aplikasi dan konfigurasi SEO
+│   ├── routes/              # Rute halaman file-based TanStack Router
+│   ├── server.ts            # Entrypoint server Express & proxy routing
+│   └── styles.css           # Styling global Tailwind CSS v4
+├── firestore.rules          # Aturan keamanan database Firestore
+├── metadata.json            # Konfigurasi metadata platform AI Studio
+├── package.json             # Dependensi proyek dan skrip npm
+└── README.md                # Dokumentasi lengkap proyek
 ```
 
-### [+] Cara Membuat Cloudflare Worker Reverse Proxy (Gratis & Cepat)
+---
 
-Jika Anda tidak memiliki VPS, buat Cloudflare Worker sederhana untuk meneruskan request ke API Sanka:
+## // Panduan Penginstalan & Menjalankan Lokal
+
+### Prasyarat
+
+- **Node.js**: Versi 20.x atau 22.x LTS
+- **npm**: Versi 10.x atau lebih baru
+
+### Langkah-langkah
+
+1. **Kloning Repositori**:
+
+   ```bash
+   git clone https://github.com/NimzzAI/nontonime.git
+   cd nontonime
+   ```
+
+2. **Pasang Dependensi**:
+
+   ```bash
+   npm install
+   ```
+
+3. **Buat Berkas Environment**:
+   Salin dari template yang disediakan:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+4. **Jalankan Development Server**:
+
+   ```bash
+   npm run dev
+   ```
+
+   Buka peramban di [http://localhost:3000](http://localhost:3000).
+
+5. **Kompilasi & Uji Produksi**:
+   ```bash
+   npm run build
+   npm run start
+   ```
+
+---
+
+## // Variabel Lingkungan (.env)
+
+| Variabel                    | Deskripsi                                             | Status   | Contoh / Catatan                            |
+| :-------------------------- | :---------------------------------------------------- | :------- | :------------------------------------------ |
+| `SANKA_API_BASE`            | URL endpoint Sanka Vollerei API (Otakudesu)           | Opsional | `https://www.sankavollerei.web.id/anime`    |
+| `SANKA_API_FALLBACK`        | URL cadangan otomatis jika URL utama diblokir/timeout | Opsional | Mirror proxy atau domain cadangan           |
+| `VITE_FIREBASE_API_KEY`     | API Key proyek Firebase                               | Opsional | Untuk fitur sinkronisasi akun online        |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Domain autentikasi Firebase                           | Opsional | `ai-studio-nontonime-xxx.firebaseapp.com`   |
+| `VITE_FIREBASE_PROJECT_ID`  | ID Proyek Firebase                                    | Opsional | ID proyek Firestore                         |
+| `VAPID_PRIVATE_KEY`         | Kunci privat untuk Web Push Notification              | Opsional | Digunakan untuk pengiriman notifikasi rilis |
+| `VITE_VAPID_PUBLIC_KEY`     | Kunci publik untuk Web Push Notification              | Opsional | Digunakan di browser klien                  |
+
+> **Catatan Keamanan**: Jangan pernah mempublikasikan `VAPID_PRIVATE_KEY` atau secret server ke sisi klien. Semua panggilan API eksternal diproses secara aman di sisi server.
+
+---
+
+## // Informasi Sumber API & Penanganan Error 403
+
+Data anime pada nontonime disediakan oleh **Otakudesu** melalui Sanka Vollerei API.
+
+### Mengatasi Pemblokiran WAF / Error 403 di Layanan Cloud (Vercel, Cloud Run, VPS)
+
+IP datacenter publik (AWS, GCP, Vercel Serverless) terkadang dibatasi oleh Cloudflare WAF upstream. Nontonime telah menyertakan mekanisme **Dual-Endpoint Fallback** dan header browser emulasi otomatis.
+
+Jika Anda mengalami error 403 atau timeout dari upstream, Anda dapat membuat **Cloudflare Worker Reverse Proxy** sederhana:
 
 ```javascript
 export default {
@@ -83,185 +216,47 @@ export default {
 };
 ```
 
-Setelah worker aktif (misal `https://sanka-proxy.worker-anda.workers.dev`), atur pada Vercel:
-
-```env
-SANKA_API_BASE=https://sanka-proxy.worker-anda.workers.dev/anime
-```
+Cukup atur `SANKA_API_BASE=https://worker-proxy-anda.workers.dev/anime` di pengaturan environment aplikasi Anda.
 
 ---
 
-## // Optimasi Performa & Penanganan Kendala Lag
+## // Catatan Penting Mengenai Streaming
 
-Untuk mengatasi keluhan beban memori dan lag pada peramban berdaya rendah ataupun perangkat seluler, telah diimplementasikan pembaruan performa menyeluruh:
-
-1. **In-Memory Cache & O(1) Indexing (`src/lib/watchlist.ts` & `src/lib/history.ts`)**
-   - Menggantikan pembacaan berulang `localStorage.getItem` dan `JSON.parse` yang sebelumnya terpanggil puluhan kali per render kartu.
-   - Menggunakan `Set<string>` terindeks untuk pengecekan status anime dalam waktu konstan $O(1)$.
-2. **Komponen Termemoisasi (`React.memo`)**
-   - `AnimeCard` dan `AnimeListRow` dibungkus dengan `memo` untuk mencegah siklus _re-render_ massal saat status UI lokal berubah.
-3. **Pemuatan Aset Asinkron (`decoding="async"` & `loading="lazy"`)**
-   - Menghilangkan _frame drops_ saat menggulir (_scrolling_) katalog ratusan judul anime.
-4. **Optimasi Render Siklus & CPU (`HeroSlider` & `TrendingSlider`)**
-   - Event listener pengguliran di-_throttle_ menggunakan `requestAnimationFrame`.
-   - Timer putar otomatis (_auto-slide_) dijeda saat tab berada di latar belakang (`document.hidden`) guna menghemat daya baterai dan memori CPU.
-5. **Konfigurasi Cache TanStack Query yang Terukur**
-   - `staleTime: 5 menit` dan `gcTime: 15 menit` dengan mematikan `refetchOnWindowFocus` yang tidak perlu, memangkas lonjakan _network waterfall_ yang memicu lag.
-6. **Penghapusan FontAwesome CDN Eksternal**
-   - Seluruh ikon dimigrasikan secara penuh ke pustaka ringan `lucide-react`, memotong dependensi stylesheet eksternal yang memblokir rendering awal halaman.
-
----
-
-## // Lapisan Penanganan Error Otomatis & Diagnostik Stream
-
-Aplikasi kini dilengkapi dengan arsitektur pemutar video mandiri yang tangguh untuk mengatasi berbagai kendala sumber video (seperti CDN down, CORS blocking, atau ISP filtering):
-
-### 1. Penanganan Error Otomatis (Automated Failover Layer)
-
-- **Deteksi Kegagalan Multilapis**: Mendeteksi otomatis error native HTML5/Video.js (`MEDIA_ERR_NETWORK`, `MEDIA_ERR_SRC_NOT_SUPPORTED`, `MEDIA_ERR_DECODE`), buffer macet berkepanjangan (_stall_ > 10 detik), maupun kegagalan koneksi frame iframe.
-- **Peralihan Server Tanpa Intervensi**: Saat server aktif mengalami kendala, sistem akan memicu _countdown_ visual 2 detik dan secara otomatis mengalihkan pemutaran ke server cadangan berikutnya (`Odstream`, `Filedon`, `Mega`, dll.) tanpa perlu tindakan manual dari pengguna.
-- **Pencegahan Infinite Loop**: Menyimpan daftar server yang telah gagal pada sesi episode berjalan agar server rusak tidak dicoba berulang-ulang. Jika seluruh server telah habis dicoba, pemutar menampilkan kartu diagnosa komprehensif dengan opsi coba ulang atau pembukaan di tab baru.
-- **Kendali Pengguna**: Opsi **Auto-Failover** dapat dinyalakan/dimatikan kapan saja melalui tombol toggle di bilah kontrol pemutar.
-
-### 2. Panel Diagnostik Stream Real-Time (Live HUD)
-
-Dapat diakses langsung melalui tombol **"Diagnostik"** pada pemutar video untuk membantu proses debugging:
-
-- **Sumber Streaming Aktif**: Menampilkan URL target lengkap, domain host penyedia, dan mode pemutar aktif (`Native HTML5`, `Local Range Proxy`, `MEGA Decrypted`, atau `Iframe Embed`).
-- **Validasi Content-Type**: Memeriksa tipe konten upstream (`video/mp4`, `application/x-mpegURL`, `text/html`) untuk memastikan sumber merupakan file media riil dan bukan halaman web yang diblokir.
-- **Status HTTP Range Request (RFC 7233)**: Menampilkan status header `Accept-Ranges: bytes`, status respons `HTTP 206 Partial Content`, dan offset `Content-Range` byte untuk verifikasi kemampuan seeking instan.
-- **Konektivitas & Buffer Health**: Mengukur latensi ping round-trip (ms), posisi detik pemutaran, durasi buffer ke depan (_buffered ahead seconds_), dan resolusi video riil.
-- **Log Riwayat Failover & Ekspor JSON**: Mencatat kronologi kegagalan server serta menyediakan tombol satu-klik **"Salin Laporan (JSON)"** untuk pelaporan bug teknis.
-
-### 3. Proxy Streaming Lokal Tanpa Buffering (`src/lib/stream-proxy.server.ts`)
-
-- **Forwarding HTTP Range Request**: Mendukung penuh potongan byte acak (`Range: bytes=X-Y`) sehingga fitur seek, pause, dan resume pada file video besar (>500MB) berjalan lancar.
-- **Zero In-Memory Buffering**: Meneruskan stream byte secara langsung sebagai `ReadableStream` ke peramban tanpa membebani memori server.
-- **Bypass CORS & Proteksi SSRF**: Menginjeksi header `Access-Control-Allow-Origin: *` sembari memblokir akses ke host privat/internal.
-
-### 4. Pengunduh Segmen Range HTTP & Penyimpanan Offline (`src/lib/download-manager.ts`)
-
-- **Segmented Range Requests (RFC 7233)**: Memecah file video besar (>500MB) menjadi blok-blok segmen 2MB yang diunduh secara independen melalui proxy streaming.
-- **Jeda & Lanjutkan (Pause & Resume)**: Karena setiap segmen byte tersimpan bertahap ke IndexedDB (`task_chunks`), pengunduhan dapat dijeda dan dilanjutkan kapan saja tanpa harus mengulang dari 0%.
-- **Penyimpanan Lokal IndexedDB**: Segmen yang selesai diunduh dirakit menjadi objek `Blob` terpadu dan disimpan dalam object store `offline_episodes` untuk pemutaran bebas kuota.
-- **Pemutar Video Offline Bawaan (`OfflinePlayerModal`)**: Memutar file hasil unduhan langsung melalui Blob URL dengan kendali kecepatan putar (0.75x–2x), mode bioskop, dan opsi ekspor file MP4 ke disk komputer/ponsel.
-- **Download Manager Dialog (`DownloadManagerModal`) & Rute `/download`**: Antarmuka terpadu untuk memantau progress bar riil, estimasi waktu (ETA), kecepatan (MB/s), serta sisa ruang penyimpanan perangkat.
-
----
-
-## // Fitur Utama & Fungsionalitas
-
-| Kategori           | Fitur                                 | Penjelasan Teknis                                                                                                                                                      |
-| :----------------- | :------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Pencarian**      | **Spotlight Search (`Ctrl+K` / `/`)** | Modal pencarian cepat dengan filter status, tahun rilis, dan genre, serta navigasi pintasan keyboard instan.                                                           |
-| **Pemutar Video**  | **Watch Enhancements**                | Pencahayaan dinamis bioskop (_Ambient Light_), Timer Mati Otomatis (_Sleep Timer_ 15–60 menit), Mode Bioskop (_Theater_), dan tombol loncat episode berikutnya.        |
-| **Pemutar Video**  | **Automated Failover Layer**          | Deteksi kegagalan playback otomatis (error media, stall timeout, upstream blokir) dan peralihan otomatis ke server cadangan berikutnya tanpa intervensi manual.        |
-| **Pemutar Video**  | **Stream Diagnostic Overlay (HUD)**   | Panel diagnostik live: pemantauan sumber streaming aktif, validasi `Content-Type`, verifikasi status `HTTP Range Request (RFC 7233)`, latensi ping, dan buffer health. |
-| **Unduhan**        | **Segmented Range Downloader**        | Pengunduh file video besar per blok segmen 2MB via `HTTP Range (RFC 7233)` dengan fitur jeda (pause), lanjutkan (resume), dan perhitungan kecepatan transfer riil.     |
-| **Penyimpanan**    | **Koleksi Offline (IndexedDB)**       | Penyimpanan episode anime langsung ke memori lokal peramban untuk pemutaran offline 100% tanpa kuota internet dengan pemutar video bawaan & ekspor file.               |
-| **Koleksi**        | **Watchlist Manajemen Penuh**         | Pengelompokan status (Rencana Tonton, Sedang Nonton, Selesai Ditonton), rating personal, catatan episode, serta fitur **Ekspor & Impor Cadangan JSON**.                |
-| **Riwayat**        | **Statistik Tontonan**                | Perhitungan otomatis total episode yang diselesaikan, estimasi durasi tontonan, dan pencarian riwayat berbasis kata kunci.                                             |
-| **Pratinjau**      | **Quick Preview Modal**               | Menampilkan sinopsis, skor, status, dan tombol aksi cepat tanpa perlu memuat halaman detail anime.                                                                     |
-| **Katalog**        | **Hero & Trending Slider**            | Showcase visual dinamis berkecepatan tinggi dengan navigasi responsif dan indikator radar tayang langsung.                                                             |
-| **Jadwal & Genre** | **Direktori Komprehensif**            | Jadwal rilis mingguan terstruktur per hari serta indeks kategori genre lengkap.                                                                                        |
-| **Notifikasi**     | **Web Push Native**                   | Berlangganan pengingat rilis episode anime favorit langsung ke peramban tanpa memerlukan akun pengguna.                                                                |
-| **PWA**            | **Aksesibilitas PWA**                 | Kemampuan instalasi sebagai aplikasi mandiri di perangkat seluler dan desktop dengan dukungan offline state view.                                                      |
-
----
-
-## // Tumpukan Teknologi
-
-- **Kerangka Kerja**: [TanStack Start](https://tanstack.com/start) (React 19, Full-stack SSR, Server Functions)
-- **Routing**: [TanStack Router](https://tanstack.com/router) (File-based, 100% Type-Safe)
-- **Manajemen Kueri**: [TanStack Query v5](https://tanstack.com/query)
-- **Animasi Antarmuka**: [Motion](https://motion.dev/) (Spring physics & Layout transitions)
-- **Penataan Gaya**: [Tailwind CSS v4](https://tailwindcss.com/) dengan skema token OKLCH
-- **Koleksi Ikon**: [Lucide React](https://lucide.dev/)
-- **Carousel Slider**: [Embla Carousel](https://www.embla-carousel.com/)
-- **Pemutar Media**: [Video.js](https://videojs.com/)
-- **Komponen Notifikasi**: [Sonner](https://sonner.emilkowal.ski/)
-- **Mesin Deployment**: [Nitro Engine](https://nitro.build/) (Kompatibel dengan Vercel, Netlify, Node.js)
-
----
-
-## // Panduan Penginstalan & Eksekusi Lokal
-
-### Prasyarat
-
-- **Node.js**: versi 20.x atau lebih baru
-- **npm**, **pnpm**, atau **yarn**
-
-### Langkah Instalasi
-
-```bash
-# 1. Kloning repositori
-git clone https://github.com/NimzzAI/nontonime.git
-cd nontonime
-
-# 2. Pasang dependensi
-npm install
-
-# 3. Konfigurasi berkas lingkungan
-cp .env.example .env
-
-# 4. Jalankan server pengembangan
-npm run dev
-```
-
-Aplikasi dapat dibuka pada alamat `http://localhost:3000`.
-
----
-
-## // Variabel Lingkungan (.env)
-
-```env
-# VAPID Keys untuk Notifikasi Push Web
-VAPID_PRIVATE_KEY=
-VITE_VAPID_PUBLIC_KEY=
-
-# URL API Sanka (Ganti jika terjadi blokir 403 Forbidden di Vercel)
-# Default: https://www.sankavollerei.web.id/anime
-SANKA_API_BASE=
-
-# URL API Cadangan Otomatis
-SANKA_API_FALLBACK=
-```
+1. **Pemilihan Server Otomatis**: Server utama diutamakan server langsung (MP4 Direct/Odstream/Filedon). Jika server tersebut tidak dapat dijangkau oleh ISP pengguna, sistem otomatis mencoba server cadangan berikutnya.
+2. **HTTP Range (RFC 7233)**: Pemutar video nontonime memanfaatkan endpoint `/api/stream-proxy` untuk streaming potongan byte. Hal ini memastikan user dapat melakukan lompatan waktu (seeking) instan tanpa perlu menunggu seluruh berkas video selesai diunduh.
+3. **Autoplay & Sleep Timer**: Fitur autoplay episode berikutnya dilengkapi dengan hitung mundur 5 detik. Pengguna juga dapat menyetel _Sleep Timer_ (15 hingga 60 menit) agar pemutaran berhenti otomatis saat pengguna tertidur.
+4. **Efisiensi Memori (Low Memory Footprint)**: Seluruh pemrosesan video dilakukan secara streaming langsung tanpa buffer memori server, memastikan aplikasi tetap stabil dijalankan pada server spesifikasi minimal (512MB RAM).
 
 ---
 
 ## // Perintah Eksekusi Proyek
 
-| Perintah          | Fungsi                                                  |
-| :---------------- | :------------------------------------------------------ |
-| `npm run dev`     | Menjalankan server pengembangan lokal (port 3000)       |
-| `npm run build`   | Melakukan kompilasi produksi berkas klien dan server    |
-| `npm run preview` | Menjalankan pratinjau hasil build produksi secara lokal |
-| `npm run lint`    | Memeriksa kepatuhan kode dan sintaks dengan ESLint      |
-| `npm run format`  | Merapikan format kode dengan Prettier                   |
+```bash
+# Menjalankan server development lokal
+npm run dev
 
----
+# Membangun aplikasi untuk produksi
+npm run build
 
-## // Struktur Direktori
+# Menjalankan server aplikasi produksi
+npm run start
 
-```
-src/
-├── components/
-│   ├── anime/               # Komponen spesifik (Card, Slider, Player, Spotlight, Watchlist)
-│   └── ui/                  # Komponen primitif UI (Dialog, Popover, Tooltip, dll.)
-├── lib/
-│   ├── animein.server.ts    # Lapisan komunikasi Sanka API (Proxy, Headers, Fallback)
-│   ├── anime.functions.ts   # TanStack Start Server Functions
-│   ├── anime-types.ts       # Definisi antarmuka TypeScript terpadu
-│   ├── queries.ts           # Definisi kueri data TanStack Query
-│   ├── history.ts           # Manajemen riwayat tontonan dengan memory cache
-│   ├── watchlist.ts         # Manajemen daftar tontonan dengan index Set
-│   └── site-config.ts       # Konfigurasi metadata aplikasi nontonime
-├── routes/                  # Rute berbasis berkas TanStack Router
-└── styles.css               # Definisi token warna dan utilitas gaya
+# Menjalankan linter kode (ESLint)
+npm run lint
+
+# Merapikan format kode (Prettier)
+npm run format
 ```
 
 ---
+
+## // Credits & Author
+
+- **Pengembang Asli**: [NimzzAI](https://github.com/NimzzAI)
+- **Sumber Data & Katalog**: Komunitas Otakudesu & Sanka Vollerei
+- **Lisensi**: Proyek ini dilisensikan di bawah lisensi terbuka [MIT License](./LICENSE).
 
 <div align="center">
-Dikembangkan dan dipelihara secara aktif oleh <strong>NimzzAI</strong>.
+<br />
+Ditingkatkan dengan komitmen performa, stabilitas pemutaran, dan kebersihan kode untuk seluruh penikmat anime Indonesia.
 </div>

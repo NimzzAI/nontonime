@@ -1,6 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import {
+  Archive,
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Film,
+  Layers,
+  LayoutGrid,
+  List,
+  ListOrdered,
+  Play,
+  Search,
+  Star,
+} from "lucide-react";
 import { AnimeCard } from "@/components/anime/AnimeCard";
 import { WatchlistButton } from "@/components/anime/WatchlistButton";
 import { ShareButton } from "@/components/anime/ShareButton";
@@ -114,7 +130,7 @@ export function AnimeDetailPage() {
                 />
               ) : (
                 <div className="aspect-[2/3] flex items-center justify-center text-muted-foreground">
-                  <i className="fa-solid fa-film text-3xl" />
+                  <Film className="h-10 w-10 text-muted-foreground/40" />
                 </div>
               )}
 
@@ -127,7 +143,7 @@ export function AnimeDetailPage() {
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-full bg-sky-600/90 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-xs backdrop-blur-xs">
-                    <i className="fa-solid fa-circle-check text-[10px]" />
+                    <CheckCircle2 className="h-3 w-3" />
                     TAMAT
                   </span>
                 )}
@@ -151,28 +167,28 @@ export function AnimeDetailPage() {
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 {anime.score ? (
                   <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-xs font-bold text-amber-500">
-                    <i className="fa-solid fa-star text-[11px]" />
+                    <Star className="h-3 w-3 fill-amber-400" />
                     {anime.score}
                   </span>
                 ) : null}
 
                 {anime.totalEpisodes ? (
                   <span className="inline-flex items-center gap-1 rounded-lg bg-card border border-border/80 px-2.5 py-1 text-xs font-semibold text-foreground">
-                    <i className="fa-solid fa-layer-group text-[10px] text-primary" />
+                    <Layers className="h-3 w-3 text-primary" />
                     {anime.totalEpisodes} Episode
                   </span>
                 ) : null}
 
                 {anime.studio ? (
                   <span className="inline-flex items-center gap-1 rounded-lg bg-card border border-border/80 px-2.5 py-1 text-xs font-semibold text-foreground">
-                    <i className="fa-solid fa-building text-[10px] text-primary" />
+                    <Building2 className="h-3 w-3 text-primary" />
                     {anime.studio}
                   </span>
                 ) : null}
 
                 {anime.duration ? (
                   <span className="inline-flex items-center gap-1 rounded-lg bg-card border border-border/80 px-2.5 py-1 text-xs font-semibold text-foreground">
-                    <i className="fa-solid fa-clock text-[10px] text-muted-foreground" />
+                    <Clock className="h-3 w-3 text-muted-foreground" />
                     {anime.duration}
                   </span>
                 ) : null}

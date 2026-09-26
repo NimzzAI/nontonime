@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { cn, formatViews } from "@/lib/utils";
 import type { EpisodeSummary } from "@/lib/anime-types";
+import { Play, Eye } from "lucide-react";
 import { EpisodeDownloadButton } from "./EpisodeDownloadButton";
 
 export function EpisodeList({
@@ -42,11 +43,11 @@ export function EpisodeList({
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    <i className="fa-solid fa-play text-sm" />
+                    <Play className="h-5 w-5 text-muted-foreground/60 fill-current" />
                   </div>
                 )}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors hover:bg-black/30">
-                  <i className="fa-solid fa-play text-xs text-white opacity-0 transition-opacity hover:opacity-100" />
+                  <Play className="h-4 w-4 text-white opacity-0 transition-opacity hover:opacity-100 fill-current" />
                 </div>
                 {episode.isNew ? (
                   <span className="absolute left-1 top-1 rounded bg-highlight px-1.5 py-0.5 text-[9px] font-bold text-highlight-foreground">
@@ -65,7 +66,7 @@ export function EpisodeList({
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   {episode.views ? (
                     <span className="inline-flex items-center gap-1">
-                      <i className="fa-solid fa-eye" />
+                      <Eye className="h-3.5 w-3.5" />
                       {formatViews(episode.views)}
                     </span>
                   ) : null}

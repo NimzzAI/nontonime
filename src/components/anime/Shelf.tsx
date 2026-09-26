@@ -14,7 +14,7 @@ export function Shelf({
   viewAllSearch,
 }: {
   title: string;
-  icon?: LucideIcon | string;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
   items: AnimeSummary[];
   isLoading?: boolean;
   viewAllTo?: string;
@@ -31,25 +31,15 @@ export function Shelf({
     }
   };
 
-  const renderIcon = () => {
-    if (!IconProp) return null;
-    if (typeof IconProp === "string") {
-      if (IconProp.startsWith("fa-")) {
-        return <i className={`${IconProp} text-sm`} />;
-      }
-      return null;
-    }
-    const IconComp = IconProp as React.ElementType;
-    return <IconComp className="h-4 w-4 text-primary" />;
-  };
+  const IconComp = IconProp as React.ElementType | undefined;
 
   return (
     <section className="relative z-10 space-y-4 my-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          {IconProp ? (
+          {IconComp ? (
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-xs shrink-0">
-              {renderIcon()}
+              <IconComp className="h-4 w-4 text-primary" />
             </span>
           ) : null}
           <h2 className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">

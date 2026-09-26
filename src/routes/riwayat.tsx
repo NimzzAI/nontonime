@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Clock,
+  History,
   Trash2,
   Play,
   X,
@@ -139,7 +140,7 @@ function HistoryPage() {
       {/* Page Title & Clear History */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <SectionTitle title="Riwayat Tontonan" icon="fa-solid fa-clock-rotate-left" />
+          <SectionTitle title="Riwayat Tontonan" icon={History} />
           <p className="text-xs text-muted-foreground mt-1">
             Riwayat disimpan secara lokal di browser kamu agar kamu bisa melanjutkan menonton kapan
             saja.

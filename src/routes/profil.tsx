@@ -33,6 +33,8 @@ import {
   Flame,
   Cloud,
   RefreshCw,
+  Trash2,
+  History,
 } from "lucide-react";
 
 export const Route = createFileRoute("/profil")({
@@ -410,9 +412,9 @@ function NotificationCard({ onOpenNotifModal }: { onOpenNotifModal: () => void }
                   type="button"
                   onClick={() => removeSubscription(item.animeId)}
                   aria-label="Berhenti subscribe"
-                  className="shrink-0 text-xs text-muted-foreground hover:text-destructive cursor-pointer"
+                  className="shrink-0 text-xs text-muted-foreground hover:text-destructive cursor-pointer p-1"
                 >
-                  <i className="fa-solid fa-trash text-xs" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </li>
             ))}
@@ -439,7 +441,7 @@ function ProfilPage() {
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
       {/* Title */}
       <div className="flex items-center justify-between">
-        <SectionTitle title="Profil, Level & Progres Nonton" icon="fa-solid fa-circle-user" />
+        <SectionTitle title="Profil, Level & Progres Nonton" icon={UserCheck} />
       </div>
 
       {/* Profile Header (Shows user account & Firestore rank/XP/level) */}
@@ -492,7 +494,7 @@ function ProfilPage() {
             className="flex items-center justify-between px-5 py-3 text-xs font-bold text-card-foreground hover:bg-secondary/40 transition-colors"
           >
             <span className="flex items-center gap-2.5">
-              <i className="fa-solid fa-clock-rotate-left text-primary text-sm" />
+              <History className="h-4 w-4 text-primary" />
               Riwayat Episode yang Ditonton
             </span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />

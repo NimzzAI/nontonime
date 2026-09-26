@@ -13,6 +13,11 @@ import {
   LayoutGrid,
   List,
   CloudCheck,
+  Clock,
+  CheckCircle2,
+  Layers,
+  Film,
+  type LucideIcon,
 } from "lucide-react";
 import { SectionTitle } from "@/components/anime/StateViews";
 import {
@@ -49,11 +54,11 @@ export const Route = createFileRoute("/watchlist")({
 
 type FilterTab = "all" | WatchlistStatus;
 
-const TABS: { id: FilterTab; label: string; icon: string }[] = [
-  { id: "all", label: "Semua", icon: "fa-solid fa-layer-group" },
-  { id: "watching", label: "Sedang Ditonton", icon: "fa-solid fa-play" },
-  { id: "plan", label: "Rencana Tonton", icon: "fa-solid fa-clock" },
-  { id: "completed", label: "Selesai", icon: "fa-solid fa-check-circle" },
+const TABS: { id: FilterTab; label: string; IconComponent: LucideIcon }[] = [
+  { id: "all", label: "Semua", IconComponent: Layers },
+  { id: "watching", label: "Sedang Ditonton", IconComponent: Play },
+  { id: "plan", label: "Rencana Tonton", IconComponent: Clock },
+  { id: "completed", label: "Selesai", IconComponent: CheckCircle2 },
 ];
 
 function WatchlistPage() {
@@ -147,7 +152,7 @@ function WatchlistPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <SectionTitle title="Watchlist & Pelacak Episode" icon="fa-solid fa-bookmark" />
+            <SectionTitle title="Watchlist & Pelacak Episode" icon={Bookmark} />
             {user ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                 <CloudCheck className="h-3 w-3" />
@@ -227,6 +232,7 @@ function WatchlistPage() {
                 {TABS.map((tab) => {
                   const count = counts[tab.id];
                   const isActive = activeTab === tab.id;
+                  const TabIcon = tab.IconComponent;
                   return (
                     <button
                       key={tab.id}
@@ -238,7 +244,7 @@ function WatchlistPage() {
                           : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground",
                       )}
                     >
-                      <i className={cn(tab.icon, "text-[11px]")} />
+                      <TabIcon className="h-3.5 w-3.5" />
                       <span>{tab.label}</span>
                       <span
                         className={cn(
@@ -352,7 +358,7 @@ function WatchlistPage() {
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                            <i className="fa-solid fa-film text-xl" />
+                            <Film className="h-8 w-8 text-muted-foreground/40" />
                           </div>
                         )}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">

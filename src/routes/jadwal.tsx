@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { CalendarDays, Clapperboard, Play, ChevronRight } from "lucide-react";
 import { ErrorState, LoadingState, SectionTitle } from "@/components/anime/StateViews";
 import { SCHEDULE_DAYS } from "@/lib/anime-types";
 import { scheduleQuery, currentDayName } from "@/lib/queries";
@@ -34,7 +35,7 @@ function SchedulePage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <SectionTitle title="Jadwal Rilis Mingguan" icon="fa-solid fa-calendar-days" />
+        <SectionTitle title="Jadwal Rilis Mingguan" icon={CalendarDays} />
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full self-start sm:self-auto">
           <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
           Hari ini: {titleCase(todayDay)}
@@ -127,7 +128,7 @@ function SchedulePage() {
                               />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                                <i className="fa-solid fa-clapperboard text-xs text-primary/60" />
+                                <Clapperboard className="h-4 w-4 text-primary/60" />
                               </div>
                             )}
                           </div>
@@ -137,12 +138,12 @@ function SchedulePage() {
                               {anime.title}
                             </h4>
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                              <i className="fa-solid fa-play text-[9px] text-primary" />
+                              <Play className="h-2.5 w-2.5 text-primary fill-current" />
                               Lihat Episode
                             </span>
                           </div>
 
-                          <i className="fa-solid fa-chevron-right text-xs text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5 mr-1" />
+                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5 mr-1" />
                         </Link>
                       ))}
                     </div>

@@ -8,6 +8,7 @@ import {
   getHome,
   getLatest,
   getPopular,
+  getCompleted,
   getSchedule,
   getStream,
   getBatch,
@@ -47,6 +48,17 @@ export const fetchPopular = createServerFn({ method: "GET" })
       .parse(data),
   )
   .handler(({ data }) => getPopular(data.page, data.provider ?? "otakudesu"));
+
+export const fetchCompleted = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        page: z.number().int().min(1),
+        provider: z.string().optional(),
+      })
+      .parse(data),
+  )
+  .handler(({ data }) => getCompleted(data.page, data.provider ?? "otakudesu"));
 
 export const fetchSearch = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
