@@ -12,6 +12,7 @@ import { SearchFilterPanel } from "@/components/anime/SearchFilterPanel";
 import { RecentlyWatchedSection } from "@/components/anime/RecentlyWatchedSection";
 import { homeQuery, currentDayName } from "@/lib/queries";
 import {
+  AlertTriangle,
   ArrowRight,
   Bookmark,
   CalendarCheck,
@@ -22,9 +23,37 @@ import {
   Flame,
   History,
   Play,
-  Sparkles,
   Zap,
 } from "lucide-react";
+
+function HomeErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-16 text-center space-y-4">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/15 text-destructive border border-destructive/20 shadow-xs">
+        <AlertTriangle className="h-7 w-7" />
+      </div>
+      <h2 className="font-display text-lg sm:text-xl font-bold text-foreground">
+        Katalog Sedang Mengalami Kendala Jaringan
+      </h2>
+      <p className="mx-auto max-w-md text-xs sm:text-sm text-muted-foreground leading-relaxed">
+        {error?.message ||
+          "Koneksi ke penyedia data sedang sibuk. Silakan coba muat ulang halaman."}
+      </p>
+      <div className="flex items-center justify-center gap-3 pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") window.location.reload();
+            else reset();
+          }}
+          className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition cursor-pointer"
+        >
+          Muat Ulang Halaman
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
@@ -34,6 +63,7 @@ export const Route = createFileRoute("/")({
       // In case of transient network error during SSR prefetch, let client query handle fallback
     }
   },
+  errorComponent: HomeErrorComponent,
   head: () => ({
     meta: [
       { title: "Nontonime: Streaming Anime Subtitle Indonesia Terbaru" },
@@ -137,7 +167,8 @@ function HomePage() {
                 Bingung Mau Nonton Apa Hari Ini?
               </h3>
               <p className="text-xs text-muted-foreground leading-snug">
-                Putar roda roulette takdir anime dan temukan serial menarik berikutnya secara instan.
+                Putar roda roulette takdir anime dan temukan serial menarik berikutnya secara
+                instan.
               </p>
             </div>
           </div>

@@ -238,7 +238,56 @@ export async function getHome(
     };
   } catch (error) {
     console.error("Error in getHome:", error);
-    throw error;
+    const stale = lastSuccessfulResponse.get(`${getApiBase()}/home`) as ApiHomeResponse | undefined;
+    if (stale?.data) {
+      const ongoingRaw = stale.data?.ongoing?.animeList ?? [];
+      const completedRaw = stale.data?.completed?.animeList ?? [];
+      const ongoing: AnimeSummary[] = ongoingRaw.map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        episodeCount:
+          typeof a.episodes === "number"
+            ? a.episodes
+            : parseInt(String(a.episodes || 0), 10) || null,
+        status: "Ongoing",
+        type: "TV",
+        releaseDay: a.releaseDay ?? null,
+        day: a.releaseDay ?? null,
+        latestReleaseDate: a.latestReleaseDate ?? null,
+        genres: [],
+      }));
+      const completed: AnimeSummary[] = completedRaw.map((a) => ({
+        id: a.animeId,
+        title: a.title,
+        poster: a.poster,
+        episodeCount:
+          typeof a.episodes === "number"
+            ? a.episodes
+            : parseInt(String(a.episodes || 0), 10) || null,
+        score: a.score ?? null,
+        status: "Completed",
+        type: "TV",
+        latestReleaseDate: a.lastReleaseDate ?? null,
+        genres: [],
+      }));
+      return {
+        slider: ongoing.slice(0, 7),
+        today: ongoing.slice(0, 5),
+        hot: ongoing.slice(0, 10),
+        popular: completed.slice(0, 10),
+        new: ongoing.slice(0, 12),
+        waiting: completed.slice(0, 8),
+      };
+    }
+    return {
+      slider: [],
+      today: [],
+      hot: [],
+      popular: [],
+      new: [],
+      waiting: [],
+    };
   }
 }
 
