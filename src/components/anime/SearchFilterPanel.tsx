@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
@@ -48,7 +48,22 @@ const STATUS_OPTIONS = [
   { id: "completed", label: "Selesai (Tamat)" },
 ];
 
-export function SearchFilterPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function SearchFilterPanel({
+  isOpen: isOpenProp,
+  onClose: onCloseProp,
+  open,
+  onOpenChange,
+}: {
+  isOpen?: boolean;
+  onClose?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const isOpen = open ?? isOpenProp ?? false;
+  const onClose = useCallback(() => {
+    if (onOpenChange) onOpenChange(false);
+    if (onCloseProp) onCloseProp();
+  }, [onOpenChange, onCloseProp]);
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");

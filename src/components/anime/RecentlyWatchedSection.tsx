@@ -167,7 +167,7 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
               {/* Bottom Quick Resume Link */}
               <div className="pt-1 border-t border-border/40 flex items-center justify-between text-[10px]">
                 <span className="text-muted-foreground flex items-center gap-1">
-                  <Sparkles className="h-2.5 w-2.5 text-primary" />
+                  <Play className="h-2.5 w-2.5 text-primary fill-current" />
                   <span>Lanjutkan</span>
                 </span>
                 <Link

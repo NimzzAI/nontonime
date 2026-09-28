@@ -4,15 +4,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import type { AnimeSummary } from "@/lib/anime-types";
 import { WatchlistButton } from "./WatchlistButton";
 import { cn } from "@/lib/utils";
-import {
-  Calendar,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Info,
-  Play,
-  Star,
-} from "lucide-react";
+import { Calendar, CheckCircle2, ChevronLeft, ChevronRight, Info, Play, Star } from "lucide-react";
 
 export function HeroSlider({ items }: { items: AnimeSummary[] }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 25 });

@@ -3,15 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import type { AnimeSummary } from "@/lib/anime-types";
 import { WatchlistButton } from "./WatchlistButton";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Flame,
-  Play,
-  Star,
-  Layers,
-  CheckCircle2,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame, Play, Star, Layers, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
