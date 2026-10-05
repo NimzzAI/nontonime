@@ -1,7 +1,9 @@
+import { memo } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AnimeSummary } from "@/lib/anime-types";
+import { Clapperboard, Star, ChevronRight } from "lucide-react";
 
-export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
+export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: AnimeSummary }) {
   const isOngoing = /ongoing|tayang/i.test(anime.status ?? "");
 
   return (
@@ -16,11 +18,12 @@ export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
             src={anime.poster}
             alt={anime.title}
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <i className="fa-solid fa-clapperboard text-sm" />
+            <Clapperboard className="h-4 w-4" />
           </div>
         )}
       </div>
@@ -33,7 +36,7 @@ export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           {anime.score ? (
             <span className="inline-flex items-center gap-1 font-bold text-amber-500">
-              <i className="fa-solid fa-star text-[10px]" />
+              <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
               {anime.score}
             </span>
           ) : null}
@@ -68,7 +71,7 @@ export function AnimeListRow({ anime }: { anime: AnimeSummary }) {
         ) : null}
       </div>
 
-      <i className="fa-solid fa-chevron-right shrink-0 text-xs text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5 mr-1" />
+      <ChevronRight className="shrink-0 h-4 w-4 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5 mr-1" />
     </Link>
   );
-}
+});

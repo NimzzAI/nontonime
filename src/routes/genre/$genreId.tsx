@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Tag } from "lucide-react";
 import { AnimeGrid } from "@/components/anime/AnimeGrid";
 import { Pagination } from "@/components/anime/Pagination";
 import { ErrorState, GridSkeleton, SectionTitle } from "@/components/anime/StateViews";
@@ -14,12 +15,12 @@ export const Route = createFileRoute("/genre/$genreId")({
     const name = search.name ?? `#${params.genreId}`;
     return {
       meta: [
-        { title: `Anime Genre ${name} — Nontonime` },
+        { title: `Anime Genre ${name} : Nontonime` },
         {
           name: "description",
           content: `Kumpulan anime bergenre ${name} dengan subtitle Indonesia.`,
         },
-        { property: "og:title", content: `Anime Genre ${name} — Nontonime` },
+        { property: "og:title", content: `Anime Genre ${name} : Nontonime` },
         {
           property: "og:description",
           content: `Kumpulan anime bergenre ${name} subtitle Indonesia.`,
@@ -38,7 +39,7 @@ function GenreDetailPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
-      <SectionTitle title={`Genre: ${name ?? `#${genreId}`}`} icon="fa-solid fa-tag" />
+      <SectionTitle title={`Genre: ${name ?? `#${genreId}`}`} icon={Tag} />
       {isPending ? <GridSkeleton /> : null}
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
       {data ? (

@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { SiteHeader } from "../components/anime/SiteHeader";
 import { SiteFooter } from "../components/anime/SiteFooter";
 import { BottomNav } from "../components/anime/BottomNav";
+import { ExpNotificationToast } from "../components/anime/UserGamificationCard";
 import { siteConfig } from "../lib/site-config";
 
 function NotFoundComponent() {
@@ -38,33 +39,56 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  console.error("Root ErrorComponent caught:", error);
   const router = useRouter();
+
+  const handleReload = () => {
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    } else {
+      router.invalidate();
+      reset();
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+      <div className="max-w-md text-center space-y-3.5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/15 text-destructive border border-destructive/20 shadow-xs">
+          <svg
+            className="h-7 w-7"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
           >
-            Try again
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Halaman Gagal Dimuat</h1>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Terjadi kesalahan saat memproses data halaman. Silakan coba muat ulang halaman.
+        </p>
+        {error?.message ? (
+          <p className="rounded-xl bg-secondary/60 p-2.5 text-left font-mono text-[11px] text-destructive border border-border/80 break-words">
+            {error.message}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap justify-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={handleReload}
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 shadow-sm cursor-pointer"
+          >
+            Muat Ulang Halaman
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-xl border border-border/80 bg-secondary/60 px-4 py-2 text-xs font-semibold text-foreground transition-all hover:bg-secondary"
           >
-            Go home
+            Kembali ke Beranda
           </a>
         </div>
       </div>
@@ -76,7 +100,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover",
+      },
       { title: siteConfig.name },
       { name: "description", content: siteConfig.description },
       { property: "og:title", content: siteConfig.name },
@@ -92,7 +120,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: siteConfig.name },
       { name: "twitter:description", content: siteConfig.description },
       { name: "twitter:image", content: `${siteConfig.siteUrl}${siteConfig.ogImage}` },
-      { name: "theme-color", content: "#1c1a2b" },
+      { name: "theme-color", content: "#0B0D14" },
     ],
     links: [
       {
@@ -106,10 +134,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css",
       },
     ],
   }),
@@ -131,7 +155,7 @@ function RootShell({ children }: { children: ReactNode }) {
           }}
         />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
@@ -151,6 +175,7 @@ function RootComponent() {
         </main>
         <SiteFooter />
         <BottomNav />
+        <ExpNotificationToast />
       </div>
     </QueryClientProvider>
   );
