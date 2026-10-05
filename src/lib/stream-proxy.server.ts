@@ -9,11 +9,7 @@
  * - Provider-compliant stream inspection (detects MP4 vs HLS vs Embed vs MEGA)
  */
 
-<<<<<<< HEAD
 export function isInternalOrPrivateHost(hostname: string): boolean {
-=======
-function isInternalOrPrivateHost(hostname: string): boolean {
->>>>>>> 29d30b74a34c4b8e1a20df21d47e03c7dd54e479
   const lower = hostname.toLowerCase().trim();
   if (
     lower === "localhost" ||

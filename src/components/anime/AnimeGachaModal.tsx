@@ -22,11 +22,7 @@ const MOODS = [
   { id: "recommend", label: "⭐ Rekomendasi", desc: "Pilihan terbaik kurator" },
 ] as const;
 
-<<<<<<< HEAD
-// Fallback anime items ensuring the roulette NEVER hangs even if network is offline or the sources are still loading
-=======
 // Fallback anime items ensuring the roulette NEVER hangs even if network is offline or Sanka is loading
->>>>>>> 29d30b74a34c4b8e1a20df21d47e03c7dd54e479
 const FALLBACK_POOL: AnimeSummary[] = [
   {
     id: "frieren-beyond-journeys-end-sub-indo",
