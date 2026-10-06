@@ -6,6 +6,7 @@ import { AnimeListRow } from "@/components/anime/AnimeListRow";
 import { Pagination } from "@/components/anime/Pagination";
 import { ErrorState, GridSkeleton, SectionTitle } from "@/components/anime/StateViews";
 import { searchQuery } from "@/lib/queries";
+import { parseId, toAnimeId, toEpisodeId } from "@/lib/sources/ids";
 
 export const Route = createFileRoute("/cari")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -39,20 +40,41 @@ function SearchPage() {
     setTerm(q);
   }, [q]);
 
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const clean = term.trim();
+    if (!clean) return;
+
+    // Detect if the user pasted a direct Aniwatch/source URL or ID
+    const parsed = parseId(clean);
+    if (parsed) {
+      if (parsed.kind === "episode") {
+        navigate({
+          to: "/watch/$episodeId",
+          params: { episodeId: toEpisodeId(parsed.source, parsed.slug) },
+        });
+        return;
+      }
+      if (parsed.kind === "anime") {
+        navigate({
+          to: "/anime/$animeId",
+          params: { animeId: toAnimeId(parsed.source, parsed.slug) },
+        });
+        return;
+      }
+    }
+
+    navigate({ to: "/cari", search: { q: clean, page: 1 } });
+  };
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
       <SectionTitle title="Cari Anime" icon={Search} />
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          navigate({ to: "/cari", search: { q: term.trim(), page: 1 } });
-        }}
-        className="flex gap-2"
-      >
+      <form onSubmit={handleSearchSubmit} className="flex gap-2">
         <input
           value={term}
           onChange={(event) => setTerm(event.target.value)}
-          placeholder="Ketik judul anime..."
+          placeholder="Ketik judul anime atau tempel link Aniwatch..."
           className="h-11 flex-1 rounded-full border border-border bg-card px-4 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
         />
         <button className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 cursor-pointer">

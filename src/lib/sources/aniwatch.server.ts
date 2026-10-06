@@ -163,7 +163,42 @@ export const aniwatch: AnimeSource = {
 
   async getDetail(slug) {
     const clean = lastSegment(slug);
-    const $ = cheerio.load(await html(`${baseUrl()}/anime/${clean}`));
+
+    // If an episode slug was passed directly (e.g. yuruyuri-nachuyachumi-1-c5d95)
+    if (/-\d+-[a-f0-9]{4,8}$/i.test(clean) || /-\d+$/.test(clean)) {
+      try {
+        const epPage = await html(`${baseUrl()}/episode/${clean}`);
+        const $ep = cheerio.load(epPage);
+        const ownerHref = $ep("a[href*='/anime/']").first().attr("href");
+        if (ownerHref) {
+          const ownerSlug = lastSegment(ownerHref);
+          if (ownerSlug && ownerSlug !== clean) {
+            return aniwatch.getDetail(ownerSlug);
+          }
+        }
+      } catch {
+        // ignore episode probe error
+      }
+    }
+
+    let pageHtml = "";
+    try {
+      pageHtml = await html(`${baseUrl()}/anime/${clean}`);
+    } catch (err) {
+      // In case slug has name-hash instead of hash-name (e.g. yuruyuri-nachuyachumi-c5d95 vs c5d95-yuruyuri-nachuyachumi)
+      const inverted = clean.replace(/^(.+)-([a-f0-9]{4,8})$/i, "$2-$1");
+      if (inverted !== clean) {
+        try {
+          pageHtml = await html(`${baseUrl()}/anime/${inverted}`);
+        } catch {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    const $ = cheerio.load(pageHtml);
 
     const title = cleanText($("h1").first().text()) || cleanText($("title").text().split("-")[0]);
     if (!title) throw new Error(`Anime ${clean} tidak ditemukan`);
@@ -198,9 +233,11 @@ export const aniwatch: AnimeSource = {
 
     const episodes: SourceEpisode[] = [];
     const seen = new Set<string>();
-    $eps("a[href*='/episode/']").each((idx, el) => {
-      const epSlug = lastSegment($eps(el).attr("href"));
-      const text = cleanText($eps(el).text());
+    $eps("a[href*='/episode/'], .ws-ep").each((idx, el) => {
+      const targetEl = $eps(el);
+      const epHref = targetEl.attr("href") || targetEl.attr("data-url") || "";
+      const epSlug = lastSegment(epHref);
+      const text = cleanText(targetEl.text());
       if (!epSlug || seen.has(epSlug)) return;
       if (text.toLowerCase() === "next" || text.toLowerCase() === "prev") return;
       seen.add(epSlug);
@@ -251,16 +288,49 @@ export const aniwatch: AnimeSource = {
     const $ = cheerio.load(page);
 
     const title = cleanText($("h1").first().text()) || cleanText($("title").text());
-    const anilistId = page.match(/anilistId\s*=\s*(\d+)/)?.[1];
+    const hianimeMatch = page.match(/currentHianimeEpId\s*=\s*['"]([^'"]+)['"]/);
+    const anilistMatch = page.match(/anilistId\s*=\s*(\d+)/);
+    const malMatch = page.match(/malId\s*=\s*(\d+)/);
+
+    const anilistId = anilistMatch?.[1];
+    const malId = malMatch?.[1];
     const epNumber = (clean.match(/-(\d+)-/) ?? clean.match(/-(\d+)$/))?.[1] ?? "1";
 
+    let epId = "";
+    if (hianimeMatch?.[1]) {
+      try {
+        epId =
+          Buffer.from(hianimeMatch[1].replace(/-/g, "+").replace(/_/g, "/"), "base64")
+            .toString("utf8")
+            .split(":")[0] || "";
+      } catch {
+        // ignore token decode error
+      }
+    }
+
     const servers: SourceServer[] = [];
+
+    // Priority 1: MegaPlay Sub (Native HD Stream)
+    if (epId) {
+      servers.push({
+        name: "MegaPlay Sub (Utama)",
+        quality: "Auto",
+        ref: { kind: "url", url: `https://megaplay.buzz/stream/s-2/${epId}/sub` },
+      });
+    }
+
+    // Priority 2: VidNest and TryEmbed
     if (anilistId) {
       servers.push(
         {
           name: "VidNest Sub",
           quality: "Auto",
           ref: { kind: "url", url: `https://vidnest.fun/anime/${anilistId}/${epNumber}/sub` },
+        },
+        {
+          name: "VidNest AnimePahe",
+          quality: "Auto",
+          ref: { kind: "url", url: `https://vidnest.fun/animepahe/${anilistId}/${epNumber}/sub` },
         },
         {
           name: "TryEmbed Sub",
@@ -270,21 +340,65 @@ export const aniwatch: AnimeSource = {
             url: `https://tryembed.us.cc/embed/anime/${anilistId}/${epNumber}/sub`,
           },
         },
-        {
-          name: "VidNest Dub",
-          quality: "Auto",
-          ref: { kind: "url", url: `https://vidnest.fun/anime/${anilistId}/${epNumber}/dub` },
-        },
       );
+      if (epId) {
+        servers.push({
+          name: "MegaPlay AniList",
+          quality: "Auto",
+          ref: {
+            kind: "url",
+            url: `https://megaplay.buzz/stream/ani/${anilistId}/${epNumber}/sub`,
+          },
+        });
+      }
     }
+
+    if (malId) {
+      servers.push({
+        name: "MegaPlay MAL",
+        quality: "Auto",
+        ref: { kind: "url", url: `https://megaplay.buzz/stream/mal/${malId}/${epNumber}/sub` },
+      });
+    }
+
+    if (epId) {
+      servers.push({
+        name: "MegaPlay Dub",
+        quality: "Auto",
+        ref: { kind: "url", url: `https://megaplay.buzz/stream/s-2/${epId}/dub` },
+      });
+    }
+
+    if (anilistId) {
+      servers.push({
+        name: "VidNest Dub",
+        quality: "Auto",
+        ref: { kind: "url", url: `https://vidnest.fun/anime/${anilistId}/${epNumber}/dub` },
+      });
+    }
+
+    // Priority 3: Server Bypass Aniwatch via embed-proxy (frame busters & CSP stripped)
     servers.push({
-      name: "Server Cadangan",
+      name: "Bypass Embed (Aniwatch)",
       quality: "Auto",
-      ref: { kind: "url", url: `${baseUrl()}/episode/${clean}` },
+      ref: {
+        kind: "url",
+        url: `/api/embed-proxy?url=${encodeURIComponent(`${baseUrl()}/episode/${clean}`)}`,
+      },
     });
 
     const ownerHref = $("a[href*='/anime/']").first().attr("href");
-    const owner = lastSegment(ownerHref) || clean.replace(/-(?:episode-)?\d+$/, "");
+    const owner = lastSegment(ownerHref) || clean.replace(/-(?:episode-)?\d+.*$/, "");
+
+    // Previous & Next navigation
+    const prevHref =
+      $(".btn-ep-nav:not(.btn-ep-nav--next)").first().attr("href") ||
+      $(`.ws-ep[data-episode="${Number(epNumber) - 1}"]`).attr("data-url");
+    const nextHref =
+      $(".btn-ep-nav--next").first().attr("href") ||
+      $(`.ws-ep[data-episode="${Number(epNumber) + 1}"]`).attr("data-url");
+    const prevSlug = prevHref ? lastSegment(prevHref) : null;
+    const nextSlug = nextHref ? lastSegment(nextHref) : null;
 
     const stream: SourceStream = {
       id: toEpisodeId("aniwatch", clean),
@@ -293,8 +407,8 @@ export const aniwatch: AnimeSource = {
       releaseTime: null,
       servers,
       downloads: [],
-      prevEpisodeId: null,
-      nextEpisodeId: null,
+      prevEpisodeId: prevSlug ? toEpisodeId("aniwatch", prevSlug) : null,
+      nextEpisodeId: nextSlug ? toEpisodeId("aniwatch", nextSlug) : null,
     };
     return stream;
   },

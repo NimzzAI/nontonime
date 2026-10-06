@@ -283,13 +283,61 @@ export async function search(
   if (!term) return { items: [], page: 1, hasNext: false };
   const safePage = Math.max(1, page);
 
-  return cached(`search:${term.toLowerCase()}:${safePage}`, 5 * MIN, async () => {
+  // 1. Direct URL / ID check (e.g. https://aniwatch.cx/episode/yuruyuri-nachuyachumi-1-c5d95)
+  const parsed = parseId(term);
+  if (parsed && safePage === 1) {
+    try {
+      if (parsed.kind === "episode") {
+        const stream = await getSource(parsed.source).getStream(parsed.slug);
+        if (stream) {
+          const item: AnimeSummary = {
+            id: stream.animeId || toEpisodeId(parsed.source, parsed.slug),
+            title: stream.title,
+            poster: null,
+            type: "Episode",
+            status: "Ongoing",
+          };
+          // Try fetching parent anime detail for rich poster
+          if (stream.animeId) {
+            try {
+              const cleanOwner = stream.animeId.replace(/^[a-z]+_/, "");
+              const parentDetail = await getSource(parsed.source).getDetail(cleanOwner);
+              if (parentDetail) {
+                return { items: [toSummary(parentDetail)], page: 1, hasNext: false };
+              }
+            } catch {
+              // ignore detail lookup error
+            }
+          }
+          return { items: [item], page: 1, hasNext: false };
+        }
+      } else if (parsed.kind === "anime") {
+        const detail = await getSource(parsed.source).getDetail(parsed.slug);
+        if (detail) {
+          return { items: [toSummary(detail)], page: 1, hasNext: false };
+        }
+      }
+    } catch {
+      // ignore URL resolution error
+    }
+  }
+
+  // 2. Clean query if a URL was pasted
+  const cleanTerm =
+    term
+      .replace(/^https?:\/\/[^/]+\/(?:episode|anime|watch)\//i, "")
+      .replace(/-[a-f0-9]{4,8}$/i, "")
+      .replace(/-\d+$/, "")
+      .replace(/-/g, " ")
+      .trim() || term;
+
+  return cached(`search:${cleanTerm.toLowerCase()}:${safePage}`, 5 * MIN, async () => {
     const { results, attempted } = await fromSources<SourcePage>("search", (s) =>
-      s.search(term, safePage),
+      s.search(cleanTerm, safePage),
     );
     requireResults(results, attempted, "pencarian");
     const merged = mergePages(results, safePage);
-    merged.items.sort((a, b) => relevance(b.title, term) - relevance(a.title, term));
+    merged.items.sort((a, b) => relevance(b.title, cleanTerm) - relevance(a.title, cleanTerm));
     return merged;
   });
 }
@@ -604,6 +652,9 @@ export async function resolveServer(
 
     let rawUrl = "";
     if (ref.kind === "url") {
+      if (ref.url.startsWith("/api/")) {
+        return { url: ref.url };
+      }
       rawUrl = assertPublicHttpUrl(ref.url).toString();
     } else if (ref.kind === "samehadaku") {
       rawUrl = await resolveSamehadakuPlayer(ref);
