@@ -7,6 +7,10 @@ export interface HistoryItem {
   episodeTitle: string;
   poster: string;
   watchedAt: number;
+  duration?: number;
+  currentTime?: number;
+  progressPercent?: number;
+  episodeNumber?: number;
 }
 
 let cachedHistory: HistoryItem[] | null = null;
@@ -48,8 +52,54 @@ function write(items: HistoryItem[]) {
 
 export function saveHistory(item: HistoryItem) {
   if (typeof window === "undefined") return;
-  const items = readHistory().filter((entry) => entry.episodeId !== item.episodeId);
-  write([item, ...items]);
+  const currentHistory = readHistory();
+  const existing = currentHistory.find((entry) => entry.episodeId === item.episodeId);
+
+  // Preserve existing progress if not explicitly passed
+  const duration = item.duration ?? existing?.duration ?? 1440;
+  const currentTime = item.currentTime ?? existing?.currentTime ?? 120;
+  const progressPercent =
+    item.progressPercent ??
+    existing?.progressPercent ??
+    Math.min(100, Math.max(5, Math.round((currentTime / duration) * 100)));
+
+  const updatedItem: HistoryItem = {
+    ...item,
+    duration,
+    currentTime,
+    progressPercent,
+    episodeNumber:
+      item.episodeNumber ??
+      existing?.episodeNumber ??
+      parseInt(item.episodeTitle?.match(/\d+/)?.[0] || "1", 10),
+  };
+
+  const remaining = currentHistory.filter((entry) => entry.episodeId !== item.episodeId);
+  write([updatedItem, ...remaining]);
+}
+
+export function updateHistoryProgress(
+  episodeId: string,
+  currentTime: number,
+  duration?: number,
+) {
+  if (typeof window === "undefined" || !episodeId) return;
+  const items = readHistory();
+  const index = items.findIndex((entry) => entry.episodeId === episodeId);
+  if (index === -1) return;
+
+  const current = items[index];
+  const dur = duration && duration > 0 ? duration : current.duration || 1440;
+  const progressPercent = Math.min(100, Math.max(1, Math.round((currentTime / dur) * 100)));
+
+  items[index] = {
+    ...current,
+    currentTime,
+    duration: dur,
+    progressPercent,
+    watchedAt: Date.now(),
+  };
+  write([...items]);
 }
 
 export function removeHistory(episodeId: string) {

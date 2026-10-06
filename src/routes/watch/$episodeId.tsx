@@ -7,7 +7,7 @@ import { WatchEnhancements } from "@/components/anime/WatchEnhancements";
 import { ErrorState, LoadingState } from "@/components/anime/StateViews";
 import { animeDetailQuery, streamQuery } from "@/lib/queries";
 import { fetchResolveServer } from "@/lib/anime.functions";
-import { saveHistory } from "@/lib/history";
+import { saveHistory, readHistory, updateHistoryProgress } from "@/lib/history";
 import { addExp } from "@/lib/gamification";
 import { cn } from "@/lib/utils";
 import {
@@ -300,6 +300,20 @@ function WatchPage() {
     // Reward EXP for watching
     addExp(25, `Nonton ${stream.data.title || "Episode"}`);
   }, [stream.data, anime.data, resolvedAnimeId, episodeId]);
+
+  // Periodic viewing progress updater
+  useEffect(() => {
+    if (!episodeId) return;
+    const interval = setInterval(() => {
+      const history = readHistory();
+      const current = history.find((h) => h.episodeId === episodeId);
+      if (current) {
+        const nextTime = Math.min((current.duration || 1440), (current.currentTime || 60) + 15);
+        updateHistoryProgress(episodeId, nextTime, current.duration || 1440);
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [episodeId]);
 
   // Offline Episode State & Synchronization
   const [offlineEpisode, setOfflineEpisode] = useState<OfflineEpisode | null>(null);

@@ -217,9 +217,19 @@ export const samehadaku: AnimeSource = {
       rawPoster = `/api/image-proxy?title=${encodeURIComponent(title)}`;
     }
     const poster = rawPoster || `/api/image-proxy?title=${encodeURIComponent(title)}`;
-    const synopsis = cleanText(
-      $(".series-synopsis, .desc, .sinopsis, .entry-content").first().text(),
+    let synopsis = cleanText(
+      $(".entry-content, .sinopsis, .series-synopsis, [itemprop='description']").first().text(),
     );
+    if (!synopsis || synopsis.includes("Tonton streaming")) {
+      const alt = cleanText($(".desc").first().text());
+      if (alt && !alt.includes("Tonton streaming")) synopsis = alt;
+    }
+    if (synopsis) {
+      synopsis = synopsis
+        .replace(/^Tonton streaming [^.]+\.\s*/i, "")
+        .replace(/^[a-z0-9\s]+ di Samehadaku\.\s*/i, "")
+        .trim();
+    }
 
     const info: Record<string, string> = {};
     $(".infox .spe span, .spe span, .seriestuinfo span").each((_, el) => {
@@ -236,11 +246,21 @@ export const samehadaku: AnimeSource = {
       return null;
     };
 
+    // Genres: strictly scoped to the main article to prevent recommendation pollution
     const genres: string[] = [];
-    $("a[href*='genre'], .seriestugenre a").each((_, el) => {
-      const name = cleanText($(el).text());
-      if (name && !genres.includes(name)) genres.push(name);
-    });
+    const mainArticle = $("article.hentry, article.post, article").first();
+    mainArticle
+      .find(".genre-info a, .genres a, .infox a[href*='genre'], a[href*='/genres/']")
+      .each((_, el) => {
+        const name = cleanText($(el).text());
+        if (name && !genres.includes(name)) genres.push(name);
+      });
+    if (genres.length === 0 && info["genre"]) {
+      info["genre"].split(",").forEach((g) => {
+        const name = cleanText(g);
+        if (name && !genres.includes(name)) genres.push(name);
+      });
+    }
 
     const episodes: SourceEpisode[] = [];
     const seen = new Set<string>();

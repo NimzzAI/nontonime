@@ -221,16 +221,66 @@ export const aniwatch: AnimeSource = {
       },
     );
     const poster = posterFor(clean, foundPoster || undefined, title);
-    const synopsis =
-      $(".description, .synopsis, p")
-        .map((_, el) => $(el).text().trim())
+    // Synopsis: accurately target the anime description container and avoid promo banners
+    let rawSynopsis = cleanText(
+      $(".awt-film-description, .film-description, .description, .synopsis").first().text(),
+    );
+    if (!rawSynopsis || rawSynopsis.toLowerCase().includes("keep your own anime list")) {
+      const candidates = $("p")
+        .map((_, el) => cleanText($(el).text()))
         .get()
-        .find((text) => text.length > 50) || null;
+        .filter(
+          (t) =>
+            t.length > 50 &&
+            !t.toLowerCase().includes("keep your own anime list") &&
+            !t.toLowerCase().includes("indexing service") &&
+            !t.toLowerCase().includes("rights reserved"),
+        );
+      rawSynopsis = candidates[0] || "";
+    }
+    const synopsis = rawSynopsis ? rawSynopsis.replace(/^synopsis[:\s]*/i, "").trim() : null;
 
+    // Genres: strictly scoped to anime details list (prevent navbar menu leakage)
     const genres: string[] = [];
-    $("a[href*='/browse/']").each((_, el) => {
+    $(
+      ".awt-item-list a[href*='/browse/'], .an-info a[href*='/browse/'], .film-infor a[href*='/browse/']",
+    ).each((_, el) => {
       const name = cleanText($(el).text());
       if (name && !genres.includes(name)) genres.push(name);
+    });
+
+    // Metadata details from .awt-item
+    let japanese: string | null = null;
+    let status = "Ongoing";
+    let type = "TV";
+    let score: string | null = null;
+    let studio: string | null = null;
+    let duration: string | null = null;
+    let aired: string | null = null;
+    let year: string | null = null;
+
+    $(".awt-item").each((_, el) => {
+      const head = cleanText($(el).find(".awt-item-head").text()).toLowerCase();
+      const clone = $(el).clone();
+      clone.find(".awt-item-head").remove();
+      const val = cleanText(clone.text());
+
+      if (head.includes("japanese")) japanese = val || null;
+      if (head.includes("status") && val) {
+        status = val.toLowerCase().includes("finish") ? "Completed" : "Ongoing";
+      }
+      if ((head.includes("format") || head.includes("type")) && val) type = val;
+      if (head.includes("rating") && val) {
+        const parsed = val.split("/")[0]?.trim();
+        if (parsed) score = parsed;
+      }
+      if (head.includes("studio") || head.includes("studios")) {
+        const link = $(el).find("a").first().text();
+        studio = cleanText(link) || val || null;
+      }
+      if (head.includes("duration") && val) duration = val;
+      if (head.includes("aired") && val) aired = val;
+      if (head.includes("year") && val) year = val;
     });
 
     // Daftar episode lengkap ada di halaman episode pertama
@@ -276,19 +326,19 @@ export const aniwatch: AnimeSource = {
       id: toAnimeId("aniwatch", clean),
       source: "aniwatch",
       title,
-      japanese: null,
+      japanese,
       poster,
       cover: poster,
       synopsis,
-      status: "Ongoing",
-      type: "TV",
-      score: null,
+      status,
+      type,
+      score,
       genres,
-      studio: null,
+      studio,
       producers: null,
-      duration: null,
-      aired: null,
-      year: null,
+      duration,
+      aired,
+      year,
       episodes,
       recommended: [],
     };
