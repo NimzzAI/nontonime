@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import { searchQuery, homeQuery } from "@/lib/queries";
 import { WatchlistButton } from "./WatchlistButton";
+import { getSafePosterUrl, cleanToHdPosterUrl } from "@/lib/poster";
 import {
   Search,
   X,
@@ -139,13 +140,16 @@ export function SearchFilterPanel({
 
     return unique.filter((item) => {
       // Status filter
-      if (selectedStatus === "ongoing") {
-        const isOngoing = /ongoing|tayang/i.test(item.status ?? "") || Boolean(item.releaseDay);
-        if (!isOngoing) return false;
-      } else if (selectedStatus === "completed") {
-        const isCompleted = /tamat|complete/i.test(item.status ?? "");
-        if (!isCompleted) return false;
-      }
+      const yearNum = item.year ? parseInt(item.year, 10) : null;
+      const currentYear = new Date().getFullYear();
+      const isPastYear = yearNum !== null && yearNum > 1900 && yearNum < currentYear;
+      const isCompleted =
+        /tamat|complete|finish|selesai|ended/i.test(item.status ?? "") ||
+        (isPastYear && !/ongoing|tayang/i.test(item.status ?? ""));
+      const isOngoing = !isCompleted && /ongoing|tayang/i.test(item.status ?? "");
+
+      if (selectedStatus === "ongoing" && !isOngoing) return false;
+      if (selectedStatus === "completed" && !isCompleted) return false;
 
       // Year filter (from release date or title if present)
       if (selectedYear !== "Semua") {
@@ -164,9 +168,7 @@ export function SearchFilterPanel({
           item.title.toLowerCase().includes(selectedGenre.toLowerCase()) ||
           (item.genres &&
             item.genres.some((g) => g.toLowerCase().includes(selectedGenre.toLowerCase())));
-        if (!matchesGenre && debouncedTerm.length === 0) {
-          // If searched by genre without keyword, return items if relevant
-        }
+        if (!matchesGenre) return false;
       }
 
       return true;
@@ -388,8 +390,14 @@ export function SearchFilterPanel({
                 ) : (
                   <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
                     {filteredResults.slice(0, 12).map((item) => {
-                      const isOngoing =
-                        /ongoing|tayang/i.test(item.status ?? "") || Boolean(item.releaseDay);
+                      const yearNum = item.year ? parseInt(item.year, 10) : null;
+                      const currentYear = new Date().getFullYear();
+                      const isPastYear =
+                        yearNum !== null && yearNum > 1900 && yearNum < currentYear;
+                      const isCompleted =
+                        /tamat|complete|finish|selesai|ended/i.test(item.status ?? "") ||
+                        (isPastYear && !/ongoing|tayang/i.test(item.status ?? ""));
+                      const isOngoing = !isCompleted && /ongoing|tayang/i.test(item.status ?? "");
 
                       return (
                         <div
@@ -403,14 +411,14 @@ export function SearchFilterPanel({
                             className="flex items-center gap-3 min-w-0 flex-1"
                           >
                             <div className="relative aspect-[3/4] w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
-                              {item.poster ? (
-                                <img
-                                  src={item.poster}
-                                  alt={item.title}
-                                  loading="lazy"
-                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                                />
-                              ) : null}
+                              <img
+                                src={getSafePosterUrl(cleanToHdPosterUrl(item.poster), item.title)}
+                                alt={item.title}
+                                loading="lazy"
+                                decoding="async"
+                                referrerPolicy="no-referrer"
+                                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                              />
                             </div>
                             <div className="min-w-0 flex-1 space-y-0.5">
                               <h4 className="line-clamp-1 text-xs font-bold text-foreground group-hover:text-primary transition-colors">

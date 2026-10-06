@@ -65,8 +65,16 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
       <div ref={emblaRef} className="overflow-hidden">
         <div className="flex">
           {items.map((anime) => {
+            const currentYear = new Date().getFullYear();
+            const yearNum = anime.year ? parseInt(anime.year, 10) : null;
+            const isPastYear = yearNum !== null && yearNum > 1900 && yearNum < currentYear;
+            const isCompleted =
+              /tamat|complete|finish|selesai|ended/i.test(anime.status ?? "") ||
+              (isPastYear && !/ongoing|tayang/i.test(anime.status ?? ""));
             const isOngoing =
-              /ongoing|tayang/i.test(anime.status ?? "") || Boolean(anime.releaseDay);
+              !isCompleted &&
+              (/ongoing|tayang/i.test(anime.status ?? "") ||
+                (Boolean(anime.releaseDay) && !isPastYear));
             const posterUrl = getSafePosterUrl(anime.poster, anime.title);
 
             return (

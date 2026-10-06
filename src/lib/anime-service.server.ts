@@ -40,20 +40,39 @@ const DETAIL_TIMEOUT_MS = 25000;
 function toSummary(item: SourceItem): AnimeSummary {
   const poster = formatSafePoster(item.poster, item.title);
   const cover = formatSafePoster(item.cover || item.poster, item.title);
+
+  // Accurate status normalization for old vs ongoing anime
+  let normalizedStatus = item.status;
+  const currentYear = new Date().getFullYear();
+  const yearNum = item.year ? parseInt(item.year, 10) : null;
+  const isPastYear = yearNum !== null && yearNum > 1900 && yearNum < currentYear;
+
+  if (normalizedStatus && /tamat|complete|finish|selesai|ended/i.test(normalizedStatus)) {
+    normalizedStatus = "Completed";
+  } else if (isPastYear && (!normalizedStatus || !/ongoing|tayang/i.test(normalizedStatus))) {
+    // Anime from past years that are not actively airing are Completed
+    normalizedStatus = "Completed";
+  } else if (item.type === "Movie" && (!normalizedStatus || isPastYear)) {
+    normalizedStatus = "Completed";
+  }
+
+  // Only assign active broadcast day if the anime is not completed
+  const activeDay = isPastYear || normalizedStatus === "Completed" ? null : item.day;
+
   return {
     id: item.id,
     title: item.title,
     poster,
     cover,
     score: item.score,
-    status: item.status,
+    status: normalizedStatus,
     type: item.type ?? "TV",
     genres: item.genres,
     synopsis: item.synopsis,
     year: item.year,
     views: item.views,
-    day: item.day,
-    releaseDay: item.day,
+    day: activeDay,
+    releaseDay: activeDay,
     latestReleaseDate: item.episodeLabel,
     episodeCount: null,
   };

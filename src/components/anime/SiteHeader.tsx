@@ -17,11 +17,13 @@ import {
   Bookmark,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Dices,
   DownloadCloud,
   Flame,
   History,
   Home,
+  Layers,
   Loader2,
   LogIn,
   LogOut,
@@ -34,6 +36,14 @@ import {
   User as UserIcon,
   X,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DownloadManagerModal } from "./DownloadManagerModal";
 import { getActiveTasks, getOfflineEpisodes } from "@/lib/download-manager";
 import { cn } from "@/lib/utils";
@@ -215,6 +225,69 @@ export function SiteHeader() {
             <nav id="desktop-main-nav" className="hidden lg:flex items-center gap-1">
               {NAV_MAIN.map((item) => {
                 const Icon = item.icon;
+                if (item.to === "/genre") {
+                  return (
+                    <DropdownMenu key={item.to}>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground cursor-pointer"
+                        >
+                          <Icon className="h-3.5 w-3.5 opacity-70" />
+                          <span>{item.label}</span>
+                          <ChevronDown className="h-3 w-3 opacity-60" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="start"
+                        className="w-56 rounded-xl p-2 z-50 border border-border shadow-xl bg-popover text-popover-foreground"
+                      >
+                        <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-2 py-1">
+                          Filter Berdasarkan Genre
+                        </DropdownMenuLabel>
+                        {[
+                          { id: "action", name: "Action" },
+                          { id: "slice-of-life", name: "Slice of Life" },
+                          { id: "fantasy", name: "Fantasy" },
+                          { id: "isekai", name: "Isekai" },
+                          { id: "romance", name: "Romance" },
+                          { id: "comedy", name: "Comedy" },
+                          { id: "adventure", name: "Adventure" },
+                          { id: "shounen", name: "Shounen" },
+                        ].map((g) => (
+                          <DropdownMenuItem key={g.id} asChild>
+                            <Link
+                              to="/genre/$genreId"
+                              params={{ genreId: g.id }}
+                              search={{ page: 1, name: g.name }}
+                              className="flex items-center justify-between text-xs font-medium rounded-lg px-2.5 py-1.5 text-foreground hover:bg-secondary hover:text-primary cursor-pointer"
+                            >
+                              <span>{g.name}</span>
+                            </Link>
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setShowFilterPanel(true)}
+                          className="flex items-center gap-2 text-xs font-semibold text-primary hover:bg-primary/10 rounded-lg px-2.5 py-1.5 cursor-pointer"
+                        >
+                          <SlidersHorizontal className="h-3.5 w-3.5" />
+                          <span>Buka Filter Sidebar Lengkap</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            to="/genre"
+                            className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg px-2.5 py-1.5 cursor-pointer"
+                          >
+                            <Tags className="h-3.5 w-3.5" />
+                            <span>Lihat Semua 30+ Genre</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.to}

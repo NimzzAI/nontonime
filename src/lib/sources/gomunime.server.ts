@@ -88,12 +88,24 @@ function parseCards($: CheerioAPI, selector: string): SourceItem[] {
       ?.trim();
     if (!slug || !title || seen.has(slug)) return;
     seen.add(slug);
+    const nodeText = node.text().toLowerCase();
+    let status: string | null = null;
+    if (
+      nodeText.includes("completed") ||
+      nodeText.includes("tamat") ||
+      nodeText.includes("finish")
+    ) {
+      status = "Completed";
+    } else if (nodeText.includes("ongoing") || nodeText.includes("tayang")) {
+      status = "Ongoing";
+    }
+
     items.push(
       makeItem("gomunime", slug, {
         title,
         poster,
         type: "TV",
-        status: "Ongoing",
+        status,
         score: parseNumber(node.find(".gm-b-rt").text().replace("★", "").trim()),
         episodeLabel: node.find(".gm-b-ep").text().trim() || null,
       }),

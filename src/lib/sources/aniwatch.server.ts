@@ -74,12 +74,24 @@ function parseAnimeLinks($: CheerioAPI): SourceItem[] {
       if (!title || title.length <= 2 || title.toLowerCase() === "detail") return;
       seen.add(slug);
 
+      const cardText = card.text().toLowerCase();
+      let status: string | null = null;
+      if (
+        cardText.includes("completed") ||
+        cardText.includes("finish") ||
+        cardText.includes("tamat")
+      ) {
+        status = "Completed";
+      } else if (cardText.includes("ongoing") || cardText.includes("tayang")) {
+        status = "Ongoing";
+      }
+
       items.push(
         makeItem("aniwatch", slug, {
           title,
           poster: posterFor(slug, rawPoster, title),
           type: "TV",
-          status: "Ongoing",
+          status,
         }),
       );
     });
@@ -102,12 +114,24 @@ function parseAnimeLinks($: CheerioAPI): SourceItem[] {
       if (!title || title.length <= 2 || title.toLowerCase() === "detail") return;
       seen.add(slug);
 
+      const holderText = holder.text().toLowerCase();
+      let status: string | null = null;
+      if (
+        holderText.includes("completed") ||
+        holderText.includes("finish") ||
+        holderText.includes("tamat")
+      ) {
+        status = "Completed";
+      } else if (holderText.includes("ongoing") || holderText.includes("tayang")) {
+        status = "Ongoing";
+      }
+
       items.push(
         makeItem("aniwatch", slug, {
           title,
           poster: posterFor(slug, rawPoster, title),
           type: "TV",
-          status: "Ongoing",
+          status,
         }),
       );
     });

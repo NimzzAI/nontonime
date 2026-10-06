@@ -161,3 +161,33 @@ export const SCHEDULE_DAYS = [
 ] as const;
 
 export type ScheduleDay = (typeof SCHEDULE_DAYS)[number];
+
+export interface GenreOption {
+  id: string;
+  name: string;
+  count?: number;
+}
+
+export const ALL_GENRE_OPTIONS: GenreOption[] = [
+  { id: "action", name: "Action" },
+  { id: "slice-of-life", name: "Slice of Life" },
+  { id: "fantasy", name: "Fantasy" },
+  { id: "isekai", name: "Isekai" },
+  { id: "romance", name: "Romance" },
+  { id: "comedy", name: "Comedy" },
+  { id: "adventure", name: "Adventure" },
+  { id: "shounen", name: "Shounen" },
+  { id: "supernatural", name: "Supernatural" },
+  { id: "sci-fi", name: "Sci-Fi" },
+  { id: "mystery", name: "Mystery" },
+  { id: "drama", name: "Drama" },
+  { id: "school", name: "School" },
+  { id: "sports", name: "Sports" },
+  { id: "psychological", name: "Psychological" },
+  { id: "horror", name: "Horror" },
+  { id: "mecha", name: "Mecha" },
+  { id: "historical", name: "Historical" },
+  { id: "magic", name: "Magic" },
+  { id: "military", name: "Military" },
+  { id: "music", name: "Music" },
+];

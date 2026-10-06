@@ -1,8 +1,13 @@
-import { fetchAniListCover, generateFallbackSvg } from "./sources/poster.server";
+import {
+  fetchAniListCover,
+  generateFallbackSvg,
+  cleanToHdPosterUrl,
+} from "./sources/poster.server";
 
 export async function handleImageProxyRequest(request: Request): Promise<Response> {
   const reqUrl = new URL(request.url);
-  const targetUrl = reqUrl.searchParams.get("url") || "";
+  const rawTargetUrl = reqUrl.searchParams.get("url") || "";
+  const targetUrl = cleanToHdPosterUrl(rawTargetUrl);
   const title = reqUrl.searchParams.get("title") || "";
 
   // 1. If anime title is provided, AniList cover is the fastest, highest-quality CDN image

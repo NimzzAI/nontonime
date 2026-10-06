@@ -5,7 +5,16 @@ import { Clapperboard, Star, ChevronRight } from "lucide-react";
 import { getSafePosterUrl } from "@/lib/poster";
 
 export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: AnimeSummary }) {
-  const isOngoing = /ongoing|tayang/i.test(anime.status ?? "");
+  const currentYear = new Date().getFullYear();
+  const yearNum = anime.year ? parseInt(anime.year, 10) : null;
+  const isPastYear = yearNum !== null && yearNum > 1900 && yearNum < currentYear;
+
+  const isCompleted =
+    /tamat|complete|finish|selesai|ended/i.test(anime.status ?? "") ||
+    (isPastYear && !/ongoing|tayang/i.test(anime.status ?? ""));
+
+  const isOngoing = !isCompleted && /ongoing|tayang/i.test(anime.status ?? "");
+  const statusLabel = isCompleted ? "Tamat" : isOngoing ? "Ongoing" : null;
   const posterUrl = getSafePosterUrl(anime.poster, anime.title);
 
   return (
@@ -44,7 +53,7 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
             </span>
           ) : null}
 
-          {anime.status ? (
+          {statusLabel ? (
             <span
               className={
                 isOngoing
@@ -52,7 +61,7 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
                   : "font-semibold text-sky-600 dark:text-sky-400"
               }
             >
-              {isOngoing ? "Ongoing" : "Tamat"}
+              {statusLabel}
             </span>
           ) : null}
 

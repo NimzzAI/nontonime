@@ -78,11 +78,7 @@ export function saveHistory(item: HistoryItem) {
   write([updatedItem, ...remaining]);
 }
 
-export function updateHistoryProgress(
-  episodeId: string,
-  currentTime: number,
-  duration?: number,
-) {
+export function updateHistoryProgress(episodeId: string, currentTime: number, duration?: number) {
   if (typeof window === "undefined" || !episodeId) return;
   const items = readHistory();
   const index = items.findIndex((entry) => entry.episodeId === episodeId);

@@ -93,12 +93,27 @@ function parseCards(
     if (!slug || !title || seen.has(slug)) return;
     seen.add(slug);
     const episode = cleanText(card.find(".bt .epx, .epx, .ep").first().text());
+    const cardText = card.text().toLowerCase();
+    let cardStatus: string | null = extra.status ?? null;
+    if (!cardStatus) {
+      if (
+        cardText.includes("completed") ||
+        cardText.includes("tamat") ||
+        cardText.includes("finish") ||
+        cardText.includes("selesai")
+      ) {
+        cardStatus = "Completed";
+      } else if (cardText.includes("ongoing") || cardText.includes("tayang")) {
+        cardStatus = "Ongoing";
+      }
+    }
+
     items.push(
       makeItem("samehadaku", slug, {
         title,
         poster: imgOf(card),
         type: cleanText(card.find(".typez, .type").first().text()) || extra.type || "TV",
-        status: extra.status ?? null,
+        status: cardStatus,
         score: parseNumber(card.find(".numscore, .score, .rating").first().text()),
         episodeLabel: episode || null,
       }),

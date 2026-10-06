@@ -43,12 +43,25 @@ function parseLinks($: CheerioAPI): SourceItem[] {
     if (!slug || seen.has(slug)) return;
     seen.add(slug);
     const img = $(el).closest("div").find("img").first().attr("src") || "";
+    const container = $(el).closest("div, article, li");
+    const containerText = container.text().toLowerCase();
+    let status: string | null = null;
+    if (
+      containerText.includes("completed") ||
+      containerText.includes("tamat") ||
+      containerText.includes("finish")
+    ) {
+      status = "Completed";
+    } else if (containerText.includes("ongoing") || containerText.includes("tayang")) {
+      status = "Ongoing";
+    }
+
     items.push(
       makeItem("stucknime", slug, {
         title: cleanText($(el).text()) || slug.replace(/-/g, " "),
         poster: absUrl(baseUrl(), img),
         type: "TV",
-        status: "Ongoing",
+        status,
       }),
     );
   });

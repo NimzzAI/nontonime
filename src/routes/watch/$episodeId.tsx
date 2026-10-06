@@ -308,7 +308,7 @@ function WatchPage() {
       const history = readHistory();
       const current = history.find((h) => h.episodeId === episodeId);
       if (current) {
-        const nextTime = Math.min((current.duration || 1440), (current.currentTime || 60) + 15);
+        const nextTime = Math.min(current.duration || 1440, (current.currentTime || 60) + 15);
         updateHistoryProgress(episodeId, nextTime, current.duration || 1440);
       }
     }, 15000);
@@ -491,6 +491,11 @@ function WatchPage() {
                   failedServerList={failedServerList}
                   onRecordFailedServer={handleRecordFailedServer}
                   onResetFailedServers={handleResetFailedServers}
+                  onMetricsUpdate={(m) => {
+                    if (m.duration > 0 && m.currentTime > 0) {
+                      updateHistoryProgress(episodeId, m.currentTime, m.duration);
+                    }
+                  }}
                 />
               )}
             </div>

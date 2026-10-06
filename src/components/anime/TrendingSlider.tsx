@@ -106,8 +106,16 @@ export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
         {items.map((anime, index) => {
           const rank = index + 1;
           const isTop3 = rank <= 3;
-          const isOngoing = /ongoing|tayang/i.test(anime.status ?? "") || Boolean(anime.releaseDay);
-          const isCompleted = /tamat|complete/i.test(anime.status ?? "");
+          const currentYear = new Date().getFullYear();
+          const yearNum = anime.year ? parseInt(anime.year, 10) : null;
+          const isPastYear = yearNum !== null && yearNum > 1900 && yearNum < currentYear;
+          const isCompleted =
+            /tamat|complete|finish|selesai|ended/i.test(anime.status ?? "") ||
+            (isPastYear && !/ongoing|tayang/i.test(anime.status ?? ""));
+          const isOngoing =
+            !isCompleted &&
+            (/ongoing|tayang/i.test(anime.status ?? "") ||
+              (Boolean(anime.releaseDay) && !isPastYear));
 
           return (
             <div
