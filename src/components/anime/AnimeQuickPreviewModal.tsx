@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { AnimeSummary } from "@/lib/anime-types";
+import { getSafePosterUrl } from "@/lib/poster";
 
 interface QuickPreviewModalProps {
   anime: AnimeSummary | null;
@@ -38,7 +39,8 @@ export function AnimeQuickPreviewModal({ anime, open, onOpenChange }: QuickPrevi
   if (!anime) return null;
 
   const title = detail?.title || anime.title;
-  const poster = detail?.poster || anime.poster;
+  const rawPoster = detail?.poster || anime.poster;
+  const poster = getSafePosterUrl(rawPoster, title);
   const score = detail?.score || anime.score;
   const isOngoing = /ongoing|tayang/i.test(detail?.status ?? anime.status ?? "");
   const isCompleted = /tamat|complete/i.test(detail?.status ?? anime.status ?? "");
@@ -52,6 +54,7 @@ export function AnimeQuickPreviewModal({ anime, open, onOpenChange }: QuickPrevi
             <img
               src={poster}
               alt={title}
+              referrerPolicy="no-referrer"
               className="h-full w-full object-cover object-center blur-md scale-110 opacity-40"
             />
           ) : null}
@@ -61,7 +64,12 @@ export function AnimeQuickPreviewModal({ anime, open, onOpenChange }: QuickPrevi
           <div className="absolute inset-x-4 bottom-3 flex items-end gap-3.5">
             <div className="relative aspect-[2/3] w-20 shrink-0 overflow-hidden rounded-lg border-2 border-border/80 bg-card shadow-lg sm:w-24">
               {poster ? (
-                <img src={poster} alt={title} className="h-full w-full object-cover" />
+                <img
+                  src={poster}
+                  alt={title}
+                  referrerPolicy="no-referrer"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-muted">
                   <Film className="h-6 w-6 text-muted-foreground" />

@@ -1,7 +1,14 @@
 import * as cheerio from "cheerio";
 import type { CheerioAPI, Element } from "cheerio";
 import { cached } from "./cache.server";
-import { absUrl, cleanText, episodeNumberFrom, fetchText, lastSegment, slugify } from "./http.server";
+import {
+  absUrl,
+  cleanText,
+  episodeNumberFrom,
+  fetchText,
+  lastSegment,
+  slugify,
+} from "./http.server";
 import { makeItem, toAnimeId, toEpisodeId } from "./ids";
 import { assertPublicHttpUrl } from "./token.server";
 import type {
@@ -80,7 +87,9 @@ function parseCard($: CheerioAPI, el: Element): Card {
   if (titleTag.length > 0) {
     const span = titleTag.find("span");
     title =
-      span.length > 0 ? span.attr("data-title-default") || span.text().trim() : titleTag.text().trim();
+      span.length > 0
+        ? span.attr("data-title-default") || span.text().trim()
+        : titleTag.text().trim();
   } else if (img.length > 0) {
     title = img.attr("alt") || "";
   }
@@ -115,7 +124,10 @@ function parseCard($: CheerioAPI, el: Element): Card {
   };
 }
 
-function cardItem(card: Card, extra: { episodeLabel?: string; status?: string } = {}): SourceItem | null {
+function cardItem(
+  card: Card,
+  extra: { episodeLabel?: string; status?: string } = {},
+): SourceItem | null {
   const slug = lastSegment(card.link);
   if (!slug || !card.title) return null;
   return makeItem("nontonanimeid", slug, {
@@ -163,7 +175,9 @@ function parseTab($: CheerioAPI, tabId: string, status: string | null): SourceIt
     if (titleDiv.length > 0) {
       const span = titleDiv.find("span");
       title =
-        span.length > 0 ? span.attr("data-title-default") || span.text().trim() : titleDiv.text().trim();
+        span.length > 0
+          ? span.attr("data-title-default") || span.text().trim()
+          : titleDiv.text().trim();
     }
     if (!title) title = img.attr("alt") || "";
     const score = a.find("span.kotakscore").text().replace(/\s/g, "").replace("⭐", "").trim();
@@ -412,7 +426,11 @@ export const nontonanimeid: AnimeSource = {
       const label = li.find("strong, span.detail-label").first();
       if (label.length === 0) return;
       const key = label.text().replace(":", "").trim();
-      details[key] = li.text().replace(label.text(), "").replace(/^\s*:?\s*/, "").trim();
+      details[key] = li
+        .text()
+        .replace(label.text(), "")
+        .replace(/^\s*:?\s*/, "")
+        .trim();
     });
 
     const genres: string[] = [];
@@ -494,7 +512,10 @@ export const nontonanimeid: AnimeSource = {
     });
 
     const servers: SourceServer[] = [];
-    const defaultUrl = $("div#videoku iframe").first().attr("src") || $("div#videoku iframe").first().attr("data-src") || "";
+    const defaultUrl =
+      $("div#videoku iframe").first().attr("src") ||
+      $("div#videoku iframe").first().attr("data-src") ||
+      "";
     let activeName = "";
     const lazy: { name: string; post: string; nume: string }[] = [];
     $("ul.player li.serverplayer").each((_, el) => {
@@ -537,10 +558,15 @@ export const nontonanimeid: AnimeSource = {
       const urls: { title: string; url: string }[] = [];
       box.find("a").each((__, a) => {
         const href = $(a).attr("href") || "";
-        if (href) urls.push({ title: cleanText($(a).text()) || "Unduh", url: absUrl(baseUrl(), href) });
+        if (href)
+          urls.push({ title: cleanText($(a).text()) || "Unduh", url: absUrl(baseUrl(), href) });
       });
       if (urls.length > 0) {
-        downloads.push({ quality: box.find("span").first().text().trim() || "Unduhan", size: null, urls });
+        downloads.push({
+          quality: box.find("span").first().text().trim() || "Unduhan",
+          size: null,
+          urls,
+        });
       }
     });
 

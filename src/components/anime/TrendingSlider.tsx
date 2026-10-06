@@ -5,6 +5,7 @@ import type { AnimeSummary } from "@/lib/anime-types";
 import { WatchlistButton } from "./WatchlistButton";
 import { ChevronLeft, ChevronRight, Flame, Play, Star, Layers, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getSafePosterUrl } from "@/lib/poster";
 
 export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -115,19 +116,23 @@ export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
             >
               <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-white/10 dark:border-white/5 bg-muted shadow-lg transition-all duration-500 group-hover:border-primary/60 group-hover:shadow-2xl group-hover:shadow-primary/20">
                 {/* Large Edge-to-Edge Image with Hover-Zoom Effect */}
-                {anime.poster ? (
-                  <img
-                    src={anime.poster}
-                    alt={anime.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 group-hover:brightness-105"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-card">
-                    <Flame className="h-10 w-10 text-muted-foreground/30" />
-                  </div>
-                )}
+                {(() => {
+                  const posterUrl = getSafePosterUrl(anime.poster, anime.title);
+                  return posterUrl ? (
+                    <img
+                      src={posterUrl}
+                      alt={anime.title}
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 group-hover:brightness-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-card">
+                      <Flame className="h-10 w-10 text-muted-foreground/30" />
+                    </div>
+                  );
+                })()}
 
                 {/* Multilayer High-Contrast Cinematic Gradient Overlay */}
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-95" />

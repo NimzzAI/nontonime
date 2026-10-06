@@ -3,6 +3,7 @@ name: antislop
 description: "Anti Slop: Rules for AI Coding Agents. The core filter. Load always to stop generic AI slop."
 allowed-tools: Read Write Edit Glob Grep
 ---
+
 # antislop
 
 > Anti Slop: Rules for AI Coding Agents
@@ -34,29 +35,35 @@ If no antislop pointer exists and this file is being read for the first time, ru
    - New skills appear here as they ship; never offer a skill that does not exist in this version.
 
    If the user declines or says "core only", stop here and use this file alone as the filter. Do not install anything.
+
 3. **Resolve direction** (only if a UI skill was selected). Check for `DESIGN.md` or explicit brand/style direction. If none exists, be honest that antislop is a **filter, not a beautifier**: without direction the output tends toward monotonous. Recommend having a `DESIGN.md`, then offer these paths:
    - **1. The user supplies direction (recommended).** They write their own `DESIGN.md`, or answer a few direction questions (identity, personality, palette, typography, mood) and the agent transcribes their answers into `DESIGN.md`. The user is the author; the agent only formats. Never invent example content for `DESIGN.md`.
    - **2. The agent supplies direction, with an honest warning.** The agent writes the direction itself, stating explicitly that agent-generated style tends toward default AI taste, which is the slop antislop filters, so the result is likely monotonous. If chosen, still ask a minimal brief (product, audience, mood) before building.
-   - **3. The user skips direction for now.** Proceed without a `DESIGN.md`. Any UI built this way must be labeled *"draft without direction"* with dials ENERGY 1 / RHYTHM 1 / MOTION 1 (R-37), and is not a shippable deliverable.
+   - **3. The user skips direction for now.** Proceed without a `DESIGN.md`. Any UI built this way must be labeled _"draft without direction"_ with dials ENERGY 1 / RHYTHM 1 / MOTION 1 (R-37), and is not a shippable deliverable.
 4. **Get the chosen skill(s) in place; the user does the fetching, never the agent.** A `SKILL.md` is instructions the agent will obey, so an agent that downloads one at runtime is fetching its own next prompt: do not do it, and do not ask for network access here. The skills ship as folders in the release (`skills/<name>/SKILL.md`). If a chosen skill folder is missing next to this file, tell the user which ones are missing and that they come with the release matching this core, so a newer skill never mixes with an older one. `antislop-human` also needs `contrast-check.py` from that same folder.
 5. **Append the pointer block at the END of the project's entry file** (the file the running tool reads at session start: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex, `GEMINI.md` for Gemini CLI, and so on). If that file does not exist, create it. Never modify existing content:
    ```md
    <!-- antislop:start -->
+
    ## antislop
+
    For UI, copy, people, mobile layout, or code comments work, read `antislop.md` (core) and then the skill for the task:
+
    - UI / visual: `skills/antislop-ui/SKILL.md`
    - Copy & text: `skills/antislop-copywriting/SKILL.md`
    - People: `skills/antislop-human/SKILL.md`
    - Mobile / responsive: `skills/antislop-layoutmobile/SKILL.md`
    - Code comments: `skills/antislop-code/SKILL.md`
-   Before starting, ask the user when antislop applies: during the work, or after it is done.
-   To update antislop later: download `antislop.md` again, or run `npx antislop-ai --update` if it was installed as skill folders.
+     Before starting, ask the user when antislop applies: during the work, or after it is done.
+     To update antislop later: download `antislop.md` again, or run `npx antislop-ai --update` if it was installed as skill folders.
+
    <!-- antislop:end -->
    ```
    The packaged installers write the same two markers, so whichever install path runs last replaces the block instead of adding a second one. If an older antislop block exists (even without the markers), replace just that block instead of appending a duplicate.
 6. **Ask the usage-mode question** (see "Two Usage Modes"), then proceed with the work.
 
 Notes:
+
 - The entry file is read at the start of a session, so a newly written pointer takes effect from the **next** session.
 - The wizard needs file-write access for step 5 (the pointer block), and nothing else; the user approves once. It never needs network access.
 - The pointer block is the source of truth for which skills are installed. To add or remove a skill later, update the block to match (add or remove the file and its line).
@@ -65,7 +72,7 @@ Notes:
 
 antislop never updates itself, and nothing announces a new release. Answer from the route the user installed with, and say which route you are assuming when you cannot tell. `npx antislop-ai --update` is the shortest path for the first two routes: it replaces every antislop folder it finds, at project and global scope, prints the release it replaced, and asks nothing.
 
-- **The installer** (`npx antislop-ai`): run it again, answer as before, and pick **Overwrite them**. It prints the version already on disk next to the version it carries, so nothing has to be compared by hand. *Keep what is there* installs nothing.
+- **The installer** (`npx antislop-ai`): run it again, answer as before, and pick **Overwrite them**. It prints the version already on disk next to the version it carries, so nothing has to be compared by hand. _Keep what is there_ installs nothing.
 - **The skills directory** (`npx skills add miqdadbadjuber/anti-slop`): run the same command again. An installer folder and a skills-directory folder hold the same files, so `--update` covers this route as well.
 - **A plugin door**: each agent keeps its own copy, and `--update` cannot reach those. The installer names the command for any door it finds installed; without it, these are the seven:
   - **Claude Code**: `claude plugin update antislop@anti-slop`
@@ -89,6 +96,7 @@ Skills load when a session starts, so the session asking the question keeps the 
 antislop is used one of two ways. At the start of a session, ask the user which applies, in the user's chat language (not the language of this file). Do not start UI work until they answer.
 
 > **When do you want to use antislop?**
+>
 > 1. **DURING** the project, while working (planning & execution). I will apply the rules while I write, so AI slop does not appear from the start.
 > 2. **AFTER** the project is finished. I will audit what exists: a numbered findings list with priorities, you pick which numbers to fix, then I fix and report.
 >
@@ -130,6 +138,7 @@ The question to answer before calling anything done:
 If the answer is **no**, the design is too generic. Start over.
 
 A design is **done** only when all three are true:
+
 1. Every technique passes the purpose test (see the Purpose-Gate group in Part 2).
 2. It has its own identity and character (see Part 3: Liveliness Toolkit).
 3. It actually works (see The Craftsmanship Standard).
@@ -166,91 +175,91 @@ These are the most common patterns found in AI-generated designs. Use this table
 
 ### Visual & Color
 
-| Pattern | Telltale Signs |
-|---------|---------------|
-| **Generic Blue-Purple Gradient** | Blue to Purple, Blue to Cyan, Purple to Pink, full-page colored glow background |
-| **Excessive Glassmorphism** | Blur on navbar, cards, modals, sidebar all at once |
-| **Excessive Border Radius** | Every element is pill-shaped: buttons, inputs, cards, badges, modals |
-| **Overly Soft Shadows** | Every component has a large shadow, the whole page feels like it's floating |
-| **Glow Everywhere** | Glow on cards, buttons, icons, badges, backgrounds, and borders all at once |
-| **AI Default Palette** | Harsh or rainbow gradients, purple-and-black schemes, neon accents, pastel blocks, radial orbs, used as the default color treatment |
-| **Background Grid** | Grid squares, blueprint lines, graph paper, dot grids, thin horizontal/vertical lines |
+| Pattern                                  | Telltale Signs                                                                                                                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Generic Blue-Purple Gradient**         | Blue to Purple, Blue to Cyan, Purple to Pink, full-page colored glow background                                                                                                          |
+| **Excessive Glassmorphism**              | Blur on navbar, cards, modals, sidebar all at once                                                                                                                                       |
+| **Excessive Border Radius**              | Every element is pill-shaped: buttons, inputs, cards, badges, modals                                                                                                                     |
+| **Overly Soft Shadows**                  | Every component has a large shadow, the whole page feels like it's floating                                                                                                              |
+| **Glow Everywhere**                      | Glow on cards, buttons, icons, badges, backgrounds, and borders all at once                                                                                                              |
+| **AI Default Palette**                   | Harsh or rainbow gradients, purple-and-black schemes, neon accents, pastel blocks, radial orbs, used as the default color treatment                                                      |
+| **Background Grid**                      | Grid squares, blueprint lines, graph paper, dot grids, thin horizontal/vertical lines                                                                                                    |
 | **Too Much Decoration / Trend-Stacking** | Blob, mesh gradient, glow, noise, pattern, grid with no purpose, especially when multiple trends are stacked (e.g. Glassmorphism + Mesh Gradient + Glow + Monospace + Grid + Rounded UI) |
-| **Dark Mode Default for No Reason** | Entire page is dark just because it looks "tech", with no branding consideration |
-| **Too Many Colors in Palette** | Using 5-7 different colors on one page without a clear design system |
-| **Excessive Accent Color** | One accent color on buttons, icons, badges, links, lines, backgrounds, and glows |
-| **Sterile Default** | Flat white/near-white, thin grey borders, small radius, no texture, generic font, no identity. The "safe result" of over-filtering without direction |
-| **Skeleton Preview as Product Shot** | Grey placeholder bars / skeleton blocks used as the "product screenshot" in the hero or feature areas |
+| **Dark Mode Default for No Reason**      | Entire page is dark just because it looks "tech", with no branding consideration                                                                                                         |
+| **Too Many Colors in Palette**           | Using 5-7 different colors on one page without a clear design system                                                                                                                     |
+| **Excessive Accent Color**               | One accent color on buttons, icons, badges, links, lines, backgrounds, and glows                                                                                                         |
+| **Sterile Default**                      | Flat white/near-white, thin grey borders, small radius, no texture, generic font, no identity. The "safe result" of over-filtering without direction                                     |
+| **Skeleton Preview as Product Shot**     | Grey placeholder bars / skeleton blocks used as the "product screenshot" in the hero or feature areas                                                                                    |
 
 ### Layout & Components
 
-| Pattern | Telltale Signs |
-|---------|---------------|
-| **Monotonous Layout** | Hero, Subtitle, 2 CTAs, Screenshot, Feature Grid, Testimonials, FAQ, CTA, Footer |
-| **Copy-Paste Feature Cards** | Identical size, height, icon, layout, and padding across all cards |
-| **Bento Grid** | A mosaic of differently-sized cards filling a section, the default "app-like" layout |
-| **Fake Terminal Window** | A styled terminal window with typed-out commands as the hero or feature visual |
-| **Uniform Spacing** | Padding, margin, and element gaps are identical across every section |
-| **Broken Mobile** | Horizontal overflow, cards clipping off-screen, broken navbar, colliding text |
-| **Template Animations** | Every element uses Fade Up, Fade In, Floating, Scale, Bounce |
-| **"How It Works" Always 3 Steps** | Round icon + number 1, 2, 3 + short text, always three steps, always the same |
-| **"Trusted By" Logo Bar** | Row of generic company logos placed directly below the hero |
-| **"Most Popular" Pricing Card** | Middle tier always highlighted with a capsule badge |
-| **3 Pricing Tiers** | Always three columns whatever the real pricing structure, with the middle tier highlighted |
-| **4-Column Template Footer** | Product / Company / Resources / Legal columns with no variation |
-| **Uniform Section Rhythm** | Every section is the same composition: centered title + subtitle + identical card grid, with no variation between sections |
-| **Alternating Background Only** | The only variation between sections is flipping the background color every other section |
+| Pattern                           | Telltale Signs                                                                                                             |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Monotonous Layout**             | Hero, Subtitle, 2 CTAs, Screenshot, Feature Grid, Testimonials, FAQ, CTA, Footer                                           |
+| **Copy-Paste Feature Cards**      | Identical size, height, icon, layout, and padding across all cards                                                         |
+| **Bento Grid**                    | A mosaic of differently-sized cards filling a section, the default "app-like" layout                                       |
+| **Fake Terminal Window**          | A styled terminal window with typed-out commands as the hero or feature visual                                             |
+| **Uniform Spacing**               | Padding, margin, and element gaps are identical across every section                                                       |
+| **Broken Mobile**                 | Horizontal overflow, cards clipping off-screen, broken navbar, colliding text                                              |
+| **Template Animations**           | Every element uses Fade Up, Fade In, Floating, Scale, Bounce                                                               |
+| **"How It Works" Always 3 Steps** | Round icon + number 1, 2, 3 + short text, always three steps, always the same                                              |
+| **"Trusted By" Logo Bar**         | Row of generic company logos placed directly below the hero                                                                |
+| **"Most Popular" Pricing Card**   | Middle tier always highlighted with a capsule badge                                                                        |
+| **3 Pricing Tiers**               | Always three columns whatever the real pricing structure, with the middle tier highlighted                                 |
+| **4-Column Template Footer**      | Product / Company / Resources / Legal columns with no variation                                                            |
+| **Uniform Section Rhythm**        | Every section is the same composition: centered title + subtitle + identical card grid, with no variation between sections |
+| **Alternating Background Only**   | The only variation between sections is flipping the background color every other section                                   |
 
 ### Copywriting & Content
 
-| Pattern | Telltale Signs |
-|---------|---------------|
-| **Em Dash (—)** | "Fast, secure — and built for developers." |
-| **Generic CTAs** | Get Started, Learn More, Try Now, Explore, Discover |
-| **AI Marketing Buzzwords** | AI Powered, Revolutionary, Next Generation, Seamless, Cutting Edge |
-| **Fake Statistics** | 10K+ Users, 99.9% Uptime, 500M Requests, 120+ Countries |
-| **Fake Testimonials** | AI avatars, random names, random job titles, fictional reviews |
+| Pattern                     | Telltale Signs                                                                                                 |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Em Dash (—)**             | "Fast, secure — and built for developers."                                                                     |
+| **Generic CTAs**            | Get Started, Learn More, Try Now, Explore, Discover                                                            |
+| **AI Marketing Buzzwords**  | AI Powered, Revolutionary, Next Generation, Seamless, Cutting Edge                                             |
+| **Fake Statistics**         | 10K+ Users, 99.9% Uptime, 500M Requests, 120+ Countries                                                        |
+| **Fake Testimonials**       | AI avatars, random names, random job titles, fictional reviews                                                 |
 | **Fabricated Trust Claims** | "SOC 2 compliant", "ISO 27001", "Enterprise-grade security", "300% faster" for a product with no such evidence |
-| **Demo Without a Product** | Sells a product that is never shown working: no real demo, no Terms of Service, no Privacy Policy |
+| **Demo Without a Product**  | Sells a product that is never shown working: no real demo, no Terms of Service, no Privacy Policy              |
 
 ### Decorative Elements
 
-| Pattern | Telltale Signs |
-|---------|---------------|
-| **Generic AI Icons** | Sparkle, Star, Magic, Lightning, Diamond, Cube, Robot, AI Orb |
-| **Lucide Icons** | Every icon from the same thin-stroke rounded library (Lucide or a clone), the default icon-set look |
-| **Colored Left Stripe** | A thin colored vertical bar on the left edge of cards, rows, or section headers, as decoration |
-| **Small Arrows (→ / ↗)** | Placed on almost every button as pure decoration |
-| **AI Capsule Badges** | Pill shape, thin border, glow, small dot, uppercase, containing: "AI Powered", "Beta", "New" |
-| **Eyebrow Badge Above the Headline** | A small pill parked directly above the H1, often with a dot and a thin border, holding a category label the headline already says |
-| **Generic AI Typography** | Large monospace headings, HOW IT WORKS uppercase with wide tracking |
-| **Typeface Chosen Without Reason** | Font picked because it's the AI default, not because it fits brand character. Popular fonts like Inter are still valid if there's a reason |
-| **Generic Illustrations** | Undraw, Storyset, or 3D blob characters with no real connection to the product |
+| Pattern                              | Telltale Signs                                                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Generic AI Icons**                 | Sparkle, Star, Magic, Lightning, Diamond, Cube, Robot, AI Orb                                                                              |
+| **Lucide Icons**                     | Every icon from the same thin-stroke rounded library (Lucide or a clone), the default icon-set look                                        |
+| **Colored Left Stripe**              | A thin colored vertical bar on the left edge of cards, rows, or section headers, as decoration                                             |
+| **Small Arrows (→ / ↗)**             | Placed on almost every button as pure decoration                                                                                           |
+| **AI Capsule Badges**                | Pill shape, thin border, glow, small dot, uppercase, containing: "AI Powered", "Beta", "New"                                               |
+| **Eyebrow Badge Above the Headline** | A small pill parked directly above the H1, often with a dot and a thin border, holding a category label the headline already says          |
+| **Generic AI Typography**            | Large monospace headings, HOW IT WORKS uppercase with wide tracking                                                                        |
+| **Typeface Chosen Without Reason**   | Font picked because it's the AI default, not because it fits brand character. Popular fonts like Inter are still valid if there's a reason |
+| **Generic Illustrations**            | Undraw, Storyset, or 3D blob characters with no real connection to the product                                                             |
 
 ### Functionality & Content
 
-| Pattern | Telltale Signs |
-|---------|---------------|
-| **Non-Functional Interactive Elements** | Buttons do nothing, dropdowns won't open, forms can't be submitted. AI builds the visuals but forgets the logic |
-| **Happy Path Only Design** | No empty state, loading state, or error state. UI looks perfect in screenshots but isn't ready for real use |
-| **Irrelevant FAQ** | FAQ contains generic template questions ("Is my data secure?", "Can I cancel anytime?") with no real relevance to the product |
-| **Assumed Logo & Profile Photos** | Creating app logos, avatars, or profile photos without explicit instructions, generated purely on assumption |
-| **Navbar Links to Nowhere** | Navbar contains links to pages (Features, Contact, About, etc.) that have no actual section or page |
-| **File/CSS Patching via Script** | A feature (e.g. dark mode) added by an external script that rewrites source or CSS with string replacement. Signs: a `.py`/`.js` helper doing `str.replace` on `.css` files, "patch" scripts left in the repo |
+| Pattern                                 | Telltale Signs                                                                                                                                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Non-Functional Interactive Elements** | Buttons do nothing, dropdowns won't open, forms can't be submitted. AI builds the visuals but forgets the logic                                                                                               |
+| **Happy Path Only Design**              | No empty state, loading state, or error state. UI looks perfect in screenshots but isn't ready for real use                                                                                                   |
+| **Irrelevant FAQ**                      | FAQ contains generic template questions ("Is my data secure?", "Can I cancel anytime?") with no real relevance to the product                                                                                 |
+| **Assumed Logo & Profile Photos**       | Creating app logos, avatars, or profile photos without explicit instructions, generated purely on assumption                                                                                                  |
+| **Navbar Links to Nowhere**             | Navbar contains links to pages (Features, Contact, About, etc.) that have no actual section or page                                                                                                           |
+| **File/CSS Patching via Script**        | A feature (e.g. dark mode) added by an external script that rewrites source or CSS with string replacement. Signs: a `.py`/`.js` helper doing `str.replace` on `.css` files, "patch" scripts left in the repo |
 
 ### Identity & Originality
 
-| Pattern | Telltale Signs |
-|---------|---------------|
-| **No Visual Identity** | Swap the logo and the design still feels the same; could belong to any product |
+| Pattern                       | Telltale Signs                                                                                           |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **No Visual Identity**        | Swap the logo and the design still feels the same; could belong to any product                           |
 | **Clone of Popular Products** | Overall visual that mimics Linear, Vercel, Stripe, Notion, or other popular products without being asked |
 
 ### Accessibility
 
-| Pattern | Telltale Signs |
-|---------|---------------|
-| **Poor Color Contrast** | Grey text on grey background, white text on a gradient that's light in some areas. Looks fine visually but fails WCAG |
-| **Not Keyboard Navigable** | UI can only be used with a mouse. Interactive elements can't be reached with Tab, no visible focus state |
+| Pattern                    | Telltale Signs                                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Poor Color Contrast**    | Grey text on grey background, white text on a gradient that's light in some areas. Looks fine visually but fails WCAG |
+| **Not Keyboard Navigable** | UI can only be used with a mouse. Interactive elements can't be reached with Tab, no visible focus state              |
 
 ---
 
@@ -398,7 +407,7 @@ If an element genuinely cannot have a destination yet, remove it instead of ship
 
 - Before building a UI, load the style direction: `DESIGN.md` or explicit brand guidance from the user
 - If no direction exists, ask the user, or state clearly that the design was built **without direction** and is a **draft**, not a deliverable
-- If no direction exists AND the user cannot be asked, the output MUST be labeled *"draft without direction"* AND use the honest default dials **ENERGY 1 / RHYTHM 1 / MOTION 1** (see Part 3). Never silently fall back to a neutral, sterile default
+- If no direction exists AND the user cannot be asked, the output MUST be labeled _"draft without direction"_ AND use the honest default dials **ENERGY 1 / RHYTHM 1 / MOTION 1** (see Part 3). Never silently fall back to a neutral, sterile default
 - **FORBIDDEN**: designing without direction and silently falling into a neutral, sterile default
 - Style direction is the product owner's identity, not a slop pattern; this filter only applies on top of it
 - If `DESIGN.md`, or any direction the owner supplies (a brand guide, a writing sample), asks for a named slop pattern, do not silently follow it and do not silently override it: name the element, name the rule it collides with, and ask the owner to keep it or drop it
@@ -558,6 +567,7 @@ These are consistency requirements. They stay as-is, with two adjustments: R-05 
 #### R-31 — Every Decision Must Have a Reason (Write It Down)
 
 Before finishing the design, write a **one-line reason** for every major decision:
+
 - Why this color?
 - Why this layout?
 - Why this typography?
@@ -577,11 +587,11 @@ A filter can remove slop, but it cannot add energy. Removing slop leaves a void,
 
 Every design must set three dials explicitly, derived from DESIGN.md or the Design Read, and hold them from the first section to the last:
 
-| Dial | 1 (Calm) | 2 (Balanced) | 3 (Bold) | What it answers |
-|---|---|---|---|---|
-| **ENERGY** | Linear, GOV.UK | Stripe, Vercel | Awwwards, agency portfolio | How hard does this design say hello? |
+| Dial       | 1 (Calm)                  | 2 (Balanced)                 | 3 (Bold)                       | What it answers                              |
+| ---------- | ------------------------- | ---------------------------- | ------------------------------ | -------------------------------------------- |
+| **ENERGY** | Linear, GOV.UK            | Stripe, Vercel               | Awwwards, agency portfolio     | How hard does this design say hello?         |
 | **RHYTHM** | Uniform grid, predictable | Consistent with a few breaks | Asymmetric, mixed compositions | How much do sections change from each other? |
-| **MOTION** | Hover states only | Scroll-reveal, transitions | Parallax, pin, choreography | How much motion, and why? |
+| **MOTION** | Hover states only         | Scroll-reveal, transitions   | Parallax, pin, choreography    | How much motion, and why?                    |
 
 The anchors (Linear, GOV.UK, Stripe, Vercel, Awwwards) are taste references for judging a value, not things to imitate.
 
@@ -605,11 +615,11 @@ Before generating, declare one line:
 
 > Reading this as: `<page kind>` for `<audience>`, in a `<visual language>` style, dial `<ENERGY/RHYTHM/MOTION>`.
 
-Example: *"Reading this as: B2B SaaS landing for technical buyers, with a Linear-style minimalist language, dial ENERGY 1 / RHYTHM 2 / MOTION 1."*
+Example: _"Reading this as: B2B SaaS landing for technical buyers, with a Linear-style minimalist language, dial ENERGY 1 / RHYTHM 2 / MOTION 1."_
 
 1. **Direction exists** (DESIGN.md or a brief that expresses energy and mood): infer the dials from it and proceed. DESIGN.md may optionally include a line like `Dial: ENERGY 2 / RHYTHM 3 / MOTION 1`; if present, use it directly.
-2. **Direction is ambiguous**: ask exactly ONE decisive question, never a question dump. Example: *"Should this feel closer to Linear-clean or Awwwards-experimental?"* Use the answer to set the dials.
-3. **No direction and the user cannot be asked**: label the output *"draft without direction"*, set the honest default dials **ENERGY 1 / RHYTHM 1 / MOTION 1** (see R-37), and do not present it as a deliverable.
+2. **Direction is ambiguous**: ask exactly ONE decisive question, never a question dump. Example: _"Should this feel closer to Linear-clean or Awwwards-experimental?"_ Use the answer to set the dials.
+3. **No direction and the user cannot be asked**: label the output _"draft without direction"_, set the honest default dials **ENERGY 1 / RHYTHM 1 / MOTION 1** (see R-37), and do not present it as a deliverable.
 
 ## Functional Patterns
 
@@ -639,40 +649,40 @@ The gate has four blocks: Hard Gate (absolute), Purpose-Gate (technique + writte
 
 Before declaring the design done, answer every question below. All answers must be **no**:
 
-- [ ] Is there an em dash (`—`) anywhere in the text, outside the R-02 carve-out and any voice sample the owner approved under R-37? *(R-02)*
-- [ ] Is there any horizontal overflow, text escaping its container, or broken layout on mobile? *(R-03)*
-- [ ] Are there any statistics without a real source (10K+ Users, 99.9% Uptime, etc.)? *(R-17)*
-- [ ] Are there any fictional testimonials (AI avatars, random names or job titles)? *(R-18)*
-- [ ] Were any visual assets (logo, avatar/profile photo, statistics, testimonials, or navigation structure) created without explicit instructions or confirmation, and without an honest placeholder? *(R-23)*
-- [ ] Are there navbar links pointing to sections or pages that do not exist? *(R-24)*
-- [ ] Is there any text with contrast below the WCAG AA standard (4.5:1 for normal text, 3:1 for large text)? *(R-25)*
-- [ ] Are there any buttons, dropdowns, or forms that do nothing, with no real behavior and no `// TODO` + visible label? *(R-26)*
-- [ ] Does the UI lack an empty state, loading state, or error state? *(R-27)*
-- [ ] Does the FAQ contain generic questions that are not relevant to the product? *(R-28)*
-- [ ] Can the UI not be navigated by keyboard (Tab, Enter, Escape) or is there no visible focus state? *(R-32)*
-- [ ] Was any feature added by patching source/CSS with an external script instead of writing it in source? *(R-33)*
-- [ ] If a theme toggle exists, does one mode (light or dark) break styles, fonts, or layout? *(R-34)*
-- [ ] Was the app delivered without being run or built, or without a recorded click-through of every interactive element? *(R-35)*
-- [ ] Are there any fabricated security, compliance, performance, or customer claims? *(R-36)*
-- [ ] Was the design built without direction and not labeled *"draft without direction"* with honest default dials ENERGY 1 / RHYTHM 1 / MOTION 1? *(R-37)*
-- [ ] Is there any realistically-styled content that was fabricated (testimonials, features, statistics, ghost links, fictional team) without a real source? *(R-38)*
+- [ ] Is there an em dash (`—`) anywhere in the text, outside the R-02 carve-out and any voice sample the owner approved under R-37? _(R-02)_
+- [ ] Is there any horizontal overflow, text escaping its container, or broken layout on mobile? _(R-03)_
+- [ ] Are there any statistics without a real source (10K+ Users, 99.9% Uptime, etc.)? _(R-17)_
+- [ ] Are there any fictional testimonials (AI avatars, random names or job titles)? _(R-18)_
+- [ ] Were any visual assets (logo, avatar/profile photo, statistics, testimonials, or navigation structure) created without explicit instructions or confirmation, and without an honest placeholder? _(R-23)_
+- [ ] Are there navbar links pointing to sections or pages that do not exist? _(R-24)_
+- [ ] Is there any text with contrast below the WCAG AA standard (4.5:1 for normal text, 3:1 for large text)? _(R-25)_
+- [ ] Are there any buttons, dropdowns, or forms that do nothing, with no real behavior and no `// TODO` + visible label? _(R-26)_
+- [ ] Does the UI lack an empty state, loading state, or error state? _(R-27)_
+- [ ] Does the FAQ contain generic questions that are not relevant to the product? _(R-28)_
+- [ ] Can the UI not be navigated by keyboard (Tab, Enter, Escape) or is there no visible focus state? _(R-32)_
+- [ ] Was any feature added by patching source/CSS with an external script instead of writing it in source? _(R-33)_
+- [ ] If a theme toggle exists, does one mode (light or dark) break styles, fonts, or layout? _(R-34)_
+- [ ] Was the app delivered without being run or built, or without a recorded click-through of every interactive element? _(R-35)_
+- [ ] Are there any fabricated security, compliance, performance, or customer claims? _(R-36)_
+- [ ] Was the design built without direction and not labeled _"draft without direction"_ with honest default dials ENERGY 1 / RHYTHM 1 / MOTION 1? _(R-37)_
+- [ ] Is there any realistically-styled content that was fabricated (testimonials, features, statistics, ghost links, fictional team) without a real source? _(R-38)_
 
 ### Block 2: Purpose-Gate (technique allowed, reason required)
 
 For each technique, the technique itself is allowed. FAIL if it appears as a default without purpose, or if the reason is not written down:
 
-- [ ] Do gradients/glows appear as a default with no stated hierarchy or brand purpose? *(R-01)*
-- [ ] Are there generic icons (sparkle, star, magic, lightning, diamond, robot, orb), an icon set picked for its library look (Lucide-style), or icons irrelevant to their content, with no written relevance? *(R-04)*
-- [ ] Is there a large monospace font, uppercase label with wide tracking, or a typeface chosen without a written brand-character reason? *(R-06)*
-- [ ] Is there a background grid, blueprint, graph paper, or dot pattern without a written visual-identity purpose? *(R-07)*
-- [ ] Are arrows (`→` / `↗`) placed on almost every button purely as decoration, with no written purpose? *(R-08)*
-- [ ] Are there capsule badges ("AI Powered", "Beta", "New", "Secure", "Fast") with no real function, the full capsule + thin border + glow + uppercase combination, or a pill parked above the H1 holding a label the headline already says? *(R-09)*
-- [ ] Is glassmorphism applied to more than 1-2 elements simultaneously (navbar + card + modal + sidebar)? *(R-10)*
-- [ ] Is a large shadow applied to every component, with no written elevation reason, making the page feel like it is floating? *(R-12)*
-- [ ] Is glow applied to cards, buttons, badges, icons, backgrounds, and borders simultaneously? *(R-13)*
-- [ ] Do all feature cards have identical size, icon, padding, and layout, with no written hierarchy reason? *(R-14)*
-- [ ] Do all elements use template animations simultaneously (Fade Up + Floating + Scale + Bounce) without a written UX purpose, or does the motion contradict the declared MOTION dial? *(R-19)*
-- [ ] Are there generic illustrations (Undraw, Storyset, 3D blob) with no written product connection? *(R-22)*
+- [ ] Do gradients/glows appear as a default with no stated hierarchy or brand purpose? _(R-01)_
+- [ ] Are there generic icons (sparkle, star, magic, lightning, diamond, robot, orb), an icon set picked for its library look (Lucide-style), or icons irrelevant to their content, with no written relevance? _(R-04)_
+- [ ] Is there a large monospace font, uppercase label with wide tracking, or a typeface chosen without a written brand-character reason? _(R-06)_
+- [ ] Is there a background grid, blueprint, graph paper, or dot pattern without a written visual-identity purpose? _(R-07)_
+- [ ] Are arrows (`→` / `↗`) placed on almost every button purely as decoration, with no written purpose? _(R-08)_
+- [ ] Are there capsule badges ("AI Powered", "Beta", "New", "Secure", "Fast") with no real function, the full capsule + thin border + glow + uppercase combination, or a pill parked above the H1 holding a label the headline already says? _(R-09)_
+- [ ] Is glassmorphism applied to more than 1-2 elements simultaneously (navbar + card + modal + sidebar)? _(R-10)_
+- [ ] Is a large shadow applied to every component, with no written elevation reason, making the page feel like it is floating? _(R-12)_
+- [ ] Is glow applied to cards, buttons, badges, icons, backgrounds, and borders simultaneously? _(R-13)_
+- [ ] Do all feature cards have identical size, icon, padding, and layout, with no written hierarchy reason? _(R-14)_
+- [ ] Do all elements use template animations simultaneously (Fade Up + Floating + Scale + Bounce) without a written UX purpose, or does the motion contradict the declared MOTION dial? _(R-19)_
+- [ ] Are there generic illustrations (Undraw, Storyset, 3D blob) with no written product connection? _(R-22)_
 
 ### Block 3: Liveliness (required to be alive, not just clean)
 
@@ -690,19 +700,19 @@ All answers must be **yes**:
 
 All answers must be **no**:
 
-- [ ] C-1: Is there any visual or copy decision whose only justification is "it's the AI default"? *(Intentionality)*
-- [ ] C-2: Does any interactive element do nothing, with no clear label? *(Functional Completeness)*
-- [ ] C-3: Does any section exist only to fill an AI template, not to serve the product's content? *(Content-Driven Composition)*
-- [ ] C-4: Does the UI break in any state, theme, breakpoint, or without a mouse? *(Resilience)*
-- [ ] C-5: Is any testimonial, statistic, or claim fabricated? *(Evidence Over Claims)*
-- [ ] Does the layout follow an AI template (generic Hero+cards, "How It Works" always 3 steps, "Trusted By" logo bar, bento-grid mosaic, fake terminal window, 3 pricing columns, 4-column footer with no variation, uniform section rhythm), or does the section rhythm contradict the declared RHYTHM dial? *(R-05)*
-- [ ] Are all elements (buttons, cards, inputs, badges) made pill-shaped with no radius variation? *(R-11)*
-- [ ] Are CTAs still generic (Get Started, Learn More, Try Now, Explore, Discover)? *(R-15)*
-- [ ] Are there any AI marketing buzzwords (AI Powered, Seamless, Revolutionary, Cutting Edge, etc.)? *(R-16)*
-- [ ] Does the design still feel generic even if the logo and product name are swapped? *(R-20)*
-- [ ] Was dark mode forced as a default without a branding/user reason, or was a required light/dark toggle deferred with an excuse? *(R-21)*
-- [ ] Does the color palette exceed 2-3 core colors + 1 accent without a clear design system? *(R-29)*
-- [ ] Does the overall design look like a clone of another popular product (Linear, Vercel, Stripe, Notion, etc.)? *(R-30)*
-- [ ] Is there any major visual decision (color, layout, typography, spacing, cards, illustration) whose reason cannot be written in one line? *(R-31)*
+- [ ] C-1: Is there any visual or copy decision whose only justification is "it's the AI default"? _(Intentionality)_
+- [ ] C-2: Does any interactive element do nothing, with no clear label? _(Functional Completeness)_
+- [ ] C-3: Does any section exist only to fill an AI template, not to serve the product's content? _(Content-Driven Composition)_
+- [ ] C-4: Does the UI break in any state, theme, breakpoint, or without a mouse? _(Resilience)_
+- [ ] C-5: Is any testimonial, statistic, or claim fabricated? _(Evidence Over Claims)_
+- [ ] Does the layout follow an AI template (generic Hero+cards, "How It Works" always 3 steps, "Trusted By" logo bar, bento-grid mosaic, fake terminal window, 3 pricing columns, 4-column footer with no variation, uniform section rhythm), or does the section rhythm contradict the declared RHYTHM dial? _(R-05)_
+- [ ] Are all elements (buttons, cards, inputs, badges) made pill-shaped with no radius variation? _(R-11)_
+- [ ] Are CTAs still generic (Get Started, Learn More, Try Now, Explore, Discover)? _(R-15)_
+- [ ] Are there any AI marketing buzzwords (AI Powered, Seamless, Revolutionary, Cutting Edge, etc.)? _(R-16)_
+- [ ] Does the design still feel generic even if the logo and product name are swapped? _(R-20)_
+- [ ] Was dark mode forced as a default without a branding/user reason, or was a required light/dark toggle deferred with an excuse? _(R-21)_
+- [ ] Does the color palette exceed 2-3 core colors + 1 accent without a clear design system? _(R-29)_
+- [ ] Does the overall design look like a clone of another popular product (Linear, Vercel, Stripe, Notion, etc.)? _(R-30)_
+- [ ] Is there any major visual decision (color, layout, typography, spacing, cards, illustration) whose reason cannot be written in one line? _(R-31)_
 
 If even one answer is **yes** (or **no** in Block 3), do not deliver. Fix it, re-run the gate, and only then ship. Delivery without a clean gate is a failure.

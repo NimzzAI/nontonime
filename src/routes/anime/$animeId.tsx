@@ -24,6 +24,7 @@ import { ErrorState, LoadingState } from "@/components/anime/StateViews";
 import { animeDetailQuery } from "@/lib/queries";
 import { readHistory, type HistoryItem } from "@/lib/history";
 import { cn } from "@/lib/utils";
+import { getSafePosterUrl } from "@/lib/poster";
 
 export const Route = createFileRoute("/anime/$animeId")({
   head: ({ params }) => {
@@ -99,17 +100,19 @@ export function AnimeDetailPage() {
   }
 
   const isOngoing = /ongoing|tayang/i.test(anime.status ?? "");
+  const posterUrl = getSafePosterUrl(anime.poster, anime.title);
 
   return (
     <div className="mx-auto max-w-7xl space-y-10 px-4 py-6 sm:py-8">
       {/* Hero Backdrop Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card shadow-xl">
-        {anime.poster ? (
+        {posterUrl ? (
           <div className="absolute inset-0 overflow-hidden">
             <img
-              src={anime.poster}
+              src={posterUrl}
               alt=""
               aria-hidden="true"
+              referrerPolicy="no-referrer"
               className="h-full w-full object-cover blur-2xl scale-125 opacity-25 dark:opacity-15"
             />
           </div>
@@ -122,10 +125,11 @@ export function AnimeDetailPage() {
           <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
             {/* Poster Card */}
             <div className="relative shrink-0 w-44 sm:w-52 lg:w-60 overflow-hidden rounded-2xl border-2 border-white/10 shadow-2xl bg-muted mx-auto md:mx-0">
-              {anime.poster ? (
+              {posterUrl ? (
                 <img
-                  src={anime.poster}
+                  src={posterUrl}
                   alt={anime.title}
+                  referrerPolicy="no-referrer"
                   className="h-full w-full object-cover aspect-[2/3]"
                 />
               ) : (

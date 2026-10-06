@@ -19,6 +19,7 @@ import { resolveNontonAnimeIdPlayer } from "./sources/nontonanimeid.server";
 import { enabledSources, getSource } from "./sources/registry.server";
 import { resolveSamehadakuPlayer } from "./sources/samehadaku.server";
 import { assertPublicHttpUrl, decodeServerRef, encodeServerRef } from "./sources/token.server";
+import { formatSafePoster } from "./sources/poster.server";
 import type {
   AnimeSource,
   HomeFeed,
@@ -37,11 +38,13 @@ const DETAIL_TIMEOUT_MS = 25000;
 /* ========================================================================== */
 
 function toSummary(item: SourceItem): AnimeSummary {
+  const poster = formatSafePoster(item.poster, item.title);
+  const cover = formatSafePoster(item.cover || item.poster, item.title);
   return {
     id: item.id,
     title: item.title,
-    poster: item.poster,
-    cover: item.cover,
+    poster,
+    cover,
     score: item.score,
     status: item.status,
     type: item.type ?? "TV",
@@ -70,7 +73,10 @@ async function fromSources<T>(
   for (const source of enabledSources()) {
     const promise = pick(source);
     if (promise) {
-      calls.push({ source, promise: withTimeout(promise, SOURCE_TIMEOUT_MS, `${source.id}.${label}`) });
+      calls.push({
+        source,
+        promise: withTimeout(promise, SOURCE_TIMEOUT_MS, `${source.id}.${label}`),
+      });
     }
   }
   const settled = await Promise.allSettled(calls.map((c) => c.promise));
@@ -230,7 +236,11 @@ export async function getLatest(page = 1, _provider = "otakudesu"): Promise<List
   const safePage = Math.max(1, page);
   return cached(`latest:${safePage}`, 5 * MIN, async () => {
     const { results, attempted } = await fromSources<SourcePage>("latest", (s) =>
-      s.getLatest ? s.getLatest(safePage) : safePage === 1 ? pageFromHome(s, ["latest"]) : undefined,
+      s.getLatest
+        ? s.getLatest(safePage)
+        : safePage === 1
+          ? pageFromHome(s, ["latest"])
+          : undefined,
     );
     return mergePages(requireResults(results, attempted, "daftar terbaru"), safePage);
   });
@@ -288,18 +298,73 @@ export async function search(
 /*                                   GENRES                                   */
 /* ========================================================================== */
 
+const STANDARD_GENRES = [
+  "Action",
+  "Adventure",
+  "Comedy",
+  "Demons",
+  "Drama",
+  "Ecchi",
+  "Fantasy",
+  "Game",
+  "Harem",
+  "Historical",
+  "Horror",
+  "Isekai",
+  "Josei",
+  "Kids",
+  "Magic",
+  "Martial Arts",
+  "Mecha",
+  "Military",
+  "Music",
+  "Mystery",
+  "Parody",
+  "Police",
+  "Psychological",
+  "Romance",
+  "Samurai",
+  "School",
+  "Sci-Fi",
+  "Seinen",
+  "Shoujo",
+  "Shounen",
+  "Slice of Life",
+  "Space",
+  "Sports",
+  "Super Power",
+  "Supernatural",
+  "Thriller",
+  "Vampire",
+];
+
 export async function getGenres(_provider = "otakudesu"): Promise<GenreItem[]> {
   return cached("genres", 60 * MIN, async () => {
-    const { results, attempted } = await fromSources("genres", (s) => s.getGenres?.());
-    requireResults(results, attempted, "daftar genre");
+    const { results } = await fromSources("genres", (s) => s.getGenres?.());
     const map = new Map<string, GenreItem>();
+
     for (const { value } of results) {
+      if (!Array.isArray(value)) continue;
       for (const genre of value) {
-        const id = slugify(genre.name);
+        const cleanName = genre.name
+          .replace(/\s*\(\s*\d+\s*\)/g, "")
+          .replace(/\s+anime$/i, "")
+          .replace(/^-+|-+$/g, "")
+          .trim();
+        if (!cleanName || cleanName.length <= 1) continue;
+        const id = slugify(cleanName);
         if (!id || map.has(id)) continue;
-        map.set(id, { id, name: genre.name, image: genre.image });
+        map.set(id, { id, name: cleanName, image: genre.image });
       }
     }
+
+    for (const standard of STANDARD_GENRES) {
+      const id = slugify(standard);
+      if (!map.has(id)) {
+        map.set(id, { id, name: standard, image: null });
+      }
+    }
+
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
 }
@@ -311,12 +376,35 @@ export async function getByGenre(
   _provider = "otakudesu",
 ): Promise<ListResult> {
   const safePage = Math.max(1, page);
-  const slug = slugify(genreId);
+  const cleanId = genreId
+    .replace(/\s*\(\s*\d+\s*\)/g, "")
+    .replace(/\s*anime$/i, "")
+    .replace(/-anime$/i, "")
+    .trim();
+  const slug = slugify(cleanId);
+
   return cached(`genre:${slug}:${safePage}`, 15 * MIN, async () => {
-    const { results, attempted } = await fromSources<SourcePage>("genre", (s) =>
-      s.getByGenre?.(slug, safePage),
-    );
-    return mergePages(requireResults(results, attempted, `genre ${slug}`), safePage);
+    let merged: ListResult = { items: [], page: safePage, hasNext: false };
+    try {
+      const { results } = await fromSources<SourcePage>("genre", (s) =>
+        s.getByGenre?.(slug, safePage),
+      );
+      if (results.length > 0 && results.some((r) => r.value.items.length > 0)) {
+        merged = mergePages(results, safePage);
+      }
+    } catch {
+      // Fallback
+    }
+
+    if (merged.items.length === 0) {
+      const searchKeyword = cleanId.replace(/-/g, " ").trim();
+      const fallback = await search(searchKeyword, safePage);
+      if (fallback.items.length > 0) {
+        return fallback;
+      }
+    }
+
+    return merged;
   });
 }
 
@@ -403,8 +491,8 @@ export async function getDetail(id: string, _provider = "otakudesu"): Promise<An
     const result: AnimeDetail = {
       id: canonicalId,
       title: detail.title,
-      poster: detail.poster,
-      cover: detail.cover,
+      poster: formatSafePoster(detail.poster, detail.title),
+      cover: formatSafePoster(detail.cover || detail.poster, detail.title),
       score: detail.score,
       status: detail.status,
       type: detail.type ?? "TV",
@@ -478,7 +566,11 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
   }
 
   const stream = await cached(`stream:${episodeId}`, 3 * MIN, () =>
-    withTimeout(getSource(parsed.source).getStream(parsed.slug), DETAIL_TIMEOUT_MS, `${parsed.source}.stream`),
+    withTimeout(
+      getSource(parsed.source).getStream(parsed.slug),
+      DETAIL_TIMEOUT_MS,
+      `${parsed.source}.stream`,
+    ),
   );
 
   const first = stream.servers[0];

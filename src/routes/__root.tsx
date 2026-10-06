@@ -105,6 +105,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover",
       },
+      { name: "referrer", content: "no-referrer" },
       { title: siteConfig.name },
       { name: "description", content: siteConfig.description },
       { property: "og:title", content: siteConfig.name },

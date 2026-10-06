@@ -79,7 +79,11 @@ function cardTitle($el: Cheerio<Element>): string {
   return cleanText(text) || cleanText($el.find("a").first().attr("title"));
 }
 
-function parseCards($: CheerioAPI, selector: string, extra: { status?: string; type?: string } = {}): SourceItem[] {
+function parseCards(
+  $: CheerioAPI,
+  selector: string,
+  extra: { status?: string; type?: string } = {},
+): SourceItem[] {
   const items: SourceItem[] = [];
   const seen = new Set<string>();
   $(selector).each((_, el) => {
@@ -207,7 +211,9 @@ export const samehadaku: AnimeSource = {
 
     const poster =
       $("img[class*='anmsa'], img[itemprop='image'], .thumb img").first().attr("src") || null;
-    const synopsis = cleanText($(".series-synopsis, .desc, .sinopsis, .entry-content").first().text());
+    const synopsis = cleanText(
+      $(".series-synopsis, .desc, .sinopsis, .entry-content").first().text(),
+    );
 
     const info: Record<string, string> = {};
     $(".infox .spe span, .spe span, .seriestuinfo span").each((_, el) => {
@@ -288,13 +294,13 @@ export const samehadaku: AnimeSource = {
         .attr("href") || "";
 
     const servers: SourceServer[] = [];
-    $("iframe.embed-embed, .mirrorifram iframe, iframe[src*='embed'], iframe[src*='player'], iframe[src*='blogger']").each(
-      (idx, el) => {
-        const src = absUrl(currentBase(), $(el).attr("src"));
-        if (!src || servers.some((s) => s.ref.kind === "url" && s.ref.url === src)) return;
-        servers.push({ name: `Server ${idx + 1}`, quality: "Auto", ref: { kind: "url", url: src } });
-      },
-    );
+    $(
+      "iframe.embed-embed, .mirrorifram iframe, iframe[src*='embed'], iframe[src*='player'], iframe[src*='blogger']",
+    ).each((idx, el) => {
+      const src = absUrl(currentBase(), $(el).attr("src"));
+      if (!src || servers.some((s) => s.ref.kind === "url" && s.ref.url === src)) return;
+      servers.push({ name: `Server ${idx + 1}`, quality: "Auto", ref: { kind: "url", url: src } });
+    });
 
     $(".east_player_option").each((idx, el) => {
       const option = $(el);
@@ -303,7 +309,8 @@ export const samehadaku: AnimeSource = {
       const type = option.attr("data-type") || "";
       if (!post || !nume) return;
       servers.push({
-        name: cleanText(option.find("span").text()) || cleanText(option.text()) || `Player ${idx + 1}`,
+        name:
+          cleanText(option.find("span").text()) || cleanText(option.text()) || `Player ${idx + 1}`,
         quality: "Auto",
         ref: { kind: "samehadaku", post, nume, type, ref: pageUrl },
       });
@@ -324,7 +331,8 @@ export const samehadaku: AnimeSource = {
               const url = $(a).attr("href") || "";
               if (url) urls.push({ title: cleanText($(a).text()) || "Unduh", url });
             });
-          if (urls.length > 0) downloads.push({ quality: `${format} ${quality}`.trim(), size: null, urls });
+          if (urls.length > 0)
+            downloads.push({ quality: `${format} ${quality}`.trim(), size: null, urls });
         });
     });
 

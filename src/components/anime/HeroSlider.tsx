@@ -5,6 +5,7 @@ import type { AnimeSummary } from "@/lib/anime-types";
 import { WatchlistButton } from "./WatchlistButton";
 import { cn } from "@/lib/utils";
 import { Calendar, CheckCircle2, ChevronLeft, ChevronRight, Info, Play, Star } from "lucide-react";
+import { getSafePosterUrl } from "@/lib/poster";
 
 export function HeroSlider({ items }: { items: AnimeSummary[] }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 25 });
@@ -66,19 +67,21 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
           {items.map((anime) => {
             const isOngoing =
               /ongoing|tayang/i.test(anime.status ?? "") || Boolean(anime.releaseDay);
+            const posterUrl = getSafePosterUrl(anime.poster, anime.title);
 
             return (
               <div key={anime.id} className="relative min-w-0 shrink-0 grow-0 basis-full">
                 <div className="relative flex flex-col w-full overflow-hidden p-4 sm:p-6 md:p-7 lg:p-8 space-y-3 sm:space-y-4">
                   {/* Atmospheric Backdrop */}
-                  {anime.poster ? (
+                  {posterUrl ? (
                     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
                       <img
-                        src={anime.poster}
+                        src={posterUrl}
                         alt=""
                         aria-hidden="true"
                         decoding="async"
                         loading="lazy"
+                        referrerPolicy="no-referrer"
                         className="h-full w-full object-cover object-center opacity-15 dark:opacity-20"
                       />
                       {/* Gradient Masks for Clean Contrast */}
@@ -138,15 +141,16 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                     <div className="max-w-2xl space-y-3 sm:space-y-4">
                       {/* Mobile Layout: Inline Poster + Title */}
                       <div className="flex items-start gap-3.5 md:hidden">
-                        {anime.poster ? (
+                        {posterUrl ? (
                           <Link
                             to="/anime/$animeId"
                             params={{ animeId: anime.id }}
                             className="relative shrink-0 block w-20 sm:w-24 aspect-[3/4] overflow-hidden rounded-xl border border-border/70 shadow-md bg-muted"
                           >
                             <img
-                              src={anime.poster}
+                              src={posterUrl}
                               alt={anime.title}
+                              referrerPolicy="no-referrer"
                               className="h-full w-full object-cover"
                             />
                             <div className="absolute bottom-1 right-1 rounded bg-black/75 px-1 py-0.5 text-[8px] font-bold text-white">
@@ -207,7 +211,7 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                     </div>
 
                     {/* Desktop PROMINENT POSTER CARD (Crisp, High-Resolution Preview) */}
-                    {anime.poster ? (
+                    {posterUrl ? (
                       <div className="hidden shrink-0 md:block">
                         <Link
                           to="/anime/$animeId"
@@ -215,10 +219,11 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                           className="group/poster relative block w-40 lg:w-48 aspect-[3/4] overflow-hidden rounded-2xl border border-border/80 bg-muted shadow-xl transition-transform duration-300 hover:scale-105"
                         >
                           <img
-                            src={anime.poster}
+                            src={posterUrl}
                             alt={anime.title}
                             decoding="async"
                             loading="lazy"
+                            referrerPolicy="no-referrer"
                             className="h-full w-full object-cover transition-transform duration-500 group-hover/poster:scale-110"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover/poster:opacity-100 transition-opacity flex items-end justify-center p-3">

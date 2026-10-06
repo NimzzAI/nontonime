@@ -2,9 +2,11 @@ import { memo } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AnimeSummary } from "@/lib/anime-types";
 import { Clapperboard, Star, ChevronRight } from "lucide-react";
+import { getSafePosterUrl } from "@/lib/poster";
 
 export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: AnimeSummary }) {
   const isOngoing = /ongoing|tayang/i.test(anime.status ?? "");
+  const posterUrl = getSafePosterUrl(anime.poster, anime.title);
 
   return (
     <Link
@@ -13,12 +15,13 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
       className="press-soft group flex items-center gap-3.5 rounded-2xl border border-border/80 bg-card p-3 transition-all hover:border-primary/50 hover:bg-accent hover:shadow-sm"
     >
       <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-muted">
-        {anime.poster ? (
+        {posterUrl ? (
           <img
-            src={anime.poster}
+            src={posterUrl}
             alt={anime.title}
             loading="lazy"
             decoding="async"
+            referrerPolicy="no-referrer"
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         ) : (

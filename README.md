@@ -48,13 +48,13 @@ Data anime, jadwal rilis, genre, dan server streaming diambil langsung dari situ
 
 ## // Yang Berubah di Versi Ini
 
-| Sebelumnya                                         | Sekarang                                                                           |
-| :------------------------------------------------- | :--------------------------------------------------------------------------------- |
-| Semua data dari satu API (Sanka Vollerei, Otakudesu) | Enam sumber scraper, digabung di `src/lib/anime-service.server.ts`                 |
-| `src/lib/animein.server.ts` sebagai lapisan API    | Dihapus, diganti folder `src/lib/sources/` dan `anime-service.server.ts`           |
-| Env `SANKA_API_BASE` dan `SANKA_API_FALLBACK`      | Dihapus, tidak ada env pengganti                                                   |
-| ID anime berupa slug Otakudesu                     | ID berawalan sumber, misalnya `na_one-piece` atau `ai_1234`                         |
-| Link batch dari Otakudesu                          | Batch dicari otomatis dari Kusonime lewat judul                                    |
+| Sebelumnya                                           | Sekarang                                                                 |
+| :--------------------------------------------------- | :----------------------------------------------------------------------- |
+| Semua data dari satu API (Sanka Vollerei, Otakudesu) | Enam sumber scraper, digabung di `src/lib/anime-service.server.ts`       |
+| `src/lib/animein.server.ts` sebagai lapisan API      | Dihapus, diganti folder `src/lib/sources/` dan `anime-service.server.ts` |
+| Env `SANKA_API_BASE` dan `SANKA_API_FALLBACK`        | Dihapus, tidak ada env pengganti                                         |
+| ID anime berupa slug Otakudesu                       | ID berawalan sumber, misalnya `na_one-piece` atau `ai_1234`              |
+| Link batch dari Otakudesu                            | Batch dicari otomatis dari Kusonime lewat judul                          |
 
 Yang tidak berubah: seluruh halaman, komponen, pemutar, watchlist, riwayat, unduhan offline, gamifikasi, dan PWA. Fungsi server di `anime.functions.ts` memakai nama dan bentuk data yang sama, jadi frontend tidak perlu diubah.
 
@@ -64,21 +64,21 @@ Logika scraper berasal dari backend hwaverseB (Bun dan Fastify). Kodenya ditulis
 
 ## // Fitur
 
-| Kategori         | Fitur                          | Penjelasan                                                                                                                     |
-| :--------------- | :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
-| **Katalog**      | Multi sumber                   | Beranda, terbaru, populer, pencarian, genre, dan jadwal digabung dari beberapa situs, judul kembar hanya tampil sekali.        |
-| **Katalog**      | Pencarian lintas sumber        | Satu kata kunci dikirim ke semua sumber sekaligus, hasilnya diurutkan menurut kecocokan judul.                                 |
-| **Streaming**    | Pemutar multi server           | Mendukung file langsung (MP4 atau HLS) dan embed, server dikelompokkan per kualitas.                                           |
-| **Streaming**    | Auto failover dan auto retry   | Stream yang gagal, macet lebih dari 10 detik, atau upstream mati dialihkan ke server berikutnya.                                |
-| **Streaming**    | Autoplay episode berikutnya    | Hitung mundur yang bisa dibatalkan sebelum pindah ke episode selanjutnya.                                                      |
-| **Streaming**    | Proxy dengan Range request     | Endpoint `/api/stream-proxy` meneruskan header `Range` (RFC 7233), jadi seeking tidak menunggu berkas selesai diunduh.          |
-| **Streaming**    | Panel diagnostik               | Menampilkan URL sumber, Content-Type upstream, status 206, ping, dan durasi buffer.                                            |
-| **Pencarian**    | Spotlight (`Ctrl+K` atau `/`)  | Modal pencarian dengan navigasi keyboard dan debounce.                                                                         |
-| **Offline**      | Pengunduh per segmen           | Video diunduh per blok 2 MB ke IndexedDB, bisa dijeda dan dilanjutkan.                                                         |
-| **Offline**      | Pemutar offline                | Episode yang sudah tersimpan diputar dari browser tanpa koneksi, atau diekspor sebagai MP4.                                    |
-| **Koleksi**      | Watchlist dan riwayat          | Status Rencana, Sedang Ditonton, Selesai, posisi terakhir tersimpan, ekspor dan impor JSON.                                    |
-| **Gamifikasi**   | Level dan badge                | EXP dan badge dari riwayat tontonan.                                                                                           |
-| **Mobile**       | PWA dan navigasi bawah         | Bisa dipasang, mendukung safe-area, dan punya notifikasi push opsional.                                                        |
+| Kategori       | Fitur                         | Penjelasan                                                                                                              |
+| :------------- | :---------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
+| **Katalog**    | Multi sumber                  | Beranda, terbaru, populer, pencarian, genre, dan jadwal digabung dari beberapa situs, judul kembar hanya tampil sekali. |
+| **Katalog**    | Pencarian lintas sumber       | Satu kata kunci dikirim ke semua sumber sekaligus, hasilnya diurutkan menurut kecocokan judul.                          |
+| **Streaming**  | Pemutar multi server          | Mendukung file langsung (MP4 atau HLS) dan embed, server dikelompokkan per kualitas.                                    |
+| **Streaming**  | Auto failover dan auto retry  | Stream yang gagal, macet lebih dari 10 detik, atau upstream mati dialihkan ke server berikutnya.                        |
+| **Streaming**  | Autoplay episode berikutnya   | Hitung mundur yang bisa dibatalkan sebelum pindah ke episode selanjutnya.                                               |
+| **Streaming**  | Proxy dengan Range request    | Endpoint `/api/stream-proxy` meneruskan header `Range` (RFC 7233), jadi seeking tidak menunggu berkas selesai diunduh.  |
+| **Streaming**  | Panel diagnostik              | Menampilkan URL sumber, Content-Type upstream, status 206, ping, dan durasi buffer.                                     |
+| **Pencarian**  | Spotlight (`Ctrl+K` atau `/`) | Modal pencarian dengan navigasi keyboard dan debounce.                                                                  |
+| **Offline**    | Pengunduh per segmen          | Video diunduh per blok 2 MB ke IndexedDB, bisa dijeda dan dilanjutkan.                                                  |
+| **Offline**    | Pemutar offline               | Episode yang sudah tersimpan diputar dari browser tanpa koneksi, atau diekspor sebagai MP4.                             |
+| **Koleksi**    | Watchlist dan riwayat         | Status Rencana, Sedang Ditonton, Selesai, posisi terakhir tersimpan, ekspor dan impor JSON.                             |
+| **Gamifikasi** | Level dan badge               | EXP dan badge dari riwayat tontonan.                                                                                    |
+| **Mobile**     | PWA dan navigasi bawah        | Bisa dipasang, mendukung safe-area, dan punya notifikasi push opsional.                                                 |
 
 ---
 
@@ -86,15 +86,15 @@ Logika scraper berasal dari backend hwaverseB (Bun dan Fastify). Kodenya ditulis
 
 Setiap sumber adalah satu file di `src/lib/sources/` yang mengimplementasikan antarmuka `AnimeSource`. Tidak semua sumber punya semua fitur, jadi halaman tertentu hanya diisi dari sumber yang mendukungnya.
 
-| Sumber          | ID env          | Beranda                       | Terbaru | Populer | Cari | Genre | Jadwal | Detail | Stream | Unduhan |
-| :-------------- | :-------------- | :---------------------------- | :-----: | :-----: | :--: | :---: | :----: | :----: | :----: | :-----: |
-| AnimeIn         | `animein`       | slider, hari ini, hot, populer, baru, menunggu | ya | ya | ya | ya | ya | ya | ya | tidak |
-| NontonAnimeID   | `nontonanimeid` | terbaru, populer, film        | ya      | ya      | ya   | ya    | ya     | ya     | ya     | ya      |
-| Gomunime        | `gomunime`      | terbaru, populer              | tidak   | tidak   | ya   | ya    | tidak  | ya     | ya     | tidak   |
-| Aniwatch        | `aniwatch`      | terbaru, populer              | tidak   | tidak   | ya   | ya    | tidak  | ya     | ya     | tidak   |
-| Stucknime       | `stucknime`     | terbaru                       | tidak   | tidak   | ya   | ya    | tidak  | ya     | ya     | tidak   |
-| Samehadaku      | `samehadaku`    | terbaru, populer, film        | tidak   | tidak   | ya   | tidak | tidak  | ya     | ya     | ya      |
-| Kusonime        | tidak ada       | khusus mencari batch unduhan  | tidak   | tidak   | ya   | tidak | tidak  | tidak  | tidak  | ya      |
+| Sumber        | ID env          | Beranda                                        | Terbaru | Populer | Cari | Genre | Jadwal | Detail | Stream | Unduhan |
+| :------------ | :-------------- | :--------------------------------------------- | :-----: | :-----: | :--: | :---: | :----: | :----: | :----: | :-----: |
+| AnimeIn       | `animein`       | slider, hari ini, hot, populer, baru, menunggu |   ya    |   ya    |  ya  |  ya   |   ya   |   ya   |   ya   |  tidak  |
+| NontonAnimeID | `nontonanimeid` | terbaru, populer, film                         |   ya    |   ya    |  ya  |  ya   |   ya   |   ya   |   ya   |   ya    |
+| Gomunime      | `gomunime`      | terbaru, populer                               |  tidak  |  tidak  |  ya  |  ya   | tidak  |   ya   |   ya   |  tidak  |
+| Aniwatch      | `aniwatch`      | terbaru, populer                               |  tidak  |  tidak  |  ya  |  ya   | tidak  |   ya   |   ya   |  tidak  |
+| Stucknime     | `stucknime`     | terbaru                                        |  tidak  |  tidak  |  ya  |  ya   | tidak  |   ya   |   ya   |  tidak  |
+| Samehadaku    | `samehadaku`    | terbaru, populer, film                         |  tidak  |  tidak  |  ya  | tidak | tidak  |   ya   |   ya   |   ya    |
+| Kusonime      | tidak ada       | khusus mencari batch unduhan                   |  tidak  |  tidak  |  ya  | tidak | tidak  | tidak  | tidak  |   ya    |
 
 Hal yang perlu diketahui dari tabel itu:
 
@@ -129,26 +129,26 @@ Browser
 
 ### Modul
 
-| File                                   | Fungsi                                                                                                              |
-| :------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
-| `src/lib/anime-service.server.ts`      | Titik masuk backend. Menggabungkan sumber, memetakan data ke tipe frontend, mengatur cache dan timeout.              |
-| `src/lib/sources/types.ts`             | Antarmuka `AnimeSource` dan tipe internal (`SourceItem`, `SourceDetail`, `SourceStream`).                            |
-| `src/lib/sources/registry.server.ts`   | Daftar sumber dan urutan prioritasnya.                                                                              |
-| `src/lib/sources/ids.ts`               | Pembuatan dan pembacaan ID berawalan sumber, normalisasi judul.                                                     |
-| `src/lib/sources/http.server.ts`       | Wrapper `fetch` dengan timeout, User-Agent browser, dan error bernama sumber.                                       |
-| `src/lib/sources/cache.server.ts`      | Cache dalam memori, penggabungan request kembar, `withTimeout`.                                                     |
-| `src/lib/sources/token.server.ts`      | Pengodean referensi server menjadi token, serta pemeriksaan URL publik.                                             |
-| `src/lib/sources/*.server.ts`          | Satu file per sumber.                                                                                               |
+| File                                 | Fungsi                                                                                                  |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------------ |
+| `src/lib/anime-service.server.ts`    | Titik masuk backend. Menggabungkan sumber, memetakan data ke tipe frontend, mengatur cache dan timeout. |
+| `src/lib/sources/types.ts`           | Antarmuka `AnimeSource` dan tipe internal (`SourceItem`, `SourceDetail`, `SourceStream`).               |
+| `src/lib/sources/registry.server.ts` | Daftar sumber dan urutan prioritasnya.                                                                  |
+| `src/lib/sources/ids.ts`             | Pembuatan dan pembacaan ID berawalan sumber, normalisasi judul.                                         |
+| `src/lib/sources/http.server.ts`     | Wrapper `fetch` dengan timeout, User-Agent browser, dan error bernama sumber.                           |
+| `src/lib/sources/cache.server.ts`    | Cache dalam memori, penggabungan request kembar, `withTimeout`.                                         |
+| `src/lib/sources/token.server.ts`    | Pengodean referensi server menjadi token, serta pemeriksaan URL publik.                                 |
+| `src/lib/sources/*.server.ts`        | Satu file per sumber.                                                                                   |
 
 ### Format ID
 
 ID membawa nama sumbernya, jadi server tahu harus bertanya ke mana tanpa menyimpan pemetaan apa pun.
 
-| Jenis    | Format           | Contoh                              |
-| :------- | :--------------- | :---------------------------------- |
-| Anime    | `<awalan>_<slug>`    | `na_one-piece`, `ai_1234`           |
-| Episode  | `<awalan>_ep_<slug>` | `na_ep_one-piece-episode-1`         |
-| Batch    | `ks_<slug>`      | `ks_one-piece-batch-sub-indo`       |
+| Jenis   | Format               | Contoh                        |
+| :------ | :------------------- | :---------------------------- |
+| Anime   | `<awalan>_<slug>`    | `na_one-piece`, `ai_1234`     |
+| Episode | `<awalan>_ep_<slug>` | `na_ep_one-piece-episode-1`   |
+| Batch   | `ks_<slug>`          | `ks_one-piece-batch-sub-indo` |
 
 Awalan sumber: `ai` AnimeIn, `na` NontonAnimeID, `gm` Gomunime, `aw` Aniwatch, `stk` Stucknime, `sh` Samehadaku, `ks` Kusonime.
 
@@ -156,16 +156,16 @@ Awalan sumber: `ai` AnimeIn, `na` NontonAnimeID, `gm` Gomunime, `aw` Aniwatch, `
 
 Cache berada di memori proses, maksimal 500 entri, entri tertua dibuang lebih dulu.
 
-| Data                          | Lama simpan |
-| :---------------------------- | :---------- |
-| Beranda, terbaru, pencarian   | 5 menit     |
-| Populer                       | 10 menit    |
-| Detail anime, halaman genre   | 15 menit    |
-| Jadwal rilis                  | 30 menit    |
-| Batch unduhan                 | 30 menit    |
-| Daftar genre                  | 60 menit    |
-| Pencarian batch Kusonime      | 6 jam       |
-| Stream episode                | 3 menit     |
+| Data                        | Lama simpan |
+| :-------------------------- | :---------- |
+| Beranda, terbaru, pencarian | 5 menit     |
+| Populer                     | 10 menit    |
+| Detail anime, halaman genre | 15 menit    |
+| Jadwal rilis                | 30 menit    |
+| Batch unduhan               | 30 menit    |
+| Daftar genre                | 60 menit    |
+| Pencarian batch Kusonime    | 6 jam       |
+| Stream episode              | 3 menit     |
 
 Perilakunya:
 
@@ -317,9 +317,15 @@ Catatan untuk Vercel:
    export const namasumber: AnimeSource = {
      id: "namasumber",
      label: "Nama Sumber",
-     async search(keyword, page) { /* kembalikan { items, hasNext } */ },
-     async getDetail(slug) { /* kembalikan SourceDetail */ },
-     async getStream(slug) { /* kembalikan SourceStream */ },
+     async search(keyword, page) {
+       /* kembalikan { items, hasNext } */
+     },
+     async getDetail(slug) {
+       /* kembalikan SourceDetail */
+     },
+     async getStream(slug) {
+       /* kembalikan SourceStream */
+     },
      // Metode berikut opsional: getHome, getLatest, getPopular,
      // getGenres, getByGenre, getSchedule
    };
@@ -344,15 +350,15 @@ Metode yang tidak diisi tidak menjadi masalah. Lapisan gabungan melewati sumber 
 
 ## // Pemecahan Masalah
 
-| Gejala                                         | Kemungkinan penyebab dan langkah                                                                                         |
-| :--------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
-| Beranda kosong                                 | Semua sumber gagal. Lihat log server untuk baris `[sources] ... gagal`, lalu periksa alamat sumber di file masing-masing.     |
-| Satu sumber tidak pernah muncul                | Domainnya pindah atau struktur HTMLnya berubah. Ganti `DEFAULT_BASE` di file sumbernya, atau cek selector di file itu.   |
+| Gejala                                         | Kemungkinan penyebab dan langkah                                                                                                                                              |
+| :--------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beranda kosong                                 | Semua sumber gagal. Lihat log server untuk baris `[sources] ... gagal`, lalu periksa alamat sumber di file masing-masing.                                                     |
+| Satu sumber tidak pernah muncul                | Domainnya pindah atau struktur HTMLnya berubah. Ganti `DEFAULT_BASE` di file sumbernya, atau cek selector di file itu.                                                        |
 | Halaman Tamat menampilkan daftar populer biasa | Halaman ini menyaring daftar populer lewat kata `tamat`, `complete`, `finish`, atau `selesai` pada status. Kalau tidak ada yang cocok, daftar populer ditampilkan apa adanya. |
-| Server tertentu di pemutar kosong atau error   | Token server gagal diurai, host ditolak pemeriksaan keamanan, atau nonce NontonAnimeID kedaluwarsa. Muat ulang halaman episode. |
-| Detail anime lambat                            | AnimeIn mengambil episode per halaman. Anime dengan banyak episode butuh beberapa request, hasilnya di-cache 15 menit.    |
-| Tombol batch tidak muncul                      | Kusonime tidak menemukan judul yang cocok, atau pencarian melewati batas 4 detik. Batch bersifat tambahan, bukan kewajiban. |
-| Error 403 dari satu sumber di produksi         | IP datacenter diblokir situs sumber. Keluarkan sumber itu dari `DEFAULT_SOURCE_IDS` atau pakai alamat mirror. |
+| Server tertentu di pemutar kosong atau error   | Token server gagal diurai, host ditolak pemeriksaan keamanan, atau nonce NontonAnimeID kedaluwarsa. Muat ulang halaman episode.                                               |
+| Detail anime lambat                            | AnimeIn mengambil episode per halaman. Anime dengan banyak episode butuh beberapa request, hasilnya di-cache 15 menit.                                                        |
+| Tombol batch tidak muncul                      | Kusonime tidak menemukan judul yang cocok, atau pencarian melewati batas 4 detik. Batch bersifat tambahan, bukan kewajiban.                                                   |
+| Error 403 dari satu sumber di produksi         | IP datacenter diblokir situs sumber. Keluarkan sumber itu dari `DEFAULT_SOURCE_IDS` atau pakai alamat mirror.                                                                 |
 
 ---
 

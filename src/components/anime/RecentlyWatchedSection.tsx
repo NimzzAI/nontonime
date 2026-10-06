@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { History, Play, ArrowRight, X, Clock } from "lucide-react";
 import { readHistory, removeHistory, type HistoryItem } from "@/lib/history";
 import { cn } from "@/lib/utils";
+import { getSafePosterUrl } from "@/lib/poster";
 
 function formatRelativeTime(timestamp: number): string {
   if (!timestamp) return "Baru saja";
@@ -104,9 +105,10 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
               className="relative aspect-[16/10] w-full overflow-hidden bg-muted block"
             >
               <img
-                src={item.poster}
+                src={getSafePosterUrl(item.poster, item.animeTitle)}
                 alt={item.animeTitle}
                 loading={index < 2 ? "eager" : "lazy"}
+                referrerPolicy="no-referrer"
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
 

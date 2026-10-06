@@ -184,10 +184,13 @@ export const gomunime: AnimeSource = {
         .text()
         .replace(/^Nonton\s+Anime\s+/i, "")
         .replace(/\s+Sub\s+Indo.*$/i, "")
-        .trim() || $("title").text().split("–")[0]?.trim() || "";
+        .trim() ||
+      $("title").text().split("–")[0]?.trim() ||
+      "";
     if (!title) throw new Error(`Anime ${clean} tidak ditemukan`);
 
-    const poster = $(".gm-poster img, .gm-detail img, .animeposter img, img").first().attr("src") || null;
+    const poster =
+      $(".gm-poster img, .gm-detail img, .animeposter img, img").first().attr("src") || null;
     const synopsis =
       $(".gm-sinopsis, .sinopsis, .desc, p")
         .map((_, el) => $(el).text().trim())
@@ -259,7 +262,11 @@ export const gomunime: AnimeSource = {
     if (iframeSrc.includes("putarin")) {
       const direct = await decryptPutarin(iframeSrc);
       if (direct) {
-        servers.push({ name: "Putarin Langsung", quality: "Auto", ref: { kind: "url", url: direct } });
+        servers.push({
+          name: "Putarin Langsung",
+          quality: "Auto",
+          ref: { kind: "url", url: direct },
+        });
       }
     }
     if (iframeSrc) {
@@ -268,7 +275,8 @@ export const gomunime: AnimeSource = {
 
     $("option, .gm-server-btn, .server-btn").each((idx, el) => {
       const url = $(el).attr("value") || $(el).attr("data-src") || "";
-      if (!url.startsWith("http") || servers.some((s) => s.ref.kind === "url" && s.ref.url === url)) return;
+      if (!url.startsWith("http") || servers.some((s) => s.ref.kind === "url" && s.ref.url === url))
+        return;
       servers.push({
         name: $(el).text().trim() || `Server ${idx + 1}`,
         quality: "Auto",

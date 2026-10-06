@@ -1,6 +1,7 @@
 import { cached } from "./cache.server";
 import { fetchJson, parseNumber, slugify } from "./http.server";
 import { makeItem, toAnimeId, toEpisodeId } from "./ids";
+import { formatSafePoster } from "./poster.server";
 import type {
   AnimeSource,
   HomeFeed,
@@ -89,10 +90,15 @@ function parseGenres(value: string | string[] | undefined): string[] {
 
 function toItem(raw: RawAnime): SourceItem | null {
   if (raw.id === undefined || raw.id === null || !raw.title) return null;
+  const poster = formatSafePoster(raw.image_poster || raw.poster, raw.title);
+  const cover = formatSafePoster(
+    raw.image_cover || raw.cover || raw.image_poster || raw.poster,
+    raw.title,
+  );
   return makeItem("animein", String(raw.id), {
     title: raw.title,
-    poster: raw.image_poster || raw.poster,
-    cover: raw.image_cover || raw.cover,
+    poster,
+    cover,
     type: raw.type,
     status: raw.status,
     score: raw.score ?? raw.rating ?? null,
@@ -194,20 +200,27 @@ export const animein: AnimeSource = {
   },
 
   async getByGenre(genre, page) {
-    const wanted = slugify(genre);
+    const cleanGenre = genre
+      .replace(/\s*\(\s*\d+\s*\)/g, "")
+      .replace(/\s*anime$/i, "")
+      .replace(/-anime$/i, "")
+      .trim();
+    const wanted = slugify(cleanGenre);
     const genres = await loadGenres();
-    const target = genres.find((g) => slugify(g.name) === wanted || g.id === genre);
+    const target = genres.find(
+      (g) =>
+        slugify(g.name) === wanted ||
+        slugify(g.name).includes(wanted) ||
+        wanted.includes(slugify(g.name)) ||
+        g.id === genre,
+    );
     if (!target) return { items: [], hasNext: false };
 
     const p = Math.max(0, page - 1);
     const data = await api<{ movie?: RawAnime[] }>(
       `/3/2/explore/movie/genre/${encodeURIComponent(target.id)}?page=${p}`,
     );
-    const targetName = target.name.toLowerCase();
-    const items = toItems(data?.movie).filter(
-      (item) =>
-        item.genres.length === 0 || item.genres.some((g) => g.toLowerCase().includes(targetName)),
-    );
+    const items = toItems(data?.movie);
     return { items, hasNext: items.length >= 20 };
   },
 
@@ -286,7 +299,8 @@ export const animein: AnimeSource = {
       servers,
       downloads: [],
       prevEpisodeId: null,
-      nextEpisodeId: nextId !== undefined && nextId !== null ? toEpisodeId("animein", String(nextId)) : null,
+      nextEpisodeId:
+        nextId !== undefined && nextId !== null ? toEpisodeId("animein", String(nextId)) : null,
     };
     return stream;
   },

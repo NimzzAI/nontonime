@@ -32,41 +32,104 @@ async function html(url: string): Promise<string> {
   return fetchText(url, { source: "aniwatch", headers: { Referer: `${baseUrl()}/` } });
 }
 
-function posterFor(slug: string, found: string | undefined): string {
-  if (found) return absUrl(baseUrl(), found);
-  return `${baseUrl()}/images/poster/${slug}.webp`;
+function posterFor(slug: string, found: string | undefined, title?: string): string {
+  if (found && !found.includes("no-poster")) return absUrl(baseUrl(), found);
+  return title
+    ? `/api/image-proxy?title=${encodeURIComponent(title)}`
+    : `${baseUrl()}/images/poster/${slug}.webp`;
 }
 
 function parseAnimeLinks($: CheerioAPI): SourceItem[] {
   const items: SourceItem[] = [];
   const seen = new Set<string>();
-  $("a[href*='/anime/']").each((_, el) => {
-    const slug = lastSegment($(el).attr("href"));
-    const title = cleanText($(el).text());
-    if (!slug || title.length <= 2 || seen.has(slug)) return;
-    seen.add(slug);
-    const holder = $(el).closest("div, article, li");
-    const img = holder.find("img").first();
-    items.push(
-      makeItem("aniwatch", slug, {
-        title,
-        poster: posterFor(slug, img.attr("src") || img.attr("data-src")),
-        type: "TV",
-        status: "Ongoing",
-      }),
-    );
-  });
+
+  // 1. Structured cards (Aniwatch home, browse, search)
+  const cards = $(
+    ".awt-flw-item, .flw-item, .film_list-wrap .film-poster, .film_list-wrap .flw-item, .item, article",
+  );
+  if (cards.length > 0) {
+    cards.each((_, el) => {
+      const card = $(el);
+      const a = card.find(".awt-film-name a, .film-name a, a[href*='/anime/']").first();
+      const href = a.attr("href") || "";
+      const slug =
+        href.split("/anime/")[1]?.split(/[/?#]/)[0] || href.split("/").filter(Boolean).pop() || "";
+      if (!slug || seen.has(slug)) return;
+
+      const img = card.find("img.awt-film-poster-img, .film-poster img, img").first();
+      const rawPoster = img.attr("src") || img.attr("data-src") || "";
+      const title =
+        cleanText(card.find(".awt-film-name a, .film-name a").first().text()) ||
+        cleanText(a.attr("title")) ||
+        cleanText(img.attr("alt")) ||
+        "";
+
+      if (!title || title.length <= 2 || title.toLowerCase() === "detail") return;
+      seen.add(slug);
+
+      items.push(
+        makeItem("aniwatch", slug, {
+          title,
+          poster: posterFor(slug, rawPoster, title),
+          type: "TV",
+          status: "Ongoing",
+        }),
+      );
+    });
+  }
+
+  // 2. Generic fallback if structured cards were not found
+  if (items.length === 0) {
+    $("a[href*='/anime/']").each((_, el) => {
+      const a = $(el);
+      const href = a.attr("href") || "";
+      const slug = lastSegment(href);
+      if (!slug || seen.has(slug)) return;
+
+      const holder = a.closest("div, article, li");
+      const img = holder.find("img").first();
+      const rawPoster = img.attr("src") || img.attr("data-src") || "";
+      const title =
+        cleanText(a.text()) || cleanText(a.attr("title")) || cleanText(img.attr("alt")) || "";
+
+      if (!title || title.length <= 2 || title.toLowerCase() === "detail") return;
+      seen.add(slug);
+
+      items.push(
+        makeItem("aniwatch", slug, {
+          title,
+          poster: posterFor(slug, rawPoster, title),
+          type: "TV",
+          status: "Ongoing",
+        }),
+      );
+    });
+  }
+
   return items;
 }
 
 async function loadGenres(): Promise<SourceGenre[]> {
   return cached("aniwatch:genres", 60 * 60 * 1000, async () => {
-    const $ = cheerio.load(await html(baseUrl()));
+    let $ = cheerio.load(await html(`${baseUrl()}/home`));
+    let links = $("a[href*='/browse/']");
+    if (links.length === 0) {
+      $ = cheerio.load(await html(baseUrl()));
+      links = $("a[href*='/browse/']");
+    }
+
     const genres: SourceGenre[] = [];
-    $("a[href*='/browse/']").each((_, el) => {
-      const name = cleanText($(el).text());
-      const slug = lastSegment($(el).attr("href")) || slugify(name);
-      if (name && !genres.some((g) => g.id === slug)) genres.push({ id: slug, name, image: null });
+    links.each((_, el) => {
+      const rawName = cleanText($(el).text());
+      const cleanName = rawName.replace(/\s*anime$/i, "").trim();
+      const slug = lastSegment($(el).attr("href")) || slugify(cleanName);
+      if (
+        cleanName &&
+        cleanName.length > 2 &&
+        !genres.some((g) => g.id === slug || g.name.toLowerCase() === cleanName.toLowerCase())
+      ) {
+        genres.push({ id: slug, name: cleanName, image: null });
+      }
     });
     return genres;
   });
@@ -105,7 +168,11 @@ export const aniwatch: AnimeSource = {
     const title = cleanText($("h1").first().text()) || cleanText($("title").text().split("-")[0]);
     if (!title) throw new Error(`Anime ${clean} tidak ditemukan`);
 
-    const poster = posterFor(clean, $("img[src*='poster'], .film-poster img, img").first().attr("src"));
+    const poster = posterFor(
+      clean,
+      $("img[src*='poster'], .film-poster img, img").first().attr("src"),
+      title,
+    );
     const synopsis =
       $(".description, .synopsis, p")
         .map((_, el) => $(el).text().trim())
@@ -146,7 +213,12 @@ export const aniwatch: AnimeSource = {
       });
     });
     if (episodes.length === 0) {
-      episodes.push({ id: toEpisodeId("aniwatch", `${clean}-1`), number: 1, title: "Episode 1", date: null });
+      episodes.push({
+        id: toEpisodeId("aniwatch", `${clean}-1`),
+        number: 1,
+        title: "Episode 1",
+        date: null,
+      });
     }
     episodes.sort((a, b) => a.number - b.number);
 
@@ -193,7 +265,10 @@ export const aniwatch: AnimeSource = {
         {
           name: "TryEmbed Sub",
           quality: "Auto",
-          ref: { kind: "url", url: `https://tryembed.us.cc/embed/anime/${anilistId}/${epNumber}/sub` },
+          ref: {
+            kind: "url",
+            url: `https://tryembed.us.cc/embed/anime/${anilistId}/${epNumber}/sub`,
+          },
         },
         {
           name: "VidNest Dub",

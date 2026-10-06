@@ -6,6 +6,7 @@ import { CheckCircle2, Film, Layers, Play, Star, Info, Check } from "lucide-reac
 import { WatchlistButton } from "./WatchlistButton";
 import { AnimeQuickPreviewModal } from "./AnimeQuickPreviewModal";
 import { readHistory, type HistoryItem } from "@/lib/history";
+import { getSafePosterUrl } from "@/lib/poster";
 
 export const AnimeCard = memo(function AnimeCard({
   anime,
@@ -14,9 +15,26 @@ export const AnimeCard = memo(function AnimeCard({
   anime: AnimeSummary;
   featured?: boolean;
 }) {
+  const initialPoster = getSafePosterUrl(anime.poster, anime.title);
+  const [imgSrc, setImgSrc] = useState(initialPoster);
   const [imgError, setImgError] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [historyItem, setHistoryItem] = useState<HistoryItem | null>(null);
+
+  useEffect(() => {
+    setImgSrc(getSafePosterUrl(anime.poster, anime.title));
+    setImgError(false);
+  }, [anime.poster, anime.title]);
+
+  const handleImgError = () => {
+    if (!imgSrc.includes("/api/image-proxy") && anime.title) {
+      setImgSrc(
+        `/api/image-proxy?title=${encodeURIComponent(anime.title)}&url=${encodeURIComponent(anime.poster || "")}`,
+      );
+    } else {
+      setImgError(true);
+    }
+  };
 
   const isOngoing = /ongoing|tayang/i.test(anime.status ?? "") || Boolean(anime.releaseDay);
   const isCompleted = /tamat|complete/i.test(anime.status ?? "");
@@ -49,13 +67,14 @@ export const AnimeCard = memo(function AnimeCard({
           params={{ animeId: anime.id }}
           className="relative aspect-[2/3] w-full overflow-hidden bg-muted/60 block"
         >
-          {anime.poster && !imgError ? (
+          {imgSrc && !imgError ? (
             <img
-              src={anime.poster}
+              src={imgSrc}
               alt={anime.title}
               loading="lazy"
               decoding="async"
-              onError={() => setImgError(true)}
+              referrerPolicy="no-referrer"
+              onError={handleImgError}
               className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             />
           ) : (

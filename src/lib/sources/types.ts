@@ -1,12 +1,7 @@
 import type { DownloadQualityGroup } from "../anime-types";
 
 export type SourceId =
-  | "animein"
-  | "nontonanimeid"
-  | "gomunime"
-  | "aniwatch"
-  | "stucknime"
-  | "samehadaku";
+  "animein" | "nontonanimeid" | "gomunime" | "aniwatch" | "stucknime" | "samehadaku";
 
 export interface SourceItem {
   id: string;
