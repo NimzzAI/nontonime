@@ -121,8 +121,17 @@ function SchedulePage() {
                 </div>
 
                 {items.length === 0 ? (
-                  <div className="rounded-2xl border border-border/60 bg-card/40 p-6 text-center text-xs text-muted-foreground">
-                    Belum ada jadwal anime untuk hari {titleCase(day)}.
+                  <div className="rounded-2xl border border-border/60 bg-card/40 p-6 text-center text-xs text-muted-foreground space-y-2">
+                    <p>Belum ada jadwal anime untuk hari {titleCase(day)}.</p>
+                    {selectedDay !== "ALL" && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDay("ALL")}
+                        className="inline-block text-xs font-semibold text-primary hover:underline cursor-pointer pt-1"
+                      >
+                        Tampilkan Semua Hari
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">

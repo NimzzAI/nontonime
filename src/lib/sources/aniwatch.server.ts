@@ -33,7 +33,14 @@ async function html(url: string): Promise<string> {
 }
 
 function posterFor(slug: string, found: string | undefined, title?: string): string {
-  if (found && !found.includes("no-poster")) return absUrl(baseUrl(), found);
+  if (
+    found &&
+    !found.includes("no-poster") &&
+    !found.includes("logo") &&
+    !found.startsWith("data:")
+  ) {
+    return absUrl(baseUrl(), found);
+  }
   return title
     ? `/api/image-proxy?title=${encodeURIComponent(title)}`
     : `${baseUrl()}/images/poster/${slug}.webp`;
@@ -203,11 +210,17 @@ export const aniwatch: AnimeSource = {
     const title = cleanText($("h1").first().text()) || cleanText($("title").text().split("-")[0]);
     if (!title) throw new Error(`Anime ${clean} tidak ditemukan`);
 
-    const poster = posterFor(
-      clean,
-      $("img[src*='poster'], .film-poster img, img").first().attr("src"),
-      title,
+    let foundPoster = "";
+    $(".an-poster img, .film-poster img, .awt-film-poster-img, img[src*='poster/']").each(
+      (_, el) => {
+        const src = $(el).attr("src") || $(el).attr("data-src") || "";
+        if (src && !src.includes("logo") && !src.startsWith("data:")) {
+          foundPoster = src;
+          return false;
+        }
+      },
     );
+    const poster = posterFor(clean, foundPoster || undefined, title);
     const synopsis =
       $(".description, .synopsis, p")
         .map((_, el) => $(el).text().trim())

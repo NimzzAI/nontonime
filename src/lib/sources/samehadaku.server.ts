@@ -209,8 +209,14 @@ export const samehadaku: AnimeSource = {
     );
     if (!title) throw new Error(`Anime ${clean} tidak ditemukan`);
 
-    const poster =
-      $("img[class*='anmsa'], img[itemprop='image'], .thumb img").first().attr("src") || null;
+    let rawPoster =
+      $("img[class*='anmsa'], img[itemprop='image'], .thumb img, .areaimg img")
+        .first()
+        .attr("src") || null;
+    if (rawPoster && (rawPoster.toLowerCase().includes("logo") || rawPoster.startsWith("data:"))) {
+      rawPoster = `/api/image-proxy?title=${encodeURIComponent(title)}`;
+    }
+    const poster = rawPoster || `/api/image-proxy?title=${encodeURIComponent(title)}`;
     const synopsis = cleanText(
       $(".series-synopsis, .desc, .sinopsis, .entry-content").first().text(),
     );

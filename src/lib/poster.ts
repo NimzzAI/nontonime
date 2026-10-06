@@ -3,10 +3,12 @@ export function getSafePosterUrl(poster?: string | null, title?: string): string
   if (p.startsWith("/api/image-proxy")) return p;
   if (
     p &&
+    !p.toLowerCase().includes("logo") &&
     !p.includes("xyz-api.animein.net") &&
     !p.endsWith("/images/poster/.webp") &&
     !p.includes("default-poster") &&
-    !p.includes("no-poster.svg")
+    !p.includes("no-poster") &&
+    !p.startsWith("data:image/svg")
   ) {
     return p;
   }

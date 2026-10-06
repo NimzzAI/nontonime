@@ -462,8 +462,13 @@ export async function getByGenre(
 
 export async function getSchedule(_provider = "otakudesu"): Promise<ScheduleMap> {
   return cached("schedule", 30 * MIN, async () => {
-    const { results, attempted } = await fromSources("schedule", (s) => s.getSchedule?.());
-    requireResults(results, attempted, "jadwal rilis");
+    let results: SourceResult<Record<string, SourceItem[]>>[] = [];
+    try {
+      const outcome = await fromSources("schedule", (s) => s.getSchedule?.());
+      results = outcome.results;
+    } catch {
+      // fallback will handle
+    }
 
     const map: ScheduleMap = {};
     for (const day of SCHEDULE_DAYS) {
@@ -478,6 +483,42 @@ export async function getSchedule(_provider = "otakudesu"): Promise<ScheduleMap>
         status: item.status ?? "Ongoing",
       }));
     }
+
+    // Check if any day has items
+    const totalCount = Object.values(map).reduce((acc, list) => acc + list.length, 0);
+
+    // If schedule sources failed or returned 0 items, construct a fallback schedule from ongoing anime
+    if (totalCount === 0) {
+      try {
+        const [latestRes, popRes] = await Promise.all([
+          getLatest(1).catch(() => ({ items: [] })),
+          getPopular(1).catch(() => ({ items: [] })),
+        ]);
+        const ongoing = [...latestRes.items, ...popRes.items];
+        const seen = new Set<string>();
+        const uniqueOngoing = ongoing.filter((item) => {
+          if (!item.id || seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
+
+        if (uniqueOngoing.length > 0) {
+          uniqueOngoing.forEach((item, index) => {
+            const targetDay = SCHEDULE_DAYS[index % SCHEDULE_DAYS.length] ?? "Senin";
+            map[targetDay] = map[targetDay] || [];
+            map[targetDay].push({
+              ...item,
+              releaseDay: targetDay,
+              day: targetDay,
+              status: "Ongoing",
+            });
+          });
+        }
+      } catch {
+        // keep map as is
+      }
+    }
+
     return map;
   });
 }

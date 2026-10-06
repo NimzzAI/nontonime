@@ -55,6 +55,25 @@ export function AnimeDetailPage() {
   const [synopsisOpen, setSynopsisOpen] = useState(false);
   const [episodeSearch, setEpisodeSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [imgSrc, setImgSrc] = useState<string>("");
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (anime) {
+      setImgSrc(getSafePosterUrl(anime.poster, anime.title));
+      setImgError(false);
+    }
+  }, [anime]);
+
+  const handleImgError = () => {
+    if (!imgSrc.includes("/api/image-proxy") && anime?.title) {
+      setImgSrc(
+        `/api/image-proxy?title=${encodeURIComponent(anime.title)}&url=${encodeURIComponent(anime.poster || "")}`,
+      );
+    } else {
+      setImgError(true);
+    }
+  };
 
   useEffect(() => {
     const history = readHistory();
@@ -100,19 +119,18 @@ export function AnimeDetailPage() {
   }
 
   const isOngoing = /ongoing|tayang/i.test(anime.status ?? "");
-  const posterUrl = getSafePosterUrl(anime.poster, anime.title);
 
   return (
     <div className="mx-auto max-w-7xl space-y-10 px-4 py-6 sm:py-8">
       {/* Hero Backdrop Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card shadow-xl">
-        {posterUrl ? (
+        {!imgError && imgSrc ? (
           <div className="absolute inset-0 overflow-hidden">
             <img
-              src={posterUrl}
+              src={imgSrc}
               alt=""
               aria-hidden="true"
-              referrerPolicy="no-referrer"
+              onError={handleImgError}
               className="h-full w-full object-cover blur-2xl scale-125 opacity-25 dark:opacity-15"
             />
           </div>
@@ -125,11 +143,11 @@ export function AnimeDetailPage() {
           <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
             {/* Poster Card */}
             <div className="relative shrink-0 w-44 sm:w-52 lg:w-60 overflow-hidden rounded-2xl border-2 border-white/10 shadow-2xl bg-muted mx-auto md:mx-0">
-              {posterUrl ? (
+              {!imgError && imgSrc ? (
                 <img
-                  src={posterUrl}
+                  src={imgSrc}
                   alt={anime.title}
-                  referrerPolicy="no-referrer"
+                  onError={handleImgError}
                   className="h-full w-full object-cover aspect-[2/3]"
                 />
               ) : (
