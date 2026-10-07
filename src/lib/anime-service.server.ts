@@ -17,6 +17,7 @@ import { normalizeTitle, parseId } from "./sources/ids";
 import { findBatchFor, getBatchDetail, searchBatch } from "./sources/kusonime.server";
 import { resolveNontonAnimeIdPlayer } from "./sources/nontonanimeid.server";
 import { enabledSources, getSource } from "./sources/registry.server";
+import { animein } from "./sources/animein.server";
 import { resolveSamehadakuPlayer } from "./sources/samehadaku.server";
 import { assertPublicHttpUrl, decodeServerRef, encodeServerRef } from "./sources/token.server";
 import { formatSafePoster } from "./sources/poster.server";
@@ -167,13 +168,20 @@ function titleCaseDay(value: string): string {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-function relevance(title: string, query: string, aliasData?: AnimeAliasData | null): number {
+function relevance(
+  title: string,
+  itemId: string,
+  query: string,
+  aliasData?: AnimeAliasData | null,
+): number {
   const t = title.toLowerCase();
   const q = query.toLowerCase().trim();
-  if (t === q) return 1000;
-  if (t.startsWith(q)) return 500;
+  let baseScore = 0;
+  if (t === q) baseScore = 1000;
+  else if (t.startsWith(q)) baseScore = 500;
+  else if (t.includes(q)) baseScore = 300;
 
-  // Title alias handling (e.g. Yuru Camp <-> Laid-Back Camp, Shingeki no Kyojin <-> Attack on Titan)
+  // Title alias handling (e.g. Yuru Camp <-> Laid-Back Camp <-> ゆるキャン)
   let aliasBonus = 0;
   if (aliasData) {
     if (aliasData.romaji) {
@@ -181,40 +189,67 @@ function relevance(title: string, query: string, aliasData?: AnimeAliasData | nu
         .toLowerCase()
         .replace(/[△▲★☆]/g, " ")
         .trim();
-      if (t === romaji) aliasBonus = Math.max(aliasBonus, 850);
-      else if (t.startsWith(romaji)) aliasBonus = Math.max(aliasBonus, 450);
-      else if (t.includes(romaji)) aliasBonus = Math.max(aliasBonus, 250);
+      if (t === romaji) aliasBonus = Math.max(aliasBonus, 900);
+      else if (t.startsWith(romaji)) aliasBonus = Math.max(aliasBonus, 500);
+      else if (t.includes(romaji)) aliasBonus = Math.max(aliasBonus, 300);
     }
     if (aliasData.english) {
       const english = aliasData.english.toLowerCase();
-      if (t === english) aliasBonus = Math.max(aliasBonus, 800);
-      else if (t.startsWith(english)) aliasBonus = Math.max(aliasBonus, 400);
-      else if (t.includes(english)) aliasBonus = Math.max(aliasBonus, 200);
+      if (t === english) aliasBonus = Math.max(aliasBonus, 850);
+      else if (t.startsWith(english)) aliasBonus = Math.max(aliasBonus, 450);
+      else if (t.includes(english)) aliasBonus = Math.max(aliasBonus, 250);
+    }
+    if (aliasData.native) {
+      const native = aliasData.native
+        .toLowerCase()
+        .replace(/[△▲★☆]/g, " ")
+        .trim();
+      if (t === native || q === native) aliasBonus = Math.max(aliasBonus, 900);
+      else if (t.includes(native) || q.includes(native)) aliasBonus = Math.max(aliasBonus, 350);
     }
     for (const syn of aliasData.synonyms) {
       const synLower = syn.toLowerCase();
-      if (t.includes(synLower)) aliasBonus = Math.max(aliasBonus, 180);
+      if (t.includes(synLower)) aliasBonus = Math.max(aliasBonus, 200);
     }
   }
 
   const words = q.split(/\s+/).filter(Boolean);
-  let hits = words.filter((w) => t.includes(w)).length;
+  const hits = words.filter((w) => t.includes(w)).length;
+
+  // Sub Indo priority boost for Indonesian viewers
+  const isSubIndo = !itemId.startsWith("aw_");
+  const subIndoBonus = isSubIndo ? 150 : 0;
 
   // Detect season numbers (e.g. "season 2", "s2", "2")
   const qSeasonMatch = q.match(/\b(?:season\s*|s)?(\d+)\b/);
+  let seasonBonus = 0;
   if (qSeasonMatch) {
     const sNum = qSeasonMatch[1];
-    if (
+    const matchesTargetSeason =
       t.includes(`season ${sNum}`) ||
       t.includes(`season${sNum}`) ||
       t.includes(`s${sNum}`) ||
-      t.includes(` ${sNum}`)
-    ) {
-      hits += 6;
+      t.includes(` ${sNum}`);
+
+    if (matchesTargetSeason) {
+      seasonBonus = 600; // Strong boost for targeted season!
+    } else {
+      // If user specifically asked for season 2, but this item has "season 3", penalize slightly
+      const otherSeason = t.match(/\b(?:season\s*|s)(\d+)\b/);
+      if (otherSeason && otherSeason[1] !== sNum) {
+        seasonBonus = -200;
+      }
     }
   }
 
-  return aliasBonus + hits * 10 - Math.abs(t.length - q.length) / 100;
+  return (
+    baseScore +
+    aliasBonus +
+    subIndoBonus +
+    seasonBonus +
+    hits * 10 -
+    Math.abs(t.length - q.length) / 100
+  );
 }
 
 /* ========================================================================== */
@@ -441,12 +476,13 @@ export async function search(
     requireResults(results, attempted, "pencarian");
     const merged = mergePages(results, safePage);
 
-    // 3. If primary query returned few items or user searched an English title whose Indonesian source uses Romaji
+    // 3. Query Indonesian Sub sources (animein, samehadaku) with all alias & base franchise terms
     if (safePage === 1 && queryTerms.length > 1) {
-      const altTerm = queryTerms.find(
-        (t) => t.toLowerCase() !== cleanTerm.toLowerCase() && t.length >= 3,
-      );
-      if (altTerm) {
+      const altTerms = queryTerms
+        .filter((t) => t.toLowerCase() !== cleanTerm.toLowerCase() && t.length >= 2)
+        .slice(0, 4);
+
+      for (const altTerm of altTerms) {
         try {
           const { results: altResults } = await fromSources<SourcePage>("search", (s) =>
             s.id === "animein" || s.id === "samehadaku" ? s.search(altTerm, 1) : undefined,
@@ -520,7 +556,9 @@ export async function search(
     }
 
     merged.items.sort(
-      (a, b) => relevance(b.title, cleanTerm, aliasData) - relevance(a.title, cleanTerm, aliasData),
+      (a, b) =>
+        relevance(b.title, b.id, cleanTerm, aliasData) -
+        relevance(a.title, a.id, cleanTerm, aliasData),
     );
     return merged;
   });
@@ -818,10 +856,21 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
   }
 }
 
+function qualityWeight(q: string): number {
+  if (q.includes("1080")) return 1080;
+  if (q.includes("720")) return 720;
+  if (q.includes("480")) return 480;
+  if (q.includes("360")) return 360;
+  if (/auto/i.test(q)) return 500;
+  return 100;
+}
+
 function groupServers(stream: SourceStream): QualityServerGroup[] {
   const groups = new Map<string, QualityServerGroup>();
   for (const server of stream.servers) {
-    const quality = server.quality || "Auto";
+    let quality = server.quality || "Auto";
+    if (quality === "1080p") quality = "1080p FHD";
+    else if (quality === "720p") quality = "720p HD";
     let group = groups.get(quality);
     if (!group) {
       group = { quality, serverList: [] };
@@ -829,7 +878,93 @@ function groupServers(stream: SourceStream): QualityServerGroup[] {
     }
     group.serverList.push({ title: server.name, serverId: encodeServerRef(server.ref) });
   }
-  return [...groups.values()];
+  return [...groups.values()].sort((a, b) => qualityWeight(b.quality) - qualityWeight(a.quality));
+}
+
+async function findSubIndoAlternativeServers(
+  rawTitle: string,
+  episodeNumber: number,
+  fallbackSlug?: string,
+): Promise<SourceServer[]> {
+  try {
+    const cleanTitle = rawTitle
+      .replace(/^watch\s+/i, "")
+      .replace(/\s+(?:episode|eps)\s+\d+.*$/i, "")
+      .replace(/\s+online.*$/i, "")
+      .trim();
+    const fallbackTitle = fallbackSlug
+      ? fallbackSlug
+          .replace(/^aw_(?:\d+-)?/, "")
+          .replace(/-/g, " ")
+          .trim()
+      : "";
+    const animeTitle = cleanTitle || fallbackTitle;
+    if (!animeTitle) return [];
+
+    const aliasData = await resolveAnimeAliases(animeTitle);
+    const searchTerms = [
+      aliasData?.romaji?.replace(/[△▲★☆]/g, " ").trim(),
+      aliasData?.romaji
+        ?.replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
+        .replace(/[△▲★☆]/g, " ")
+        .trim(),
+      animeTitle
+        .replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
+        .replace(/[△▲★☆]/g, " ")
+        .trim(),
+      animeTitle,
+    ].filter(Boolean) as string[];
+
+    for (const term of searchTerms) {
+      if (term.length < 3) continue;
+      const res = await withTimeout(animein.search(term, 1), 3500, "animein.subIndoCheck");
+      if (res && res.items.length > 0) {
+        // Find best matching anime
+        const candidate =
+          res.items.find((item) => {
+            const t = item.title.toLowerCase();
+            const seasonMatch = animeTitle.match(/\b(?:season\s*|s)(\d+)\b/i);
+            if (seasonMatch) {
+              return t.includes(`season ${seasonMatch[1]}`) || t.includes(`s${seasonMatch[1]}`);
+            }
+            return !t.includes("season 2") && !t.includes("season 3") && !t.includes("movie");
+          }) || res.items[0];
+
+        if (candidate) {
+          const cleanSlug = candidate.id.replace(/^ai_/, "");
+          const detail = await withTimeout(
+            animein.getDetail(cleanSlug),
+            3500,
+            "animein.subIndoDetail",
+          );
+          const targetEp = detail.episodes.find((e) => e.number === episodeNumber);
+          if (targetEp) {
+            const epSlug = targetEp.id.replace(/^ai_ep_/, "");
+            const epStream = await withTimeout(
+              animein.getStream(epSlug),
+              3500,
+              "animein.subIndoStream",
+            );
+            if (epStream && epStream.servers.length > 0) {
+              return epStream.servers.map((s) => ({
+                name: `${s.name}`,
+                quality:
+                  s.quality === "1080p"
+                    ? "1080p FHD"
+                    : s.quality === "720p"
+                      ? "720p HD"
+                      : s.quality,
+                ref: s.ref,
+              }));
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
 }
 
 export async function getStream(episodeId: string, _provider = "otakudesu"): Promise<StreamResult> {
@@ -846,8 +981,31 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
     ),
   );
 
-  const first = stream.servers[0];
-  const embedUrl = first && first.ref.kind === "url" ? first.ref.url : null;
+  // If the stream is from Aniwatch (English subs), search for Sub Indo servers from AnimeIn
+  if (parsed.source === "aniwatch") {
+    try {
+      const epNumMatch = parsed.slug.match(/-(\d+)-/) ?? parsed.slug.match(/-(\d+)$/);
+      const epNumber = epNumMatch ? parseInt(epNumMatch[1], 10) : 1;
+      const subIndoServers = await findSubIndoAlternativeServers(
+        stream.title,
+        epNumber,
+        stream.animeId,
+      );
+      if (subIndoServers.length > 0) {
+        stream.servers.unshift(...subIndoServers);
+      }
+    } catch {
+      // ignore cross-source sub indo lookup error
+    }
+  }
+
+  // Sort servers so highest resolution (1080p FHD > 720p HD > 480p > Auto > 360p) is preferred
+  const sortedServers = [...stream.servers].sort(
+    (a, b) => qualityWeight(b.quality || "Auto") - qualityWeight(a.quality || "Auto"),
+  );
+  const preferredServer = sortedServers[0] || stream.servers[0];
+  const embedUrl =
+    preferredServer && preferredServer.ref.kind === "url" ? preferredServer.ref.url : null;
   const directUrl = embedUrl ? await extractDirectStreamUrl(embedUrl) : null;
 
   return {

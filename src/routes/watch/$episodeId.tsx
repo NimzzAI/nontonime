@@ -93,19 +93,33 @@ function WatchPage() {
     return stream.data?.servers?.qualities ?? [];
   }, [stream.data?.servers?.qualities]);
 
-  // Set default quality
+  // Set default quality: prefer 1080p FHD first!
   useEffect(() => {
     if (!selectedQuality && qualityGroups.length > 0) {
-      // Prefer 720p or highest available
       const preferred =
+        qualityGroups.find((q) => q.quality.includes("1080")) ??
         qualityGroups.find((q) => q.quality.includes("720")) ??
         qualityGroups.find((q) => q.quality.includes("480")) ??
         qualityGroups[0];
       if (preferred) {
         setSelectedQuality(preferred.quality);
+        if (preferred.serverList.length > 0 && !selectedServerId) {
+          setSelectedServerId(preferred.serverList[0].serverId);
+        }
       }
     }
-  }, [qualityGroups, selectedQuality]);
+  }, [qualityGroups, selectedQuality, selectedServerId]);
+
+  const handleSelectQuality = (quality: string) => {
+    setSelectedQuality(quality);
+    const targetGroup = qualityGroups.find((q) => q.quality === quality);
+    if (targetGroup && targetGroup.serverList.length > 0) {
+      const firstSrv = targetGroup.serverList[0];
+      if (firstSrv && firstSrv.serverId !== selectedServerId) {
+        handleServerSelect(firstSrv.serverId);
+      }
+    }
+  };
 
   const activeGroup = useMemo(() => {
     return qualityGroups.find((q) => q.quality === selectedQuality) ?? qualityGroups[0];
@@ -623,23 +637,64 @@ function WatchPage() {
                   </div>
 
                   {/* Quality Filter Pills */}
-                  <div className="flex items-center gap-1.5">
-                    {qualityGroups.map((q) => (
-                      <button
-                        key={q.quality}
-                        onClick={() => setSelectedQuality(q.quality)}
-                        className={cn(
-                          "rounded-lg px-2.5 py-1 text-xs font-bold transition-all",
-                          selectedQuality === q.quality
-                            ? "bg-primary text-primary-foreground shadow-xs"
-                            : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
-                        )}
-                      >
-                        {q.quality}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {qualityGroups.map((q) => {
+                      const isFhd = q.quality.includes("1080");
+                      const isHd = q.quality.includes("720");
+                      return (
+                        <button
+                          key={q.quality}
+                          type="button"
+                          onClick={() => handleSelectQuality(q.quality)}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer",
+                            selectedQuality === q.quality
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+                          )}
+                        >
+                          <span>{q.quality}</span>
+                          {isFhd ? (
+                            <span className="rounded bg-amber-400 text-black px-1 py-0.2 text-[9px] font-black tracking-tight">
+                              FHD
+                            </span>
+                          ) : isHd ? (
+                            <span className="rounded bg-sky-400/30 text-sky-200 px-1 py-0.2 text-[9px] font-bold">
+                              HD
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+
+                {/* Sub Indo Quick Switcher Notice if viewing English stream and Sub Indo is available */}
+                {selectedQuality === "Auto" &&
+                  qualityGroups.some(
+                    (q) => q.quality.includes("1080") || q.quality.includes("720"),
+                  ) && (
+                    <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-xs">
+                      <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                        <span>
+                          Tersedia Server Subtitle Indonesia (Sub Indo 1080p FHD & 720p HD)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target =
+                            qualityGroups.find((q) => q.quality.includes("1080"))?.quality ||
+                            qualityGroups.find((q) => q.quality.includes("720"))?.quality;
+                          if (target) handleSelectQuality(target);
+                        }}
+                        className="rounded-lg bg-emerald-500 px-3 py-1 font-bold text-black hover:bg-emerald-400 transition cursor-pointer shrink-0 shadow-xs text-[11px]"
+                      >
+                        Beralih ke Sub Indo (1080p)
+                      </button>
+                    </div>
+                  )}
 
                 {/* Server list inside active quality */}
                 {activeGroup && activeGroup.serverList.length > 0 ? (

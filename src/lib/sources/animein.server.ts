@@ -282,11 +282,21 @@ export const animein: AnimeSource = {
 
     const servers = (data?.server ?? [])
       .filter((s) => s.link)
-      .map((s) => ({
-        name: s.name || "Server",
-        quality: s.quality || "Auto",
-        ref: { kind: "url" as const, url: s.link ?? "" },
-      }));
+      .map((s) => {
+        const q = s.quality || "Auto";
+        const qLabel = q === "1080p" ? "1080p FHD" : q === "720p" ? "720p HD" : q;
+        const sName = s.name || "Server";
+        return {
+          name: `${sName} (Sub Indo ${qLabel})`,
+          quality: q,
+          ref: { kind: "url" as const, url: s.link ?? "" },
+        };
+      })
+      .sort((a, b) => {
+        const weight = (q: string) =>
+          q.includes("1080") ? 1080 : q.includes("720") ? 720 : q.includes("480") ? 480 : 360;
+        return weight(b.quality) - weight(a.quality);
+      });
 
     const owner = data?.movie?.id ?? data?.episode?.movie_id ?? data?.episode?.anime_id;
     const nextId = data?.episode_next?.id;

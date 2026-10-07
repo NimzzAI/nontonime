@@ -77,9 +77,15 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
           ) : null}
 
           {/* Sub Indo Indicator Badge */}
-          <span className="rounded bg-primary/10 border border-primary/25 px-1.5 py-0.5 text-[9px] font-bold text-primary">
-            Sub Indo
-          </span>
+          {!anime.id.startsWith("aw_") ? (
+            <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+              Sub Indo
+            </span>
+          ) : (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
+              Multi / Eng
+            </span>
+          )}
 
           {anime.type ? <span>{anime.type}</span> : null}
           {anime.episodeCount ? <span>{anime.episodeCount} Eps</span> : null}

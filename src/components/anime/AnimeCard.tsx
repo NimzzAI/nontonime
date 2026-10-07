@@ -118,6 +118,12 @@ export const AnimeCard = memo(function AnimeCard({
                   TAMAT
                 </span>
               ) : null}
+
+              {!anime.id.startsWith("aw_") && (
+                <span className="inline-flex items-center rounded-md bg-emerald-600/95 px-1.5 py-0.2 text-[9px] font-black text-white shadow-xs backdrop-blur-xs tracking-tight">
+                  SUB INDO
+                </span>
+              )}
             </div>
 
             {/* Right: Score + Spring Watchlist Toggle Button */}

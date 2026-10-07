@@ -127,6 +127,7 @@ export function makeItem(source: SourceId, slug: string, init: ItemInit): Source
 export function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
+    .replace(/\b(?:season|s)(\d+)\b/g, " $1 ")
     .replace(/\b(sub(title)?\s*indo(nesia)?|nonton|streaming|season|musim)\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();

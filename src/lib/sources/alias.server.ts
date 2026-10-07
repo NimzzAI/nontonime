@@ -15,40 +15,103 @@ const aliasCache = new Map<string, AnimeAliasData | null>();
  * and English titles (used by Aniwatch, global sources, or user searches).
  */
 const CURATED_ALIASES: Record<string, { romaji: string; english: string; synonyms?: string[] }> = {
-  // Yuru Camp / Laid-Back Camp
+  // Yuru Camp / Laid-Back Camp / ゆるキャン
   "yuru camp": {
     romaji: "Yuru Camp△",
     english: "Laid-Back Camp",
-    synonyms: ["Yurucamp", "Yurukyan"],
+    synonyms: ["Yurucamp", "Yurukyan", "ゆるキャン△", "ゆるキャン"],
   },
   "laid back camp": {
     romaji: "Yuru Camp△",
     english: "Laid-Back Camp",
-    synonyms: ["Yurucamp", "Yurukyan"],
+    synonyms: ["Yurucamp", "Yurukyan", "ゆるキャン△"],
   },
   "laid-back camp": {
     romaji: "Yuru Camp△",
     english: "Laid-Back Camp",
-    synonyms: ["Yurucamp", "Yurukyan"],
+    synonyms: ["Yurucamp", "Yurukyan", "ゆるキャン△"],
   },
-  yurucamp: { romaji: "Yuru Camp△", english: "Laid-Back Camp", synonyms: ["Yurukyan"] },
-  "heya camp": { romaji: "Heya Camp△", english: "Room Camp", synonyms: ["Heyacamp"] },
+  ゆるキャン: {
+    romaji: "Yuru Camp△",
+    english: "Laid-Back Camp",
+    synonyms: ["Yuru Camp", "Yurucamp", "Yurukyan"],
+  },
+  "ゆるキャン△": {
+    romaji: "Yuru Camp△",
+    english: "Laid-Back Camp",
+    synonyms: ["Yuru Camp", "Yurucamp", "Yurukyan"],
+  },
+  yurucamp: {
+    romaji: "Yuru Camp△",
+    english: "Laid-Back Camp",
+    synonyms: ["Yurukyan", "ゆるキャン"],
+  },
+  "heya camp": {
+    romaji: "Heya Camp△",
+    english: "Room Camp",
+    synonyms: ["Heyacamp", "へやキャン△"],
+  },
+  へやキャン: { romaji: "Heya Camp△", english: "Room Camp", synonyms: ["Heyacamp"] },
+  "へやキャン△": { romaji: "Heya Camp△", english: "Room Camp", synonyms: ["Heyacamp"] },
 
-  // Attack on Titan / Shingeki no Kyojin
+  // Attack on Titan / Shingeki no Kyojin / 進撃の巨人
   "attack on titan": {
     romaji: "Shingeki no Kyojin",
     english: "Attack on Titan",
-    synonyms: ["SnK", "AoT"],
+    synonyms: ["SnK", "AoT", "進撃の巨人"],
   },
   "shingeki no kyojin": {
     romaji: "Shingeki no Kyojin",
     english: "Attack on Titan",
+    synonyms: ["SnK", "AoT", "進撃の巨人"],
+  },
+  進撃の巨人: {
+    romaji: "Shingeki no Kyojin",
+    english: "Attack on Titan",
     synonyms: ["SnK", "AoT"],
   },
 
-  // Demon Slayer / Kimetsu no Yaiba
-  "demon slayer": { romaji: "Kimetsu no Yaiba", english: "Demon Slayer", synonyms: ["KnY"] },
-  "kimetsu no yaiba": { romaji: "Kimetsu no Yaiba", english: "Demon Slayer", synonyms: ["KnY"] },
+  // Demon Slayer / Kimetsu no Yaiba / 鬼滅の刃
+  "demon slayer": {
+    romaji: "Kimetsu no Yaiba",
+    english: "Demon Slayer",
+    synonyms: ["KnY", "鬼滅の刃"],
+  },
+  "kimetsu no yaiba": {
+    romaji: "Kimetsu no Yaiba",
+    english: "Demon Slayer",
+    synonyms: ["KnY", "鬼滅の刃"],
+  },
+  鬼滅の刃: { romaji: "Kimetsu no Yaiba", english: "Demon Slayer", synonyms: ["KnY"] },
+
+  // Jujutsu Kaisen / 呪術廻戦
+  "jujutsu kaisen": {
+    romaji: "Jujutsu Kaisen",
+    english: "Jujutsu Kaisen",
+    synonyms: ["JJK", "Sorcery Fight", "呪術廻戦"],
+  },
+  呪術廻戦: {
+    romaji: "Jujutsu Kaisen",
+    english: "Jujutsu Kaisen",
+    synonyms: ["JJK"],
+  },
+
+  // Bocchi the Rock / ぼっち・ざ・ろっく
+  "bocchi the rock": {
+    romaji: "Bocchi the Rock!",
+    english: "Bocchi the Rock!",
+    synonyms: ["BTR", "ぼっち・ざ・ろっく!"],
+  },
+  "ぼっち・ざ・ろっく": {
+    romaji: "Bocchi the Rock!",
+    english: "Bocchi the Rock!",
+    synonyms: ["BTR"],
+  },
+  "ぼっち・ざ・ろっく!": {
+    romaji: "Bocchi the Rock!",
+    english: "Bocchi the Rock!",
+    synonyms: ["BTR"],
+  },
 
   // My Hero Academia / Boku no Hero Academia
   "my hero academia": {
@@ -431,26 +494,57 @@ export async function getSearchQueryTerms(term: string): Promise<string[]> {
   }
 
   // Extract season number if specified
-  const seasonMatch = clean.match(/\b(?:season\s*|s)?(\d+)\b/i);
+  const seasonMatch = clean.match(/\b(?:season\s*|musim\s*|s)?(\d+)\b/i);
   const seasonSuffix = seasonMatch ? ` Season ${seasonMatch[1]}` : "";
+
+  // Strip season number to get base franchise term (crucial for Animein & Samehadaku)
+  const baseTerm = clean
+    .replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
+    .replace(/\b\d+\b/g, "")
+    .replace(/[△▲★☆]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (baseTerm && baseTerm.length >= 2 && baseTerm !== clean) {
+    queries.add(baseTerm);
+  }
 
   const alias = await resolveAnimeAliases(clean);
   if (alias) {
     if (alias.romaji) {
-      queries.add(alias.romaji.replace(/[△▲★☆]/g, " ").trim());
-      if (seasonSuffix && !alias.romaji.includes("Season") && !alias.romaji.match(/\b\d+\b/)) {
-        queries.add(`${alias.romaji.replace(/[△▲★☆]/g, " ").trim()}${seasonSuffix}`);
+      const cleanRomaji = alias.romaji.replace(/[△▲★☆]/g, " ").trim();
+      queries.add(cleanRomaji);
+      const baseRomaji = cleanRomaji
+        .replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
+        .replace(/\b\d+\b/g, "")
+        .trim();
+      if (baseRomaji && baseRomaji.length >= 2) {
+        queries.add(baseRomaji);
+      }
+      if (seasonSuffix && !cleanRomaji.includes("Season") && !cleanRomaji.match(/\b\d+\b/)) {
+        queries.add(`${cleanRomaji}${seasonSuffix}`);
       }
     }
     if (alias.english) {
-      queries.add(alias.english);
-      if (seasonSuffix && !alias.english.includes("Season") && !alias.english.match(/\b\d+\b/)) {
-        queries.add(`${alias.english}${seasonSuffix}`);
+      const cleanEnglish = alias.english.trim();
+      queries.add(cleanEnglish);
+      const baseEnglish = cleanEnglish
+        .replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
+        .replace(/\b\d+\b/g, "")
+        .trim();
+      if (baseEnglish && baseEnglish.length >= 2) {
+        queries.add(baseEnglish);
+      }
+      if (seasonSuffix && !cleanEnglish.includes("Season") && !cleanEnglish.match(/\b\d+\b/)) {
+        queries.add(`${cleanEnglish}${seasonSuffix}`);
       }
     }
+    if (alias.native) {
+      queries.add(alias.native.replace(/[△▲★☆]/g, " ").trim());
+    }
     if (alias.synonyms) {
-      for (const syn of alias.synonyms.slice(0, 3)) {
-        queries.add(syn.replace(/[△▲★☆]/g, " ").trim());
+      for (const syn of alias.synonyms.slice(0, 4)) {
+        const cleanSyn = syn.replace(/[△▲★☆]/g, " ").trim();
+        queries.add(cleanSyn);
       }
     }
   }

@@ -187,6 +187,21 @@ export function AnimeDetailPage() {
 
               {/* Stats badges */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
+                {!anime.id.startsWith("aw_") ? (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Subtitle Indonesia (Sub Indo)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 text-xs font-semibold text-blue-500">
+                    Audio Jepang • Multi Sub / Sub Indo
+                  </span>
+                )}
+
+                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/15 border border-primary/30 px-2.5 py-1 text-xs font-bold text-primary">
+                  1080p FHD & 720p
+                </span>
+
                 {anime.score ? (
                   <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-xs font-bold text-amber-500">
                     <Star className="h-3 w-3 fill-amber-400" />
