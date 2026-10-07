@@ -1,8 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { History, Play, ArrowRight, X, Clock, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  Play,
+  ArrowRight,
+  X,
+  Clock,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Film,
+} from "lucide-react";
 import { readHistory, removeHistory, type HistoryItem } from "@/lib/history";
-import { readWatchlist } from "@/lib/watchlist";
 import { cn } from "@/lib/utils";
 import { getSafePosterUrl, cleanToHdPosterUrl } from "@/lib/poster";
 
@@ -34,13 +42,28 @@ function formatTime(seconds?: number): string {
 
 export function RecentlyWatchedSection({ className }: { className?: string }) {
   const [continueItems, setContinueItems] = useState<HistoryItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchContinueWatching = () => {
       const allHistory = readHistory();
-      // Up to 6 in-progress episodes
-      setContinueItems(allHistory.slice(0, 6));
+      setTotalCount(allHistory.length);
+
+      // Deduplicate by anime series so multiple episodes of the same show don't clutter the shelf
+      const seenAnime = new Set<string>();
+      const deduped: HistoryItem[] = [];
+      for (const item of allHistory) {
+        const key = item.animeId || item.episodeId;
+        if (!seenAnime.has(key)) {
+          seenAnime.add(key);
+          deduped.push(item);
+        }
+      }
+
+      // Limit to 8 distinct anime in the homepage carousel to prevent overwhelming the screen
+      setContinueItems(deduped.slice(0, 8));
     };
 
     fetchContinueWatching();
@@ -60,11 +83,20 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
     removeHistory(episodeId);
   };
 
+  const scroll = (direction: "left" | "right") => {
+    if (!scrollContainerRef.current) return;
+    const amount = scrollContainerRef.current.clientWidth * 0.75;
+    scrollContainerRef.current.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  };
+
   // If user hasn't played anything yet, show a sleek starter teaser
   if (continueItems.length === 0) {
     if (isDismissed) return null;
     return (
-      <section aria-labelledby="continue-watching-heading" className={cn("space-y-4", className)}>
+      <section aria-labelledby="continue-watching-heading" className={cn("space-y-3", className)}>
         <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-r from-card via-card/90 to-primary/5 p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
             <div className="flex items-start gap-3.5">
@@ -85,14 +117,14 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
                   Setiap kali kamu memutar anime, progres menit dan episode akan otomatis tercatat
-                  di sini sehingga kamu bisa langsung melanjutkan kapan saja.
+                  di sini sehingga kamu bisa langsung melanjutkan kapan saja tanpa mencari ulang.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
               <a
-                href="#popular-shelf"
+                href="#ongoing-shelf"
                 className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 shadow-xs cursor-pointer"
               >
                 <Sparkles className="h-3 w-3" />
@@ -114,8 +146,8 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
   }
 
   return (
-    <section aria-labelledby="continue-watching-heading" className={cn("space-y-4", className)}>
-      {/* Header bar */}
+    <section aria-labelledby="continue-watching-heading" className={cn("space-y-3", className)}>
+      {/* Header bar with controls */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm shadow-primary/30">
@@ -131,26 +163,51 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
               </h2>
               <span className="rounded-full bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-bold text-emerald-500 flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Sedang Berjalan
+                Aktif
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Lanjutkan tontonan dari {continueItems.length} episode terakhir yang kamu putar
+              {continueItems.length} anime terakhir yang kamu tonton
             </p>
           </div>
         </div>
 
-        <Link
-          to="/riwayat"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-accent transition-all shadow-xs cursor-pointer"
-        >
-          <span>Semua Riwayat</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Scroll Navigation Buttons */}
+          <div className="hidden sm:flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => scroll("left")}
+              aria-label="Geser ke kiri"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scroll("right")}
+              aria-label="Geser ke kanan"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <Link
+            to="/riwayat"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-accent transition-all shadow-xs cursor-pointer"
+          >
+            <span>Semua Riwayat{totalCount > 0 ? ` (${totalCount})` : ""}</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
 
-      {/* Grid of In-Progress Episodes */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+      {/* Compact Horizontal Scroll Shelf (never expands vertically) */}
+      <div
+        ref={scrollContainerRef}
+        className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 pt-1 scrollbar-none snap-x snap-mandatory scroll-smooth"
+      >
         {continueItems.map((item, index) => {
           const rawDuration = item.duration || 1440;
           const rawCurrent = item.currentTime || 0;
@@ -166,7 +223,7 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
           return (
             <div
               key={item.episodeId}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:-translate-y-1"
+              className="group relative flex w-56 sm:w-64 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs transition-all duration-300 hover:border-primary/60 hover:shadow-lg"
             >
               {/* HD Thumbnail with Play Overlay & Progress Bar */}
               <Link
@@ -178,14 +235,14 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
                 <img
                   src={posterUrl}
                   alt={item.animeTitle}
-                  loading={index < 3 ? "eager" : "lazy"}
+                  loading={index < 4 ? "eager" : "lazy"}
                   decoding="async"
                   referrerPolicy="no-referrer"
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
 
                 {/* Dark Gradient Scrim */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
 
                 {/* Top time badge */}
                 <div className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-black/75 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-medium text-white/95">
@@ -197,7 +254,7 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
                 <button
                   type="button"
                   onClick={(e) => handleRemove(e, item.episodeId)}
-                  title="Hapus dari daftar lanjutkan menonton"
+                  title="Hapus episode ini"
                   className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/80 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-white transition-all cursor-pointer backdrop-blur-xs z-20"
                 >
                   <X className="h-3 w-3" />
@@ -205,7 +262,7 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
 
                 {/* Hover Play Button */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40 transform scale-90 group-hover:scale-100 transition-transform duration-300">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40 transform scale-90 group-hover:scale-100 transition-transform duration-300">
                     <Play className="h-4 w-4 fill-current ml-0.5" />
                   </div>
                 </div>
@@ -227,7 +284,7 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
                   )}
                 </div>
 
-                {/* High-Visibility Bottom Red Progress Bar */}
+                {/* High-Visibility Bottom Red/Rose Progress Bar */}
                 <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/50 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-primary to-rose-500 transition-all duration-300 shadow-xs"
@@ -251,7 +308,7 @@ export function RecentlyWatchedSection({ className }: { className?: string }) {
                     {item.animeTitle}
                   </h3>
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-0.5">
-                    <span className="truncate">{item.episodeTitle || "Lanjutkan Nonton"}</span>
+                    <span className="truncate">{item.episodeTitle || "Lanjutkan"}</span>
                     <span className="shrink-0 font-semibold text-primary">{percent}%</span>
                   </div>
                 </Link>

@@ -19,6 +19,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CheckCircle2,
+  Clock,
   Dices,
   Film,
   Flame,
@@ -226,7 +227,16 @@ function HomePage() {
       />
 
       <Shelf
-        title="Sedang Tayang (Ongoing)"
+        title="Episode Terbaru (Baru Rilis)"
+        icon={Clock}
+        items={data?.new ?? []}
+        isLoading={isPending}
+        viewAllTo="/ongoing"
+        viewAllSearch={{ page: 1 }}
+      />
+
+      <Shelf
+        title="Sedang Tayang (Ongoing Terpopuler)"
         icon={Flame}
         items={data?.hot ?? []}
         isLoading={isPending}
@@ -241,13 +251,6 @@ function HomePage() {
         isLoading={isPending}
         viewAllTo="/tamat"
         viewAllSearch={{ page: 1 }}
-      />
-
-      <Shelf
-        title="Rekomendasi Pilihan"
-        icon={Film}
-        items={data?.new ?? []}
-        isLoading={isPending}
       />
 
       {/* Platform Features Highlight */}

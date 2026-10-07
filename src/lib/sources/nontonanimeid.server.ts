@@ -41,11 +41,16 @@ interface Page {
 async function load(url: string, params: Record<string, string> = {}): Promise<Page> {
   const query = new URLSearchParams(params).toString();
   const finalUrl = query ? `${url}?${query}` : url;
-  const html = await fetchText(finalUrl, {
-    source: "nontonanimeid",
-    headers: { Referer: baseUrl(), Accept: "text/html,application/xhtml+xml,*/*;q=0.8" },
-    timeoutMs: 12000,
-  });
+  let html = "";
+  try {
+    html = await fetchText(finalUrl, {
+      source: "nontonanimeid",
+      headers: { Referer: baseUrl(), Accept: "text/html,application/xhtml+xml,*/*;q=0.8" },
+      timeoutMs: 12000,
+    });
+  } catch {
+    html = "";
+  }
   const $ = cheerio.load(html);
 
   let nonce: string | null = null;

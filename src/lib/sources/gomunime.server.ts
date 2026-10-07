@@ -30,7 +30,16 @@ function baseUrl(): string {
 }
 
 async function html(url: string, timeoutMs = 10000): Promise<string> {
-  return fetchText(url, { source: "gomunime", headers: { Referer: `${baseUrl()}/` }, timeoutMs });
+  try {
+    return await fetchText(url, {
+      source: "gomunime",
+      headers: { Referer: `${baseUrl()}/` },
+      timeoutMs,
+    });
+  } catch (error) {
+    // If blocked with 403 or server unreachable, recover silently without spamming errors
+    return "";
+  }
 }
 
 // Player Putarin menaruh konfigurasi terenkripsi AES-GCM di halamannya, kuncinya diminta dari origin yang sama

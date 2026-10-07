@@ -108,7 +108,8 @@ function SearchPage() {
       }
     }
 
-    navigate({ to: "/cari", search: { q: clean, page: 1, genre, status } });
+    // Default to status: 'all' when searching by keyword so finished seasons (e.g. Season 2) are not hidden
+    navigate({ to: "/cari", search: { q: clean, page: 1, genre, status: "all" } });
   };
 
   const handleSelectGenre = (genreId: string | null) => {

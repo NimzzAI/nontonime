@@ -14,7 +14,7 @@ import { SCHEDULE_DAYS } from "./anime-types";
 import { cached, withTimeout } from "./sources/cache.server";
 import { BROWSER_UA, fetchText, isDirectMediaUrl, slugify } from "./sources/http.server";
 import { normalizeTitle, parseId } from "./sources/ids";
-import { findBatchFor, getBatchDetail } from "./sources/kusonime.server";
+import { findBatchFor, getBatchDetail, searchBatch } from "./sources/kusonime.server";
 import { resolveNontonAnimeIdPlayer } from "./sources/nontonanimeid.server";
 import { enabledSources, getSource } from "./sources/registry.server";
 import { resolveSamehadakuPlayer } from "./sources/samehadaku.server";
@@ -107,7 +107,9 @@ async function fromSources<T>(
       results.push({ source: call.source.id, value: res.value });
     } else {
       const reason = res.reason instanceof Error ? res.reason.message : String(res.reason);
-      console.warn(`[sources] ${call.source.id}.${label} gagal: ${reason}`);
+      if (!reason.includes("403")) {
+        console.warn(`[sources] ${call.source.id}.${label} gagal: ${reason}`);
+      }
     }
   });
   return { results, attempted: calls.length };
@@ -165,8 +167,32 @@ function relevance(title: string, query: string): number {
   const q = query.toLowerCase().trim();
   if (t === q) return 1000;
   if (t.startsWith(q)) return 500;
+
+  // Title alias handling (e.g. Yuru Camp <-> Laid-Back Camp)
+  const isYuruQuery = /yuru\s*camp/i.test(q);
+  const isLaidBackTitle = /laid\s*[- ]?back\s*camp/i.test(t);
+
   const words = q.split(/\s+/).filter(Boolean);
-  const hits = words.filter((w) => t.includes(w)).length;
+  let hits = words.filter((w) => t.includes(w)).length;
+
+  if (isYuruQuery && isLaidBackTitle) {
+    hits += 3;
+  }
+
+  // Detect season numbers (e.g. "season 2", "s2", "2")
+  const qSeasonMatch = q.match(/\b(?:season\s*|s)?(\d+)\b/);
+  if (qSeasonMatch) {
+    const sNum = qSeasonMatch[1];
+    if (
+      t.includes(`season ${sNum}`) ||
+      t.includes(`season${sNum}`) ||
+      t.includes(`s${sNum}`) ||
+      t.includes(` ${sNum}`)
+    ) {
+      hits += 4;
+    }
+  }
+
   return hits * 10 - Math.abs(t.length - q.length) / 100;
 }
 
@@ -213,20 +239,50 @@ export async function getHome(
       requireResults(results, attempted, "beranda");
       const feeds = results.map((r) => r.value);
 
-      const latest = mergeItems(pool(feeds, "latest", "today"));
-      const popular = mergeItems(pool(feeds, "popular", "hot", "latest"));
-      const hot = mergeItems(pool(feeds, "hot", "popular", "latest"));
-      const slider = mergeItems(pool(feeds, "slider", "hot", "popular", "latest"));
-      const today = mergeItems(day ? pool(feeds, "today") : pool(feeds, "today", "latest"));
-      const waiting = mergeItems(pool(feeds, "waiting", "movies"));
+      const rawLatest = mergeItems(pool(feeds, "latest", "today")).map(toSummary);
+      const rawPopular = mergeItems(pool(feeds, "popular", "hot", "latest")).map(toSummary);
+      const rawHot = mergeItems(pool(feeds, "hot", "popular", "latest")).map(toSummary);
+      const rawSlider = mergeItems(pool(feeds, "slider", "hot", "popular", "latest")).map(
+        toSummary,
+      );
+      const rawToday = mergeItems(day ? pool(feeds, "today") : pool(feeds, "today", "latest")).map(
+        toSummary,
+      );
+      const rawWaiting = mergeItems(pool(feeds, "waiting", "movies")).map(toSummary);
+
+      const isCompleted = (item: AnimeSummary) =>
+        item.status === "Completed" ||
+        /tamat|complete|finish|selesai|ended/i.test(item.status ?? "");
+
+      // 1. Sedang Tayang (Ongoing): STRICTLY ongoing! Filter out any completed series
+      const ongoingItems = rawHot.filter((item) => !isCompleted(item));
+
+      // 2. Tayang Hari Ini: STRICTLY ongoing broadcast series
+      const todayItems = rawToday.filter((item) => !isCompleted(item));
+
+      // 3. Episode Terbaru (Baru Rilis): fresh ongoing releases / latest episodes, never old completed series
+      const freshNewItems = rawLatest.filter((item) => !isCompleted(item));
+
+      // 4. Anime Tamat (Completed): STRICTLY completed anime
+      const completedItems = rawPopular.filter(isCompleted);
+      if (completedItems.length < 10) {
+        const poolCompleted = [...rawHot, ...rawLatest, ...rawSlider].filter(isCompleted);
+        const seen = new Set(completedItems.map((c) => c.id));
+        for (const c of poolCompleted) {
+          if (!seen.has(c.id)) {
+            seen.add(c.id);
+            completedItems.push(c);
+          }
+        }
+      }
 
       const home: HomeSections = {
-        slider: slider.slice(0, 8).map(toSummary),
-        today: (today.length > 0 ? today : latest).slice(0, 18).map(toSummary),
-        hot: hot.slice(0, 10).map(toSummary),
-        popular: popular.slice(0, 12).map(toSummary),
-        new: latest.slice(0, 18).map(toSummary),
-        waiting: (waiting.length > 0 ? waiting : popular.slice(6)).slice(0, 10).map(toSummary),
+        slider: rawSlider.slice(0, 8),
+        today: (todayItems.length > 0 ? todayItems : freshNewItems).slice(0, 18),
+        hot: ongoingItems.slice(0, 10),
+        popular: completedItems.slice(0, 12),
+        new: freshNewItems.slice(0, 18),
+        waiting: (rawWaiting.length > 0 ? rawWaiting : completedItems.slice(6)).slice(0, 10),
       };
       return home;
     });
@@ -356,6 +412,42 @@ export async function search(
     );
     requireResults(results, attempted, "pencarian");
     const merged = mergePages(results, safePage);
+
+    // On page 1, also include matching Kusonime batches (e.g. Yuru Camp Season 2 BD Batch)
+    if (safePage === 1) {
+      try {
+        const batchHits = await withTimeout(searchBatch(cleanTerm), 4000, "kusonime.searchBatch");
+        if (batchHits && batchHits.length > 0) {
+          const existingKeys = new Set(merged.items.map((i) => normalizeTitle(i.title)));
+          for (const hit of batchHits.slice(0, 5)) {
+            const hitKey = normalizeTitle(hit.title);
+            if (!existingKeys.has(hitKey)) {
+              existingKeys.add(hitKey);
+              merged.items.push({
+                id: `ks_${hit.slug}`,
+                title: hit.title,
+                poster: hit.poster,
+                cover: hit.poster,
+                score: null,
+                status: "Completed",
+                type: "Batch",
+                genres: [],
+                synopsis: null,
+                year: null,
+                views: null,
+                day: null,
+                releaseDay: null,
+                latestReleaseDate: "Batch Lengkap",
+                episodeCount: null,
+              });
+            }
+          }
+        }
+      } catch {
+        // ignore kusonime batch lookup error
+      }
+    }
+
     merged.items.sort((a, b) => relevance(b.title, cleanTerm) - relevance(a.title, cleanTerm));
     return merged;
   });

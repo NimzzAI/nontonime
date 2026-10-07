@@ -94,18 +94,18 @@ function parseCards(
     seen.add(slug);
     const episode = cleanText(card.find(".bt .epx, .epx, .ep").first().text());
     const cardText = card.text().toLowerCase();
-    let cardStatus: string | null = extra.status ?? null;
-    if (!cardStatus) {
-      if (
-        cardText.includes("completed") ||
-        cardText.includes("tamat") ||
-        cardText.includes("finish") ||
-        cardText.includes("selesai")
-      ) {
-        cardStatus = "Completed";
-      } else if (cardText.includes("ongoing") || cardText.includes("tayang")) {
-        cardStatus = "Ongoing";
-      }
+    let cardStatus: string | null = null;
+    if (
+      cardText.includes("completed") ||
+      cardText.includes("tamat") ||
+      cardText.includes("finish") ||
+      cardText.includes("selesai")
+    ) {
+      cardStatus = "Completed";
+    } else if (cardText.includes("ongoing") || cardText.includes("tayang")) {
+      cardStatus = "Ongoing";
+    } else {
+      cardStatus = extra.status ?? null;
     }
 
     items.push(
@@ -211,6 +211,21 @@ export const samehadaku: AnimeSource = {
     const path = page > 1 ? `/page/${page}/?s=${q}` : `/?s=${q}`;
     const $ = cheerio.load(await html(path));
     const items = parseCards($, ".animpost, .listupd article");
+
+    if (page === 1 && items.length < 3 && keyword.includes(" ")) {
+      try {
+        const altQ = encodeURIComponent(keyword.replace(/\s+/g, ""));
+        const alt$ = cheerio.load(await html(`/?s=${altQ}`));
+        const altItems = parseCards(alt$, ".animpost, .listupd article");
+        for (const item of altItems) {
+          if (!items.some((i) => i.id === item.id)) {
+            items.push(item);
+          }
+        }
+      } catch {
+        // ignore fallback failure
+      }
+    }
     return { items, hasNext: items.length >= 10 };
   },
 

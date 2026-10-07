@@ -15,12 +15,16 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
 
   const isOngoing = !isCompleted && /ongoing|tayang/i.test(anime.status ?? "");
   const statusLabel = isCompleted ? "Tamat" : isOngoing ? "Ongoing" : null;
+  const isBatch = anime.id.startsWith("ks_") || anime.type === "Batch";
   const posterUrl = getSafePosterUrl(anime.poster, anime.title);
+
+  const linkProps = isBatch
+    ? { to: "/download/$batchId" as const, params: { batchId: anime.id } }
+    : { to: "/anime/$animeId" as const, params: { animeId: anime.id } };
 
   return (
     <Link
-      to="/anime/$animeId"
-      params={{ animeId: anime.id }}
+      {...linkProps}
       className="press-soft group flex items-center gap-3.5 rounded-2xl border border-border/80 bg-card p-3 transition-all hover:border-primary/50 hover:bg-accent hover:shadow-sm"
     >
       <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-muted">
