@@ -15,6 +15,8 @@ export interface AnimeSummary {
   day?: string | null;
   cover?: string | null;
   studios?: string | null;
+  englishTitle?: string | null;
+  romajiTitle?: string | null;
 }
 
 export interface EpisodeSummary {

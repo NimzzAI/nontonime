@@ -20,6 +20,11 @@ import { enabledSources, getSource } from "./sources/registry.server";
 import { resolveSamehadakuPlayer } from "./sources/samehadaku.server";
 import { assertPublicHttpUrl, decodeServerRef, encodeServerRef } from "./sources/token.server";
 import { formatSafePoster } from "./sources/poster.server";
+import {
+  getSearchQueryTerms,
+  resolveAnimeAliases,
+  type AnimeAliasData,
+} from "./sources/alias.server";
 import type {
   AnimeSource,
   HomeFeed,
@@ -162,22 +167,38 @@ function titleCaseDay(value: string): string {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-function relevance(title: string, query: string): number {
+function relevance(title: string, query: string, aliasData?: AnimeAliasData | null): number {
   const t = title.toLowerCase();
   const q = query.toLowerCase().trim();
   if (t === q) return 1000;
   if (t.startsWith(q)) return 500;
 
-  // Title alias handling (e.g. Yuru Camp <-> Laid-Back Camp)
-  const isYuruQuery = /yuru\s*camp/i.test(q);
-  const isLaidBackTitle = /laid\s*[- ]?back\s*camp/i.test(t);
+  // Title alias handling (e.g. Yuru Camp <-> Laid-Back Camp, Shingeki no Kyojin <-> Attack on Titan)
+  let aliasBonus = 0;
+  if (aliasData) {
+    if (aliasData.romaji) {
+      const romaji = aliasData.romaji
+        .toLowerCase()
+        .replace(/[△▲★☆]/g, " ")
+        .trim();
+      if (t === romaji) aliasBonus = Math.max(aliasBonus, 850);
+      else if (t.startsWith(romaji)) aliasBonus = Math.max(aliasBonus, 450);
+      else if (t.includes(romaji)) aliasBonus = Math.max(aliasBonus, 250);
+    }
+    if (aliasData.english) {
+      const english = aliasData.english.toLowerCase();
+      if (t === english) aliasBonus = Math.max(aliasBonus, 800);
+      else if (t.startsWith(english)) aliasBonus = Math.max(aliasBonus, 400);
+      else if (t.includes(english)) aliasBonus = Math.max(aliasBonus, 200);
+    }
+    for (const syn of aliasData.synonyms) {
+      const synLower = syn.toLowerCase();
+      if (t.includes(synLower)) aliasBonus = Math.max(aliasBonus, 180);
+    }
+  }
 
   const words = q.split(/\s+/).filter(Boolean);
   let hits = words.filter((w) => t.includes(w)).length;
-
-  if (isYuruQuery && isLaidBackTitle) {
-    hits += 3;
-  }
 
   // Detect season numbers (e.g. "season 2", "s2", "2")
   const qSeasonMatch = q.match(/\b(?:season\s*|s)?(\d+)\b/);
@@ -189,11 +210,11 @@ function relevance(title: string, query: string): number {
       t.includes(`s${sNum}`) ||
       t.includes(` ${sNum}`)
     ) {
-      hits += 4;
+      hits += 6;
     }
   }
 
-  return hits * 10 - Math.abs(t.length - q.length) / 100;
+  return aliasBonus + hits * 10 - Math.abs(t.length - q.length) / 100;
 }
 
 /* ========================================================================== */
@@ -407,48 +428,100 @@ export async function search(
       .trim() || term;
 
   return cached(`search:${cleanTerm.toLowerCase()}:${safePage}`, 5 * MIN, async () => {
+    // 1. Resolve title aliases (English, Romaji, Native, synonyms)
+    const [aliasData, queryTerms] = await Promise.all([
+      resolveAnimeAliases(cleanTerm),
+      getSearchQueryTerms(cleanTerm),
+    ]);
+
+    // 2. Query sources with the primary search term
     const { results, attempted } = await fromSources<SourcePage>("search", (s) =>
       s.search(cleanTerm, safePage),
     );
     requireResults(results, attempted, "pencarian");
     const merged = mergePages(results, safePage);
 
-    // On page 1, also include matching Kusonime batches (e.g. Yuru Camp Season 2 BD Batch)
-    if (safePage === 1) {
-      try {
-        const batchHits = await withTimeout(searchBatch(cleanTerm), 4000, "kusonime.searchBatch");
-        if (batchHits && batchHits.length > 0) {
-          const existingKeys = new Set(merged.items.map((i) => normalizeTitle(i.title)));
-          for (const hit of batchHits.slice(0, 5)) {
-            const hitKey = normalizeTitle(hit.title);
-            if (!existingKeys.has(hitKey)) {
-              existingKeys.add(hitKey);
-              merged.items.push({
-                id: `ks_${hit.slug}`,
-                title: hit.title,
-                poster: hit.poster,
-                cover: hit.poster,
-                score: null,
-                status: "Completed",
-                type: "Batch",
-                genres: [],
-                synopsis: null,
-                year: null,
-                views: null,
-                day: null,
-                releaseDay: null,
-                latestReleaseDate: "Batch Lengkap",
-                episodeCount: null,
-              });
+    // 3. If primary query returned few items or user searched an English title whose Indonesian source uses Romaji
+    if (safePage === 1 && queryTerms.length > 1) {
+      const altTerm = queryTerms.find(
+        (t) => t.toLowerCase() !== cleanTerm.toLowerCase() && t.length >= 3,
+      );
+      if (altTerm) {
+        try {
+          const { results: altResults } = await fromSources<SourcePage>("search", (s) =>
+            s.id === "animein" || s.id === "samehadaku" ? s.search(altTerm, 1) : undefined,
+          );
+          if (altResults.length > 0) {
+            const altMerged = mergePages(altResults, 1);
+            const existingKeys = new Set(merged.items.map((i) => normalizeTitle(i.title)));
+            for (const item of altMerged.items) {
+              const k = normalizeTitle(item.title);
+              if (!existingKeys.has(k)) {
+                existingKeys.add(k);
+                merged.items.push(item);
+              }
             }
           }
+        } catch {
+          // ignore alternate search error
         }
-      } catch {
-        // ignore kusonime batch lookup error
       }
     }
 
-    merged.items.sort((a, b) => relevance(b.title, cleanTerm) - relevance(a.title, cleanTerm));
+    // 4. On page 1, also include matching Kusonime batches (e.g. Yuru Camp Season 2 BD Batch)
+    if (safePage === 1) {
+      const batchQueries = [cleanTerm];
+      if (aliasData?.romaji && aliasData.romaji.toLowerCase() !== cleanTerm.toLowerCase()) {
+        batchQueries.push(aliasData.romaji);
+      }
+      for (const bQuery of batchQueries) {
+        try {
+          const batchHits = await withTimeout(searchBatch(bQuery), 3500, "kusonime.searchBatch");
+          if (batchHits && batchHits.length > 0) {
+            const existingKeys = new Set(merged.items.map((i) => normalizeTitle(i.title)));
+            for (const hit of batchHits.slice(0, 5)) {
+              const hitKey = normalizeTitle(hit.title);
+              if (!existingKeys.has(hitKey)) {
+                existingKeys.add(hitKey);
+                merged.items.push({
+                  id: `ks_${hit.slug}`,
+                  title: hit.title,
+                  poster: hit.poster,
+                  cover: hit.poster,
+                  score: null,
+                  status: "Completed",
+                  type: "Batch",
+                  genres: [],
+                  synopsis: null,
+                  year: null,
+                  views: null,
+                  day: null,
+                  releaseDay: null,
+                  latestReleaseDate: "Batch Lengkap",
+                  episodeCount: null,
+                });
+              }
+            }
+          }
+        } catch {
+          // ignore kusonime batch lookup error
+        }
+      }
+    }
+
+    // 5. Populate alternate display titles on items
+    for (const item of merged.items) {
+      if (!item.englishTitle && aliasData?.english) {
+        item.englishTitle = aliasData.english;
+      }
+      if (!item.romajiTitle && aliasData?.romaji) {
+        item.romajiTitle = aliasData.romaji;
+      }
+    }
+
+    merged.items.sort(
+      (a, b) => relevance(b.title, cleanTerm, aliasData) - relevance(a.title, cleanTerm, aliasData),
+    );
     return merged;
   });
 }

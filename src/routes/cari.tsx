@@ -146,7 +146,8 @@ function SearchPage() {
         const matches =
           (anime.genres &&
             anime.genres.some((g) => g.toLowerCase().includes(activeGenre.toLowerCase()))) ||
-          anime.title.toLowerCase().includes(activeGenre.toLowerCase());
+          anime.title.toLowerCase().includes(activeGenre.toLowerCase()) ||
+          Boolean(anime.englishTitle?.toLowerCase().includes(activeGenre.toLowerCase()));
         if (!matches) return false;
       }
 
@@ -163,7 +164,7 @@ function SearchPage() {
         <input
           value={term}
           onChange={(event) => setTerm(event.target.value)}
-          placeholder="Ketik judul anime (mis. Naruto, Frieren, Solo Leveling)..."
+          placeholder="Cari judul Romaji atau Inggris (mis. Yuru Camp, Laid-Back Camp, Attack on Titan)..."
           className="h-11 flex-1 rounded-full border border-border bg-card px-4 text-sm text-card-foreground outline-hidden placeholder:text-muted-foreground focus:border-primary shadow-2xs"
         />
         <button

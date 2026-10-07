@@ -44,10 +44,17 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
         )}
       </div>
 
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground group-hover:text-primary transition-colors">
-          {anime.title}
-        </h3>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div>
+          <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground group-hover:text-primary transition-colors">
+            {anime.title}
+          </h3>
+          {anime.englishTitle && anime.englishTitle.toLowerCase() !== anime.title.toLowerCase() ? (
+            <p className="line-clamp-1 text-[11px] text-muted-foreground/80 italic font-medium">
+              {anime.englishTitle}
+            </p>
+          ) : null}
+        </div>
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           {anime.score ? (
@@ -68,6 +75,11 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
               {statusLabel}
             </span>
           ) : null}
+
+          {/* Sub Indo Indicator Badge */}
+          <span className="rounded bg-primary/10 border border-primary/25 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+            Sub Indo
+          </span>
 
           {anime.type ? <span>{anime.type}</span> : null}
           {anime.episodeCount ? <span>{anime.episodeCount} Eps</span> : null}
