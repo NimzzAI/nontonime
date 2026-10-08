@@ -25,6 +25,8 @@ import {
   type OfflineEpisode,
 } from "@/lib/download-manager";
 import { OfflinePlayerModal } from "@/components/anime/OfflinePlayerModal";
+import { EpisodeComments } from "@/components/anime/EpisodeComments";
+import { AuthModal } from "@/components/anime/AuthModal";
 
 export const Route = createFileRoute("/watch/$episodeId")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -61,6 +63,7 @@ function WatchPage() {
     return localStorage.getItem("nonton-auto-next") !== "false";
   });
   const [isAutoPlayActive, setIsAutoPlayActive] = useState<boolean>(() => Boolean(searchAutoplay));
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const stream = useQuery(streamQuery(episodeId));
 
@@ -874,6 +877,15 @@ function WatchPage() {
               </div>
             </div>
           ) : null}
+
+          {/* Episode Discussion & Real-time Firestore Comments */}
+          <EpisodeComments
+            episodeId={episodeId}
+            animeId={resolvedAnimeId}
+            animeTitle={anime.data?.title}
+            episodeTitle={episodeData.title}
+            onOpenAuth={() => setAuthModalOpen(true)}
+          />
         </div>
 
         {/* Right Episode List Sidebar */}
@@ -959,6 +971,9 @@ function WatchPage() {
         isOpen={offlinePlayerOpen}
         onClose={() => setOfflinePlayerOpen(false)}
       />
+
+      {/* Auth Modal for comment interactions */}
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} initialTab="login" />
     </div>
   );
 }

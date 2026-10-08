@@ -6,6 +6,7 @@ import { UserGamificationCard } from "@/components/anime/UserGamificationCard";
 import { NotificationsModal } from "@/components/anime/NotificationsModal";
 import { AuthModal } from "@/components/anime/AuthModal";
 import { UserProfile } from "@/components/anime/UserProfile";
+import { ClanManager } from "@/components/anime/ClanManager";
 import { WatchingList } from "@/components/anime/WatchingList";
 import { readSubscriptions, removeSubscription, type SubscriptionItem } from "@/lib/subscriptions";
 import { getPermission, requestNotificationPermission, showLocalNotification } from "@/lib/push";
@@ -276,6 +277,9 @@ function ProfilPage() {
         isFirestoreSynced={Boolean(user)}
         onOpenAuth={() => handleOpenAuth("register")}
       />
+
+      {/* Clan System & Guilds Component */}
+      <ClanManager onOpenAuth={handleOpenAuth} />
 
       {/* Key Statistics Grid */}
       <ProfileStatsGrid />

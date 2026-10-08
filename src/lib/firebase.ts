@@ -181,9 +181,33 @@ export interface FirestoreUserProfile {
   bannerUrl?: string;
   bio?: string;
   clan?: string;
+  clanId?: string;
+  clanTag?: string;
+  clanRole?: "leader" | "elder" | "member";
   gamification: UserGamification;
   createdAt?: string;
   lastLogin?: string;
+}
+
+/**
+ * Deep sanitization helper that recursively strips out any fields with `undefined` values,
+ * which Firestore strictly forbids and throws "Unsupported field value: undefined".
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) return null as unknown as T;
+  if (typeof data !== "object") return data;
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeForFirestore(item)) as unknown as T;
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    if (value !== undefined) {
+      result[key] = sanitizeForFirestore(value);
+    }
+  }
+  return result as T;
 }
 
 // Helper to save or update user doc in Firestore
@@ -212,6 +236,20 @@ export async function persistUserDoc(user: User, customDisplayName?: string) {
         }
       : currentLocalGamification;
 
+    // Clean gamification object to ensure no undefined properties exist
+    const cleanGamification: Record<string, unknown> = {
+      level: gamificationToSave.level || 1,
+      exp: gamificationToSave.exp || 0,
+      maxExp: gamificationToSave.maxExp || 100,
+      totalExp: gamificationToSave.totalExp || 0,
+      rankTitle: gamificationToSave.rankTitle || "Penonton Pemula",
+      rankBadgeColor: gamificationToSave.rankBadgeColor || "from-zinc-500 to-zinc-600",
+      dailyStreak: gamificationToSave.dailyStreak || 0,
+    };
+    if (gamificationToSave.lastCheckIn && typeof gamificationToSave.lastCheckIn === "string") {
+      cleanGamification.lastCheckIn = gamificationToSave.lastCheckIn;
+    }
+
     const defaultUsername = (
       user.displayName?.toLowerCase().replace(/[^a-z0-9_]/g, "") ||
       user.email
@@ -221,27 +259,29 @@ export async function persistUserDoc(user: User, customDisplayName?: string) {
       "wibu_" + user.uid.slice(0, 5)
     ).slice(0, 20);
 
-    await setDoc(
-      userRef,
-      {
-        uid: user.uid,
-        displayName:
-          customDisplayName ||
-          existingData?.displayName ||
-          user.displayName ||
-          user.email?.split("@")[0] ||
-          "Pengguna",
-        username: existingData?.username || defaultUsername,
-        email: user.email || "",
-        photoURL: existingData?.photoURL || user.photoURL || "",
-        avatarUrl: existingData?.avatarUrl || existingData?.photoURL || user.photoURL || "",
-        bannerUrl: existingData?.bannerUrl || "",
-        bio: existingData?.bio || "Penggemar anime & petualangan seru",
-        gamification: gamificationToSave,
-        lastLogin: new Date().toISOString(),
-      },
-      { merge: true },
-    );
+    const docPayload = sanitizeForFirestore({
+      uid: user.uid,
+      displayName:
+        customDisplayName ||
+        existingData?.displayName ||
+        user.displayName ||
+        user.email?.split("@")[0] ||
+        "Pengguna",
+      username: existingData?.username || defaultUsername,
+      email: user.email || "",
+      photoURL: existingData?.photoURL || user.photoURL || "",
+      avatarUrl: existingData?.avatarUrl || existingData?.photoURL || user.photoURL || "",
+      bannerUrl: existingData?.bannerUrl || "",
+      bio: existingData?.bio || "Penggemar anime & petualangan seru",
+      clan: existingData?.clan || "",
+      clanId: existingData?.clanId || "",
+      clanTag: existingData?.clanTag || "",
+      clanRole: existingData?.clanRole || "",
+      gamification: cleanGamification,
+      lastLogin: new Date().toISOString(),
+    });
+
+    await setDoc(userRef, docPayload, { merge: true });
 
     // Save synced gamification back to local
     saveGamification(gamificationToSave);
@@ -376,26 +416,23 @@ export async function updateUserProfileData(
 
   // 3. Update Firestore Document
   const userRef = doc(db, "users", userId);
-  await setDoc(
-    userRef,
-    {
-      ...(data.displayName ? { displayName: data.displayName.trim() } : {}),
-      ...(data.username
-        ? {
-            username: data.username
-              .toLowerCase()
-              .replace(/[^a-z0-9_]/g, "")
-              .slice(0, 25),
-          }
-        : {}),
-      ...(avatar ? { photoURL: avatar, avatarUrl: avatar } : {}),
-      ...(data.bannerUrl !== undefined ? { bannerUrl: data.bannerUrl } : {}),
-      ...(data.bio !== undefined ? { bio: data.bio.trim() } : {}),
-      ...(data.clan !== undefined ? { clan: data.clan.trim() } : {}),
-      updatedAt: new Date().toISOString(),
-    },
-    { merge: true },
-  );
+  const updatePayload = sanitizeForFirestore({
+    ...(data.displayName ? { displayName: data.displayName.trim() } : {}),
+    ...(data.username
+      ? {
+          username: data.username
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, "")
+            .slice(0, 25),
+        }
+      : {}),
+    ...(avatar ? { photoURL: avatar, avatarUrl: avatar } : {}),
+    ...(data.bannerUrl !== undefined ? { bannerUrl: data.bannerUrl } : {}),
+    ...(data.bio !== undefined ? { bio: data.bio.trim() } : {}),
+    ...(data.clan !== undefined ? { clan: data.clan.trim() } : {}),
+    updatedAt: new Date().toISOString(),
+  });
+  await setDoc(userRef, updatePayload, { merge: true });
 }
 
 export async function signInWithGoogle(): Promise<User> {
