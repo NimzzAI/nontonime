@@ -1,5 +1,12 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  type FirebaseStorage,
+} from "firebase/storage";
+import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
@@ -62,6 +69,7 @@ if (!getApps().length) {
 }
 
 export const auth: Auth = getAuth(app);
+export const storage: FirebaseStorage = getStorage(app);
 
 // Use initializeFirestore with experimentalForceLongPolling to ensure reliable connectivity
 // across iframes, proxies, and cloud sandbox environments.
@@ -166,8 +174,13 @@ export function loginAsGuest(name?: string): LocalGuestUser {
 export interface FirestoreUserProfile {
   uid: string;
   displayName: string;
+  username?: string;
   email: string;
   photoURL?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  bio?: string;
+  clan?: string;
   gamification: UserGamification;
   createdAt?: string;
   lastLogin?: string;
@@ -199,14 +212,31 @@ export async function persistUserDoc(user: User, customDisplayName?: string) {
         }
       : currentLocalGamification;
 
+    const defaultUsername = (
+      user.displayName?.toLowerCase().replace(/[^a-z0-9_]/g, "") ||
+      user.email
+        ?.split("@")[0]
+        ?.toLowerCase()
+        .replace(/[^a-z0-9_]/g, "") ||
+      "wibu_" + user.uid.slice(0, 5)
+    ).slice(0, 20);
+
     await setDoc(
       userRef,
       {
         uid: user.uid,
         displayName:
-          customDisplayName || user.displayName || user.email?.split("@")[0] || "Pengguna",
+          customDisplayName ||
+          existingData?.displayName ||
+          user.displayName ||
+          user.email?.split("@")[0] ||
+          "Pengguna",
+        username: existingData?.username || defaultUsername,
         email: user.email || "",
-        photoURL: user.photoURL || "",
+        photoURL: existingData?.photoURL || user.photoURL || "",
+        avatarUrl: existingData?.avatarUrl || existingData?.photoURL || user.photoURL || "",
+        bannerUrl: existingData?.bannerUrl || "",
+        bio: existingData?.bio || "Penggemar anime & petualangan seru",
         gamification: gamificationToSave,
         lastLogin: new Date().toISOString(),
       },
@@ -221,6 +251,151 @@ export async function persistUserDoc(user: User, customDisplayName?: string) {
   } catch (err) {
     console.warn("Could not sync user profile to Firestore:", err);
   }
+}
+
+/**
+ * Uploads a user avatar image to Firebase Storage with local Data URL fallback.
+ */
+export async function uploadAvatar(file: File, userId: string): Promise<string> {
+  if (!userId) throw new Error("Pengguna tidak terautentikasi.");
+  if (!file.type.startsWith("image/")) {
+    throw new Error("File harus berupa gambar (JPG, PNG, WebP, GIF).");
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("Ukuran avatar maksimal 5MB.");
+  }
+
+  try {
+    const fileExt = file.name.split(".").pop() || "png";
+    const avatarPath = `avatars/${userId}/avatar_${Date.now()}.${fileExt}`;
+    const fileRef = storageRef(storage, avatarPath);
+    const snapshot = await uploadBytes(fileRef, file, {
+      contentType: file.type,
+      customMetadata: { userId },
+    });
+    return await getDownloadURL(snapshot.ref);
+  } catch (storageError) {
+    console.warn("Firebase Storage upload error, falling back to Data URL:", storageError);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+/**
+ * Uploads a profile banner image to Firebase Storage with local Data URL fallback.
+ */
+export async function uploadBanner(file: File, userId: string): Promise<string> {
+  if (!userId) throw new Error("Pengguna tidak terautentikasi.");
+  if (!file.type.startsWith("image/")) {
+    throw new Error("File harus berupa gambar (JPG, PNG, WebP, GIF).");
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    throw new Error("Ukuran banner maksimal 8MB.");
+  }
+
+  try {
+    const fileExt = file.name.split(".").pop() || "jpg";
+    const bannerPath = `banners/${userId}/banner_${Date.now()}.${fileExt}`;
+    const fileRef = storageRef(storage, bannerPath);
+    const snapshot = await uploadBytes(fileRef, file, {
+      contentType: file.type,
+      customMetadata: { userId },
+    });
+    return await getDownloadURL(snapshot.ref);
+  } catch (storageError) {
+    console.warn("Firebase Storage banner upload error, falling back to Data URL:", storageError);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+/**
+ * Updates user profile (username, displayName, avatar, banner, bio) in Auth and Firestore.
+ */
+export async function updateUserProfileData(
+  userId: string,
+  data: {
+    displayName?: string;
+    username?: string;
+    photoURL?: string;
+    avatarUrl?: string;
+    bannerUrl?: string;
+    bio?: string;
+    clan?: string;
+  },
+): Promise<void> {
+  if (!userId) throw new Error("ID pengguna tidak valid.");
+
+  const avatar = data.avatarUrl || data.photoURL;
+
+  // 1. Update Auth Current User if active
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      await updateProfile(auth.currentUser, {
+        displayName: data.displayName || auth.currentUser.displayName,
+        photoURL: avatar || auth.currentUser.photoURL,
+      });
+    } catch (err) {
+      console.warn("Could not update Auth profile:", err);
+    }
+  }
+
+  // 2. If guest user, persist to local storage
+  if (userId.startsWith("guest_")) {
+    const guestStr =
+      typeof window !== "undefined" ? localStorage.getItem("nonton-guest-user") : null;
+    if (guestStr) {
+      try {
+        const guest = JSON.parse(guestStr);
+        const updated = {
+          ...guest,
+          displayName: data.displayName || guest.displayName,
+          username: data.username || guest.username,
+          photoURL: avatar || guest.photoURL,
+          avatarUrl: avatar || guest.avatarUrl,
+          bannerUrl: data.bannerUrl !== undefined ? data.bannerUrl : guest.bannerUrl,
+          bio: data.bio !== undefined ? data.bio : guest.bio,
+          clan: data.clan !== undefined ? data.clan : guest.clan,
+        };
+        localStorage.setItem("nonton-guest-user", JSON.stringify(updated));
+        window.dispatchEvent(new Event("guest-auth-changed"));
+      } catch {
+        // no-op
+      }
+    }
+    return;
+  }
+
+  // 3. Update Firestore Document
+  const userRef = doc(db, "users", userId);
+  await setDoc(
+    userRef,
+    {
+      ...(data.displayName ? { displayName: data.displayName.trim() } : {}),
+      ...(data.username
+        ? {
+            username: data.username
+              .toLowerCase()
+              .replace(/[^a-z0-9_]/g, "")
+              .slice(0, 25),
+          }
+        : {}),
+      ...(avatar ? { photoURL: avatar, avatarUrl: avatar } : {}),
+      ...(data.bannerUrl !== undefined ? { bannerUrl: data.bannerUrl } : {}),
+      ...(data.bio !== undefined ? { bio: data.bio.trim() } : {}),
+      ...(data.clan !== undefined ? { clan: data.clan.trim() } : {}),
+      updatedAt: new Date().toISOString(),
+    },
+    { merge: true },
+  );
 }
 
 export async function signInWithGoogle(): Promise<User> {
@@ -423,10 +598,42 @@ export function useFirestoreUserProfile(userId: string | undefined | null) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId || userId.startsWith("guest_")) {
+    if (!userId) {
       setLoading(false);
+      setProfile(null);
       setGamification(readGamification());
       return;
+    }
+
+    if (userId.startsWith("guest_")) {
+      setLoading(false);
+      setGamification(readGamification());
+      const readGuest = () => {
+        const guestStr =
+          typeof window !== "undefined" ? localStorage.getItem("nonton-guest-user") : null;
+        if (guestStr) {
+          try {
+            const guest = JSON.parse(guestStr);
+            setProfile({
+              uid: guest.uid,
+              displayName: guest.displayName || "Wibu Tamu",
+              username: guest.username || "wibu_tamu",
+              email: guest.email || "tamu@nontonime.local",
+              photoURL: guest.photoURL || guest.avatarUrl || "",
+              avatarUrl: guest.avatarUrl || guest.photoURL || "",
+              bannerUrl: guest.bannerUrl || "",
+              bio: guest.bio || "Pencinta anime santai",
+              clan: guest.clan || "",
+              gamification: readGamification(),
+            });
+          } catch {
+            // no-op
+          }
+        }
+      };
+      readGuest();
+      window.addEventListener("guest-auth-changed", readGuest);
+      return () => window.removeEventListener("guest-auth-changed", readGuest);
     }
 
     setLoading(true);
