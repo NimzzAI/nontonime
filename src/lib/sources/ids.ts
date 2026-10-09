@@ -60,10 +60,11 @@ export function parseId(id: string): ParsedId | null {
     if (source && slug) return { source, slug, kind: match[2] ? "episode" : "anime" };
   }
 
-  // 4. Bare Aniwatch episode slug (has episode indicator, e.g. "yuruyuri-nachuyachumi-1-c5d95" or "name-ep-1")
+  // 4. Bare Aniwatch episode slug (has episode indicator, e.g. "yuruyuri-nachuyachumi-1-c5d95" or "sekai-saikyou-no-majo-hajimemashita-2-episode-1-msaexfb")
   if (
     cleanInput.includes("-") &&
-    (/-(\d+)-[a-f0-9]{4,8}$/i.test(cleanInput) ||
+    (/-(\d+)-[a-z0-9]{4,10}$/i.test(cleanInput) ||
+      /-(?:ep|episode)-?\d+(?:-[a-z0-9]{4,10})?$/i.test(cleanInput) ||
       /-(?:ep|episode)-?\d+/i.test(cleanInput) ||
       /-\d+$/.test(cleanInput))
   ) {
@@ -73,12 +74,67 @@ export function parseId(id: string): ParsedId | null {
   // 5. Bare Aniwatch anime slug (e.g. "c5d95-yuruyuri-nachuyachumi" or "yuruyuri-nachuyachumi-c5d95")
   if (
     cleanInput.includes("-") &&
-    (/^[a-f0-9]{4,8}-[a-z0-9_-]+/i.test(cleanInput) || /-[a-f0-9]{4,8}$/i.test(cleanInput))
+    (/^[a-z0-9]{4,10}-[a-z0-9_-]+/i.test(cleanInput) || /-[a-z0-9]{4,10}$/i.test(cleanInput))
   ) {
     return { source: "aniwatch", slug: cleanInput, kind: "anime" };
   }
 
   return null;
+}
+
+export interface ExtractedSlugInfo {
+  cleanTitle: string;
+  episodeNumber: number;
+  hash: string | null;
+  seasonNumber: number | null;
+}
+
+export function extractTitleAndEpisodeFromSlug(slug: string): ExtractedSlugInfo {
+  let s = decodeURIComponent(slug).trim();
+  // Strip URL prefixes
+  s = s.replace(/^https?:\/\/[^/]+\/(?:episode|anime|watch)\//i, "");
+  // Strip source prefixes e.g. aw_ep_, ai_, sh_ep_
+  s = s.replace(/^(?:ai|na|gm|aw|stk|sh|ks)_(?:ep_)?/i, "");
+
+  let hash: string | null = null;
+  // Match trailing hash (4 to 10 alphanumeric characters, e.g. -msaexfb, -c5d95, -d8229)
+  const hashMatch = s.match(/-([a-z0-9]{4,10})$/i);
+  if (hashMatch) {
+    hash = hashMatch[1];
+    s = s.slice(0, hashMatch.index);
+  }
+
+  let episodeNumber = 1;
+  const epMatch =
+    s.match(/-(?:episode|eps?)-?(\d+)$/i) ||
+    s.match(/-(\d+)$/) ||
+    s.match(/-(?:episode|eps?)-?(\d+)-/i);
+  if (epMatch) {
+    episodeNumber = parseInt(epMatch[1], 10) || 1;
+    s = s.replace(/-(?:episode|eps?)-?\d+.*$/i, "").replace(/-\d+$/, "");
+  }
+
+  // Check if there is another trailing hash exposed after removing episode
+  const secondHashMatch = s.match(/-([a-z0-9]{4,10})$/i);
+  if (secondHashMatch && !hash) {
+    hash = secondHashMatch[1];
+    s = s.slice(0, secondHashMatch.index);
+  }
+
+  // Clean hyphens and underscores to space
+  const cleanTitle = s.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+
+  // Detect season number if at the end e.g. "sekai saikyou no majo hajimemashita 2"
+  let seasonNumber: number | null = null;
+  const seasonMatch = cleanTitle.match(/\s+(\d{1,2})$/);
+  if (seasonMatch) {
+    const num = parseInt(seasonMatch[1], 10);
+    if (num >= 2 && num <= 20) {
+      seasonNumber = num;
+    }
+  }
+
+  return { cleanTitle, episodeNumber, hash, seasonNumber };
 }
 
 export function formatScore(value: string | number | null | undefined): string | null {

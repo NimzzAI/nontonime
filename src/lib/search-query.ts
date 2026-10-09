@@ -28,8 +28,24 @@ export function stripSymbols(value: string): string {
 }
 
 export function parseSearchQuery(raw: string): ParsedQuery {
-  let s = ` ${raw} `
-    .replace(/\bsub(?:title)?\s*(?:indo(?:nesia)?|id)\b/gi, " ")
+  let cleaned = raw.trim();
+
+  // If input looks like a slug or URL (contains hyphens and words)
+  if (cleaned.includes("-") || cleaned.includes("_") || cleaned.includes("/")) {
+    cleaned = cleaned
+      .replace(/^https?:\/\/[^/]+\/(?:episode|anime|watch)\//i, "")
+      .replace(/^(?:ai|na|gm|aw|stk|sh|ks)_(?:ep_)?/i, "")
+      .replace(/-[a-z0-9]{4,10}$/i, "") // trailing hash
+      .replace(/-(?:episode|eps?)-?\d+/i, "") // episode part
+      .replace(/-[a-z0-9]{4,10}$/i, "") // second trailing hash if any
+      .replace(/[-_]+/g, " ");
+  }
+
+  let s = ` ${cleaned} `
+    .replace(
+      /\b(?:sub(?:title)?\s*(?:indo(?:nesia)?|id|eng(?:lish)?|en)|(?:eng(?:lish)?|indo)\s*sub)\b/gi,
+      " ",
+    )
     .replace(/\b(?:episode|eps?)\s*\d+\b/gi, " ")
     .replace(/\b(?:nonton|streaming|download|unduh|batch|lengkap|bluray|bd)\b/gi, " ")
     .replace(/^\s*anime\s+/i, " ");

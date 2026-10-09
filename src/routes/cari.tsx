@@ -90,22 +90,30 @@ function SearchPage() {
     const clean = term.trim();
     if (!clean && !genre) return;
 
-    // Detect if the user pasted a direct Aniwatch/source URL or ID
-    const parsed = parseId(clean);
-    if (parsed) {
-      if (parsed.kind === "episode") {
-        navigate({
-          to: "/watch/$episodeId",
-          params: { episodeId: toEpisodeId(parsed.source, parsed.slug) },
-        });
-        return;
-      }
-      if (parsed.kind === "anime") {
-        navigate({
-          to: "/anime/$animeId",
-          params: { animeId: toAnimeId(parsed.source, parsed.slug) },
-        });
-        return;
+    // Detect if the user pasted a direct full URL or internal prefixed ID
+    const isExplicitUrlOrId =
+      clean.startsWith("http://") ||
+      clean.startsWith("https://") ||
+      clean.startsWith("/") ||
+      /^(?:ai|na|gm|aw|stk|sh|ks)_(?:ep_)?[a-z0-9_-]+/i.test(clean);
+
+    if (isExplicitUrlOrId) {
+      const parsed = parseId(clean);
+      if (parsed) {
+        if (parsed.kind === "episode") {
+          navigate({
+            to: "/watch/$episodeId",
+            params: { episodeId: toEpisodeId(parsed.source, parsed.slug) },
+          });
+          return;
+        }
+        if (parsed.kind === "anime") {
+          navigate({
+            to: "/anime/$animeId",
+            params: { animeId: toAnimeId(parsed.source, parsed.slug) },
+          });
+          return;
+        }
       }
     }
 

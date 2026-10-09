@@ -13,7 +13,7 @@ import type {
 import { SCHEDULE_DAYS } from "./anime-types";
 import { cached, withTimeout } from "./sources/cache.server";
 import { BROWSER_UA, fetchText, isDirectMediaUrl, slugify } from "./sources/http.server";
-import { normalizeTitle, parseId } from "./sources/ids";
+import { extractTitleAndEpisodeFromSlug, normalizeTitle, parseId } from "./sources/ids";
 import {
   normalizeLoose,
   parseSearchQuery,
@@ -26,6 +26,7 @@ import { findBatchFor, getBatchDetail, searchBatch } from "./sources/kusonime.se
 import { resolveNontonAnimeIdPlayer } from "./sources/nontonanimeid.server";
 import { enabledSources, getSource } from "./sources/registry.server";
 import { animein } from "./sources/animein.server";
+import { aniwatch } from "./sources/aniwatch.server";
 import { resolveSamehadakuPlayer, samehadaku } from "./sources/samehadaku.server";
 import { assertPublicHttpUrl, decodeServerRef, encodeServerRef } from "./sources/token.server";
 import { formatSafePoster } from "./sources/poster.server";
@@ -442,16 +443,20 @@ export async function search(
     }
   }
 
-  // 2. Clean query if a URL was pasted
+  // 2. Clean query if a URL or slug was pasted (e.g. sekai-saikyou-no-majo-hajimemashita-2-episode-1-msaexfb)
+  const slugInfo = extractTitleAndEpisodeFromSlug(term);
   const cleanTerm =
+    slugInfo.cleanTitle ||
     term
       .replace(/^https?:\/\/[^/]+\/(?:episode|anime|watch)\//i, "")
-      .replace(/-[a-f0-9]{4,8}$/i, "")
+      .replace(/-[a-z0-9]{4,10}$/i, "")
+      .replace(/-(?:episode|eps?)-?\d+/i, "")
       .replace(/-\d+$/, "")
-      .replace(/-/g, " ")
-      .trim() || term;
+      .replace(/[-_]+/g, " ")
+      .trim() ||
+    term;
 
-  // Kata pengganggu ("sub indo", "nonton") dan nomor season dibuang sebelum dikirim ke situs sumber
+  // Kata pengganggu ("sub indo", "sub eng", "nonton") dan nomor season dibuang sebelum dikirim ke situs sumber
   const parsed = parseSearchQuery(cleanTerm);
   const primaryTerm = parsed.base || cleanTerm;
 
@@ -470,9 +475,17 @@ export async function search(
 
     // 2. Halaman 1: coba juga nama lain (Romaji, Inggris, sinonim, "<nama> Season N") di semua sumber
     if (safePage === 1) {
-      const extra = variants
+      const allCandidateVariants = [
+        ...variants,
+        aliasData?.english,
+        aliasData?.romaji,
+        ...(aliasData?.synonyms || []),
+      ].filter((v): v is string => Boolean(v && v.trim().length >= 3));
+
+      const extra = Array.from(new Set(allCandidateVariants))
         .filter((v) => normalizeTitle(v) !== normalizeTitle(primaryTerm))
-        .slice(0, 3);
+        .slice(0, 4);
+
       const settled = await Promise.allSettled(
         extra.map((v) => fromSources<SourcePage>("search", (s) => s.search(v, 1))),
       );
@@ -744,11 +757,14 @@ export async function getDirectory(_provider = "otakudesu"): Promise<DirectoryGr
 
 // ID lama dari sumber sebelumnya tidak punya awalan, jadi dicari ulang lewat judul dari slug
 async function resolveLegacyAnimeId(id: string): Promise<string | null> {
-  const title = id
-    .replace(/-sub-indo.*$/i, "")
-    .replace(/-subtitle-indonesia.*$/i, "")
-    .replace(/-/g, " ")
-    .trim();
+  const { cleanTitle } = extractTitleAndEpisodeFromSlug(id);
+  const title =
+    cleanTitle ||
+    id
+      .replace(/-sub-indo.*$/i, "")
+      .replace(/-subtitle-indonesia.*$/i, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
   if (!title) return null;
   const found = await search(title, 1);
   const wanted = normalizeTitle(title);
@@ -768,11 +784,37 @@ export async function getDetail(id: string, _provider = "otakudesu"): Promise<An
   const { source: sourceId, slug } = parsed;
 
   return cached(`detail:${canonicalId}`, 15 * MIN, async () => {
-    const detail = await withTimeout(
-      getSource(sourceId).getDetail(slug),
-      DETAIL_TIMEOUT_MS,
-      `${sourceId}.detail`,
-    );
+    let detail: SourceDetail;
+    try {
+      detail = await withTimeout(
+        getSource(sourceId).getDetail(slug),
+        DETAIL_TIMEOUT_MS,
+        `${sourceId}.detail`,
+      );
+    } catch (err) {
+      // Cross-source fallback: search by extracted clean title across all providers
+      const slugInfo = extractTitleAndEpisodeFromSlug(canonicalId);
+      const cleanTitle = slugInfo.cleanTitle || slug.replace(/[-_]+/g, " ");
+      const searchRes = await search(cleanTitle, 1);
+      const candidate =
+        searchRes.items.find((item) => item.id !== canonicalId && item.id !== id) ||
+        searchRes.items[0];
+
+      if (candidate && candidate.id !== canonicalId) {
+        const altParsed = parseId(candidate.id);
+        if (altParsed && altParsed.kind === "anime") {
+          detail = await withTimeout(
+            getSource(altParsed.source).getDetail(altParsed.slug),
+            DETAIL_TIMEOUT_MS,
+            `${altParsed.source}.detail`,
+          );
+        } else {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
 
     // Batch dicari paralel dan boleh gagal tanpa mengganggu halaman detail
     let batch: AnimeDetail["batch"] = null;
@@ -948,27 +990,20 @@ function groupServers(stream: SourceStream): QualityServerGroup[] {
   });
 }
 
-async function findSubIndoAlternativeServers(
+async function findCrossSourceAlternativeServers(
   rawTitle: string,
   episodeNumber: number,
   fallbackSlug?: string,
 ): Promise<SourceServer[]> {
   try {
+    const slugInfo = extractTitleAndEpisodeFromSlug(fallbackSlug || rawTitle);
     const cleanTitle = rawTitle
       .replace(/^watch\s+/i, "")
       .replace(/\s+(?:episode|eps)\s+\d+.*$/i, "")
       .replace(/\s+online.*$/i, "")
-      .replace(/\s+sub(?:title)?\s+indo.*$/i, "")
+      .replace(/\s+sub(?:title)?\s+(?:indo|eng(?:lish)?).*$/i, "")
       .trim();
-    const fallbackTitle = fallbackSlug
-      ? fallbackSlug
-          .replace(/^aw_(?:\d+-)?/, "")
-          .replace(/-[a-f0-9]{4,8}$/i, "")
-          .replace(/-\d+$/, "")
-          .replace(/-/g, " ")
-          .trim()
-      : "";
-    const animeTitle = cleanTitle || fallbackTitle;
+    const animeTitle = cleanTitle || slugInfo.cleanTitle;
     if (!animeTitle) return [];
 
     const targetNormalized = normalizeLoose(animeTitle);
@@ -979,13 +1014,23 @@ async function findSubIndoAlternativeServers(
       targetCore,
       aliasData?.romaji?.replace(/[△▲★☆]/g, " ").trim(),
       aliasData?.english?.replace(/[△▲★☆]/g, " ").trim(),
-      ...(aliasData?.synonyms || []).slice(0, 2),
+      ...(aliasData?.synonyms || []).slice(0, 3),
     ].filter(Boolean) as string[];
 
     const dedupeTerms = Array.from(new Set(searchTerms.filter((t) => t.length >= 3)));
+    const servers: SourceServer[] = [];
+    const seenServerNames = new Set<string>();
 
-    // 1. Coba cari di AnimeIn (katalog Sub Indo terlengkap dengan server Rapsodi & Nanimex)
-    for (const term of dedupeTerms) {
+    const addServer = (srv: SourceServer) => {
+      const key = `${srv.name}-${srv.quality}`;
+      if (!seenServerNames.has(key)) {
+        seenServerNames.add(key);
+        servers.push(srv);
+      }
+    };
+
+    // 1. Coba cari di AnimeIn (Sub Indo: Rapsodi, Nanimex)
+    for (const term of dedupeTerms.slice(0, 4)) {
       try {
         const res = await withTimeout(animein.search(term, 1), 4000, "animein.subIndoCheck");
         if (res && res.items.length > 0) {
@@ -1025,27 +1070,30 @@ async function findSubIndoAlternativeServers(
                 "animein.subIndoStream",
               );
               if (epStream && epStream.servers.length > 0) {
-                return epStream.servers.map((s) => ({
-                  name: `[SUB INDO] ${s.name}`,
-                  quality:
-                    s.quality === "1080p"
-                      ? "1080p FHD"
-                      : s.quality === "720p"
-                        ? "720p HD"
-                        : s.quality,
-                  ref: s.ref,
-                }));
+                for (const s of epStream.servers) {
+                  addServer({
+                    name: `[SUB INDO] ${s.name}`,
+                    quality:
+                      s.quality === "1080p"
+                        ? "1080p FHD"
+                        : s.quality === "720p"
+                          ? "720p HD"
+                          : s.quality,
+                    ref: s.ref,
+                  });
+                }
+                break;
               }
             }
           }
         }
       } catch {
-        // coba term berikutnya
+        // continue
       }
     }
 
-    // 2. Coba cari di Samehadaku (server Blogger Video & Google Drive Sub Indo)
-    for (const term of dedupeTerms.slice(0, 2)) {
+    // 2. Coba cari di Samehadaku (Sub Indo: Blogger, Google Drive)
+    for (const term of dedupeTerms.slice(0, 3)) {
       try {
         const res = await withTimeout(samehadaku.search(term, 1), 4000, "samehadaku.subIndoCheck");
         if (res && res.items.length > 0) {
@@ -1077,11 +1125,14 @@ async function findSubIndoAlternativeServers(
                 "samehadaku.subIndoStream",
               );
               if (epStream && epStream.servers.length > 0) {
-                return epStream.servers.map((s) => ({
-                  name: `[SUB INDO] ${s.name || "Samehadaku"}`,
-                  quality: s.quality || "720p HD",
-                  ref: s.ref,
-                }));
+                for (const s of epStream.servers) {
+                  addServer({
+                    name: `[SUB INDO] ${s.name || "Samehadaku"}`,
+                    quality: s.quality || "720p HD",
+                    ref: s.ref,
+                  });
+                }
+                break;
               }
             }
           }
@@ -1090,10 +1141,61 @@ async function findSubIndoAlternativeServers(
         // continue
       }
     }
+
+    // 3. Coba cari di Aniwatch (Sub English: MegaPlay, VidNest, TryEmbed)
+    const englishTerms = [aliasData?.english, animeTitle, targetCore, aliasData?.romaji].filter(
+      Boolean,
+    ) as string[];
+
+    for (const term of Array.from(new Set(englishTerms))) {
+      try {
+        const res = await withTimeout(aniwatch.search(term, 1), 4000, "aniwatch.subEngCheck");
+        if (res && res.items.length > 0) {
+          const candidate = res.items[0];
+          if (candidate) {
+            const cleanSlug = candidate.id.replace(/^aw_/, "");
+            const detail = await withTimeout(
+              aniwatch.getDetail(cleanSlug),
+              4500,
+              "aniwatch.subEngDetail",
+            );
+            const targetEp =
+              detail.episodes.find((e) => e.number === episodeNumber) ||
+              detail.episodes.find((e) => {
+                const match =
+                  e.title.match(/(?:episode|eps|ep)\s*(\d+)/i) || e.title.match(/\b(\d+)\b/);
+                return match ? parseInt(match[1], 10) === episodeNumber : false;
+              });
+
+            if (targetEp) {
+              const epSlug = targetEp.id.replace(/^aw_ep_/, "");
+              const epStream = await withTimeout(
+                aniwatch.getStream(epSlug),
+                4000,
+                "aniwatch.subEngStream",
+              );
+              if (epStream && epStream.servers.length > 0) {
+                for (const s of epStream.servers) {
+                  addServer({
+                    name: `[SUB ENG] ${s.name}`,
+                    quality: s.quality || "Auto",
+                    ref: s.ref,
+                  });
+                }
+                break;
+              }
+            }
+          }
+        }
+      } catch {
+        // continue
+      }
+    }
+
+    return servers;
   } catch {
-    // ignore
+    return [];
   }
-  return [];
 }
 
 export async function getStream(episodeId: string, _provider = "otakudesu"): Promise<StreamResult> {
@@ -1102,7 +1204,7 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
     throw new Error("ID episode lama tidak dikenali, buka lagi lewat halaman anime");
   }
 
-  let stream: SourceStream;
+  let stream: SourceStream | null = null;
   try {
     stream = await cached(`stream:${episodeId}`, 3 * MIN, () =>
       withTimeout(
@@ -1112,52 +1214,67 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
       ),
     );
   } catch (err) {
-    if (parsed.source === "aniwatch") {
-      const epNumMatch = parsed.slug.match(/-(\d+)-/) ?? parsed.slug.match(/-(\d+)$/);
-      const epNumber = epNumMatch ? parseInt(epNumMatch[1], 10) : 1;
-      const cleanSlugTitle = parsed.slug
-        .replace(/^aw_(?:\d+-)?/, "")
-        .replace(/-[a-f0-9]{4,8}$/i, "")
-        .replace(/-\d+$/, "")
-        .replace(/-/g, " ")
-        .trim();
-      const subIndoServers = await findSubIndoAlternativeServers(cleanSlugTitle, epNumber);
-      if (subIndoServers.length > 0) {
-        stream = {
-          id: episodeId,
-          animeId: `aw_${parsed.slug.replace(/-\d+-[a-f0-9]+$/i, "")}`,
-          title: `${cleanSlugTitle.toUpperCase()} Episode ${epNumber}`,
-          releaseTime: null,
-          servers: subIndoServers,
-          downloads: [],
-          prevEpisodeId: null,
-          nextEpisodeId: null,
-        };
-      } else {
-        throw err;
-      }
+    // If the provider fails or 404s, resolve via cross-provider search
+    const slugInfo = extractTitleAndEpisodeFromSlug(parsed.slug);
+    const epNumMatch =
+      parsed.slug.match(/(?:-episode-|-ep-|-)(\d+)(?:-[a-z0-9]+)?$/i) ??
+      parsed.slug.match(/-(\d+)-/) ??
+      parsed.slug.match(/-(\d+)$/);
+    const epNumber = epNumMatch ? parseInt(epNumMatch[1], 10) : slugInfo.episodeNumber || 1;
+    const cleanTitle = slugInfo.cleanTitle || parsed.slug.replace(/[-_]+/g, " ");
+
+    const altServers = await findCrossSourceAlternativeServers(cleanTitle, epNumber, parsed.slug);
+    if (altServers.length > 0) {
+      stream = {
+        id: episodeId,
+        animeId: `aw_${parsed.slug.replace(/-(?:episode|eps?)-?\d+.*$/i, "").replace(/-[a-z0-9]+$/i, "")}`,
+        title: `${cleanTitle.toUpperCase()} Episode ${epNumber}`,
+        releaseTime: null,
+        servers: altServers,
+        downloads: [],
+        prevEpisodeId:
+          epNumber > 1 ? `${parsed.slug.replace(/-\d+.*$/, "")}-${epNumber - 1}` : null,
+        nextEpisodeId: `${parsed.slug.replace(/-\d+.*$/, "")}-${epNumber + 1}`,
+      };
     } else {
       throw err;
     }
   }
 
-  // Jika episode berasal dari sumber berbahasa Inggris (Aniwatch), otomatis cari server Sub Indo dari AnimeIn / Samehadaku
-  if (parsed.source === "aniwatch") {
-    try {
-      const epNumMatch = parsed.slug.match(/-(\d+)-/) ?? parsed.slug.match(/-(\d+)$/);
-      const epNumber = epNumMatch ? parseInt(epNumMatch[1], 10) : 1;
-      const subIndoServers = await findSubIndoAlternativeServers(
+  // Cross-augment: if stream is missing either Sub Indo or Sub Eng, fetch and merge!
+  try {
+    const slugInfo = extractTitleAndEpisodeFromSlug(parsed.slug);
+    const epMatch =
+      stream.title.match(/(?:episode|eps|ep)\s*(\d+)/i) ??
+      parsed.slug.match(/(?:-episode-|-ep-|-)(\d+)/i);
+    const epNumber = epMatch ? parseInt(epMatch[1], 10) : slugInfo.episodeNumber || 1;
+
+    const hasSubIndo = stream.servers.some((s) => isServerSubIndo(s, stream!.id));
+    const hasSubEng = stream.servers.some((s) => !isServerSubIndo(s, stream!.id));
+
+    if (!hasSubIndo || !hasSubEng) {
+      const extraServers = await findCrossSourceAlternativeServers(
         stream.title,
         epNumber,
-        stream.animeId,
+        stream.animeId || parsed.slug,
       );
-      if (subIndoServers.length > 0) {
-        // Hapus duplikasi dan sisipkan di paling depan
-        stream.servers.unshift(...subIndoServers);
+      const existingRefs = new Set(
+        stream.servers.map((s) => (s.ref.kind === "url" ? s.ref.url : s.name)),
+      );
+      for (const extra of extraServers) {
+        const key = extra.ref.kind === "url" ? extra.ref.url : extra.name;
+        if (!existingRefs.has(key)) {
+          existingRefs.add(key);
+          if (isServerSubIndo(extra, stream.id)) {
+            stream.servers.unshift(extra);
+          } else {
+            stream.servers.push(extra);
+          }
+        }
       }
-    } catch {
-      // ignore cross-source sub indo lookup error
     }
+  } catch {
+    // ignore cross-source sub indo/eng augmentation error
   }
 
   // Urutkan server sehingga server Sub Indo dengan resolusi terbaik selalu diprioritaskan

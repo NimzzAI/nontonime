@@ -195,8 +195,12 @@ export const aniwatch: AnimeSource = {
   async getDetail(slug) {
     const clean = lastSegment(slug);
 
-    // If an episode slug was passed directly (e.g. yuruyuri-nachuyachumi-1-c5d95)
-    if (/-\d+-[a-f0-9]{4,8}$/i.test(clean) || /-\d+$/.test(clean)) {
+    // If an episode slug was passed directly (e.g. yuruyuri-nachuyachumi-1-c5d95 or sekai-saikyou-no-majo-hajimemashita-2-episode-1-msaexfb)
+    if (
+      /-\d+-[a-z0-9]{4,10}$/i.test(clean) ||
+      /-(?:episode|eps?)-?\d+(?:-[a-z0-9]{4,10})?$/i.test(clean) ||
+      /-\d+$/.test(clean)
+    ) {
       try {
         const epPage = await html(`${baseUrl()}/episode/${clean}`);
         const $ep = cheerio.load(epPage);
@@ -217,14 +221,50 @@ export const aniwatch: AnimeSource = {
       pageHtml = await html(`${baseUrl()}/anime/${clean}`);
     } catch (err) {
       // In case slug has name-hash instead of hash-name (e.g. yuruyuri-nachuyachumi-c5d95 vs c5d95-yuruyuri-nachuyachumi)
-      const inverted = clean.replace(/^(.+)-([a-f0-9]{4,8})$/i, "$2-$1");
+      const inverted = clean.replace(/^(.+)-([a-z0-9]{4,10})$/i, "$2-$1");
       if (inverted !== clean) {
         try {
           pageHtml = await html(`${baseUrl()}/anime/${inverted}`);
         } catch {
+          // In case anime moved or is indexed by search title
+          const cleanQuery = clean
+            .replace(/-[a-z0-9]{4,10}$/i, "")
+            .replace(/-(?:episode|eps?)-?\d+.*$/i, "")
+            .replace(/-\d+$/, "")
+            .replace(/-/g, " ")
+            .trim();
+          if (cleanQuery && cleanQuery.length > 3) {
+            const searchRes = await aniwatch.search(cleanQuery, 1);
+            if (searchRes.items.length > 0 && searchRes.items[0]?.id) {
+              const matchedSlug = searchRes.items[0].id.replace(/^aw_/, "");
+              if (matchedSlug && matchedSlug !== clean) {
+                return aniwatch.getDetail(matchedSlug);
+              }
+            }
+          }
           throw err;
         }
       } else {
+        // Fallback: search Aniwatch by clean title
+        const cleanQuery = clean
+          .replace(/-[a-z0-9]{4,10}$/i, "")
+          .replace(/-(?:episode|eps?)-?\d+.*$/i, "")
+          .replace(/-\d+$/, "")
+          .replace(/-/g, " ")
+          .trim();
+        if (cleanQuery && cleanQuery.length > 3) {
+          try {
+            const searchRes = await aniwatch.search(cleanQuery, 1);
+            if (searchRes.items.length > 0 && searchRes.items[0]?.id) {
+              const matchedSlug = searchRes.items[0].id.replace(/^aw_/, "");
+              if (matchedSlug && matchedSlug !== clean) {
+                return aniwatch.getDetail(matchedSlug);
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
         throw err;
       }
     }
@@ -371,7 +411,22 @@ export const aniwatch: AnimeSource = {
 
   async getStream(slug) {
     const clean = lastSegment(slug);
-    const page = await html(`${baseUrl()}/episode/${clean}`);
+    let page = "";
+    try {
+      page = await html(`${baseUrl()}/episode/${clean}`);
+    } catch (err) {
+      // Try alternative slug formats (e.g. name-episode-1-hash vs name-1-hash)
+      const simplified = clean.replace(/-(?:episode|eps?)-(\d+)-/i, "-$1-");
+      if (simplified !== clean) {
+        try {
+          page = await html(`${baseUrl()}/episode/${simplified}`);
+        } catch {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
     const $ = cheerio.load(page);
 
     const title = cleanText($("h1").first().text()) || cleanText($("title").text());
@@ -381,7 +436,10 @@ export const aniwatch: AnimeSource = {
 
     const anilistId = anilistMatch?.[1];
     const malId = malMatch?.[1];
-    const epNumber = (clean.match(/-(\d+)-/) ?? clean.match(/-(\d+)$/))?.[1] ?? "1";
+    const epNumber =
+      clean.match(/(?:-episode-|-ep-|-)(\d+)(?:-[a-z0-9]+)?$/i)?.[1] ??
+      (clean.match(/-(\d+)-/) ?? clean.match(/-(\d+)$/))?.[1] ??
+      "1";
 
     let epId = "";
     if (hianimeMatch?.[1]) {
