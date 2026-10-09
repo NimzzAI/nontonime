@@ -122,7 +122,7 @@ export function TrendingSlider({ items }: { items: AnimeSummary[] }) {
               key={anime.id}
               className="group relative w-[280px] sm:w-[360px] md:w-[420px] shrink-0 snap-start select-none"
             >
-              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-white/10 dark:border-white/5 bg-muted shadow-lg transition-all duration-500 group-hover:border-primary/60 group-hover:shadow-2xl group-hover:shadow-primary/20">
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 bg-muted shadow-lg transition-all duration-500 group-hover:border-primary/60 group-hover:shadow-2xl group-hover:shadow-primary/20">
                 {/* Large Edge-to-Edge Image with Hover-Zoom Effect */}
                 {(() => {
                   const posterUrl = getSafePosterUrl(anime.poster, anime.title);

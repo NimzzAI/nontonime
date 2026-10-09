@@ -26,7 +26,7 @@ import { findBatchFor, getBatchDetail, searchBatch } from "./sources/kusonime.se
 import { resolveNontonAnimeIdPlayer } from "./sources/nontonanimeid.server";
 import { enabledSources, getSource } from "./sources/registry.server";
 import { animein } from "./sources/animein.server";
-import { resolveSamehadakuPlayer } from "./sources/samehadaku.server";
+import { resolveSamehadakuPlayer, samehadaku } from "./sources/samehadaku.server";
 import { assertPublicHttpUrl, decodeServerRef, encodeServerRef } from "./sources/token.server";
 import { formatSafePoster } from "./sources/poster.server";
 import {
@@ -129,9 +129,9 @@ async function fromSources<T>(
   return { results, attempted: calls.length };
 }
 
-// Hasil tiap sumber diselang-seling supaya satu sumber tidak menguasai daftar, judul kembar dibuang
+// Hasil tiap sumber diselang-seling, judul kembar diprioritaskan untuk sumber Subtitle Indonesia
 function mergeItems(lists: SourceItem[][], limit?: number): SourceItem[] {
-  const seen = new Set<string>();
+  const indexByKey = new Map<string, number>();
   const out: SourceItem[] = [];
   const longest = Math.max(0, ...lists.map((l) => l.length));
   for (let i = 0; i < longest; i++) {
@@ -139,9 +139,18 @@ function mergeItems(lists: SourceItem[][], limit?: number): SourceItem[] {
       const item = list[i];
       if (!item) continue;
       const key = normalizeTitle(item.title) || item.id;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(item);
+      const existingIdx = indexByKey.get(key);
+      if (existingIdx === undefined) {
+        indexByKey.set(key, out.length);
+        out.push(item);
+      } else {
+        const existing = out[existingIdx];
+        // Jika item yang tersimpan saat ini berasal dari Aniwatch (Sub Inggris) dan item baru dari sumber Sub Indo,
+        // utamakan versi Sub Indo!
+        if (existing && existing.id.startsWith("aw_") && !item.id.startsWith("aw_")) {
+          out[existingIdx] = item;
+        }
+      }
       if (limit && out.length >= limit) return out;
     }
   }
@@ -227,7 +236,7 @@ function relevance(
   }
 
   // Sub Indo diprioritaskan untuk penonton Indonesia
-  const subIndoBonus = itemId.startsWith("aw_") ? 0 : 150;
+  const subIndoBonus = itemId.startsWith("aw_") ? 0 : 500;
 
   return baseScore + aliasBonus + subIndoBonus + seasonBonus - Math.abs(t.length - q.length) / 100;
 }
@@ -840,6 +849,56 @@ function qualityWeight(q: string): number {
   return 100;
 }
 
+function isServerSubIndo(server: SourceServer, streamId?: string): boolean {
+  if (streamId) {
+    if (
+      streamId.startsWith("ai_") ||
+      streamId.startsWith("sh_") ||
+      streamId.startsWith("gm_") ||
+      streamId.startsWith("sn_") ||
+      streamId.startsWith("na_") ||
+      streamId.startsWith("ot_")
+    ) {
+      return true;
+    }
+  }
+  const name = (server.name || "").toLowerCase();
+  if (
+    name.includes("sub indo") ||
+    name.includes("indonesia") ||
+    name.includes("rapsodi") ||
+    name.includes("nanimex") ||
+    name.includes("samehadaku") ||
+    name.includes("animein") ||
+    name.includes("gomunime") ||
+    name.includes("stucknime")
+  ) {
+    return true;
+  }
+  if (server.ref.kind === "samehadaku") return true;
+  if (server.ref.kind === "url") {
+    const url = (server.ref.url || "").toLowerCase();
+    if (
+      url.includes("animein") ||
+      url.includes("uservideo") ||
+      url.includes("blogger") ||
+      url.includes("storages.animein") ||
+      url.includes("samehadaku") ||
+      url.includes("gomunime") ||
+      url.includes("stucknime")
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function serverPreferenceWeight(server: SourceServer, streamId?: string): number {
+  const isSubIndo = isServerSubIndo(server, streamId);
+  const subBonus = isSubIndo ? 10000 : 0;
+  return subBonus + qualityWeight(server.quality || "Auto");
+}
+
 function groupServers(stream: SourceStream): QualityServerGroup[] {
   const groups = new Map<string, QualityServerGroup>();
   for (const server of stream.servers) {
@@ -851,9 +910,42 @@ function groupServers(stream: SourceStream): QualityServerGroup[] {
       group = { quality, serverList: [] };
       groups.set(quality, group);
     }
-    group.serverList.push({ title: server.name, serverId: encodeServerRef(server.ref) });
+    // Beri penanda bahasa jelas: [SUB INDO] atau [SUB ENG]
+    let title = server.name;
+    const isSubIndo = isServerSubIndo(server, stream.id);
+
+    if (isSubIndo) {
+      if (!title.includes("[SUB INDO]")) {
+        title = `[SUB INDO] ${title.replace(/\(Sub Indo [^)]+\)/i, "").trim()}`;
+      }
+    } else {
+      if (!title.includes("[SUB ENG]") && !title.includes("Dub")) {
+        title = `[SUB ENG] ${title}`;
+      }
+    }
+
+    group.serverList.push({ title, serverId: encodeServerRef(server.ref) });
   }
-  return [...groups.values()].sort((a, b) => qualityWeight(b.quality) - qualityWeight(a.quality));
+
+  // Di tiap group kualitas, server Sub Indo selalu diletakkan paling atas
+  for (const group of groups.values()) {
+    group.serverList.sort((a, b) => {
+      const aIsSubIndo = a.title.includes("[SUB INDO]") || /sub\s*indo/i.test(a.title);
+      const bIsSubIndo = b.title.includes("[SUB INDO]") || /sub\s*indo/i.test(b.title);
+      if (aIsSubIndo && !bIsSubIndo) return -1;
+      if (!aIsSubIndo && bIsSubIndo) return 1;
+      return 0;
+    });
+  }
+
+  // Urutkan grup kualitas: grup yang punya server Sub Indo atau resolusi tertinggi tampil duluan
+  return [...groups.values()].sort((a, b) => {
+    const aHasSubIndo = a.serverList.some((s) => s.title.includes("[SUB INDO]"));
+    const bHasSubIndo = b.serverList.some((s) => s.title.includes("[SUB INDO]"));
+    if (aHasSubIndo && !bHasSubIndo) return -1;
+    if (!aHasSubIndo && bHasSubIndo) return 1;
+    return qualityWeight(b.quality) - qualityWeight(a.quality);
+  });
 }
 
 async function findSubIndoAlternativeServers(
@@ -866,72 +958,136 @@ async function findSubIndoAlternativeServers(
       .replace(/^watch\s+/i, "")
       .replace(/\s+(?:episode|eps)\s+\d+.*$/i, "")
       .replace(/\s+online.*$/i, "")
+      .replace(/\s+sub(?:title)?\s+indo.*$/i, "")
       .trim();
     const fallbackTitle = fallbackSlug
       ? fallbackSlug
           .replace(/^aw_(?:\d+-)?/, "")
+          .replace(/-[a-f0-9]{4,8}$/i, "")
+          .replace(/-\d+$/, "")
           .replace(/-/g, " ")
           .trim()
       : "";
     const animeTitle = cleanTitle || fallbackTitle;
     if (!animeTitle) return [];
 
+    const targetNormalized = normalizeLoose(animeTitle);
+    const targetCore = stripSeasonWords(targetNormalized);
     const aliasData = await resolveAnimeAliases(animeTitle);
     const searchTerms = [
-      aliasData?.romaji?.replace(/[△▲★☆]/g, " ").trim(),
-      aliasData?.romaji
-        ?.replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
-        .replace(/[△▲★☆]/g, " ")
-        .trim(),
-      animeTitle
-        .replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
-        .replace(/[△▲★☆]/g, " ")
-        .trim(),
       animeTitle,
+      targetCore,
+      aliasData?.romaji?.replace(/[△▲★☆]/g, " ").trim(),
+      aliasData?.english?.replace(/[△▲★☆]/g, " ").trim(),
+      ...(aliasData?.synonyms || []).slice(0, 2),
     ].filter(Boolean) as string[];
 
-    for (const term of searchTerms) {
-      if (term.length < 3) continue;
-      const res = await withTimeout(animein.search(term, 1), 3500, "animein.subIndoCheck");
-      if (res && res.items.length > 0) {
-        // Find best matching anime
-        const candidate =
-          res.items.find((item) => {
-            const t = item.title.toLowerCase();
-            const wantedSeason = parseSearchQuery(animeTitle).season;
-            if (wantedSeason) return titleSeason(item.title) === wantedSeason;
-            return (titleSeason(item.title) ?? 1) === 1 && !t.includes("movie");
-          }) || res.items[0];
+    const dedupeTerms = Array.from(new Set(searchTerms.filter((t) => t.length >= 3)));
 
-        if (candidate) {
-          const cleanSlug = candidate.id.replace(/^ai_/, "");
-          const detail = await withTimeout(
-            animein.getDetail(cleanSlug),
-            3500,
-            "animein.subIndoDetail",
-          );
-          const targetEp = detail.episodes.find((e) => e.number === episodeNumber);
-          if (targetEp) {
-            const epSlug = targetEp.id.replace(/^ai_ep_/, "");
-            const epStream = await withTimeout(
-              animein.getStream(epSlug),
-              3500,
-              "animein.subIndoStream",
+    // 1. Coba cari di AnimeIn (katalog Sub Indo terlengkap dengan server Rapsodi & Nanimex)
+    for (const term of dedupeTerms) {
+      try {
+        const res = await withTimeout(animein.search(term, 1), 4000, "animein.subIndoCheck");
+        if (res && res.items.length > 0) {
+          const candidate =
+            res.items.find((item) => normalizeLoose(item.title) === targetNormalized) ||
+            res.items.find((item) => stripSeasonWords(normalizeLoose(item.title)) === targetCore) ||
+            res.items.find((item) => {
+              const norm = normalizeLoose(item.title);
+              return (
+                !norm.includes("movie") &&
+                !norm.includes("special") &&
+                (norm.startsWith(targetNormalized) || targetNormalized.startsWith(norm))
+              );
+            }) ||
+            res.items[0];
+
+          if (candidate) {
+            const cleanSlug = candidate.id.replace(/^ai_/, "");
+            const detail = await withTimeout(
+              animein.getDetail(cleanSlug),
+              4500,
+              "animein.subIndoDetail",
             );
-            if (epStream && epStream.servers.length > 0) {
-              return epStream.servers.map((s) => ({
-                name: `${s.name}`,
-                quality:
-                  s.quality === "1080p"
-                    ? "1080p FHD"
-                    : s.quality === "720p"
-                      ? "720p HD"
-                      : s.quality,
-                ref: s.ref,
-              }));
+            const targetEp =
+              detail.episodes.find((e) => e.number === episodeNumber) ||
+              detail.episodes.find((e) => {
+                const match =
+                  e.title.match(/(?:episode|eps|ep)\s*(\d+)/i) || e.title.match(/\b(\d+)\b/);
+                return match ? parseInt(match[1], 10) === episodeNumber : false;
+              });
+
+            if (targetEp) {
+              const epSlug = targetEp.id.replace(/^ai_ep_/, "");
+              const epStream = await withTimeout(
+                animein.getStream(epSlug),
+                4000,
+                "animein.subIndoStream",
+              );
+              if (epStream && epStream.servers.length > 0) {
+                return epStream.servers.map((s) => ({
+                  name: `[SUB INDO] ${s.name}`,
+                  quality:
+                    s.quality === "1080p"
+                      ? "1080p FHD"
+                      : s.quality === "720p"
+                        ? "720p HD"
+                        : s.quality,
+                  ref: s.ref,
+                }));
+              }
             }
           }
         }
+      } catch {
+        // coba term berikutnya
+      }
+    }
+
+    // 2. Coba cari di Samehadaku (server Blogger Video & Google Drive Sub Indo)
+    for (const term of dedupeTerms.slice(0, 2)) {
+      try {
+        const res = await withTimeout(samehadaku.search(term, 1), 4000, "samehadaku.subIndoCheck");
+        if (res && res.items.length > 0) {
+          const candidate =
+            res.items.find((item) => normalizeLoose(item.title) === targetNormalized) ||
+            res.items.find((item) => stripSeasonWords(normalizeLoose(item.title)) === targetCore) ||
+            res.items[0];
+
+          if (candidate) {
+            const cleanSlug = candidate.id.replace(/^sh_/, "");
+            const detail = await withTimeout(
+              samehadaku.getDetail(cleanSlug),
+              4500,
+              "samehadaku.subIndoDetail",
+            );
+            const targetEp =
+              detail.episodes.find((e) => e.number === episodeNumber) ||
+              detail.episodes.find((e) => {
+                const match =
+                  e.title.match(/(?:episode|eps|ep)\s*(\d+)/i) || e.title.match(/\b(\d+)\b/);
+                return match ? parseInt(match[1], 10) === episodeNumber : false;
+              });
+
+            if (targetEp) {
+              const epSlug = targetEp.id.replace(/^sh_ep_/, "");
+              const epStream = await withTimeout(
+                samehadaku.getStream(epSlug),
+                4000,
+                "samehadaku.subIndoStream",
+              );
+              if (epStream && epStream.servers.length > 0) {
+                return epStream.servers.map((s) => ({
+                  name: `[SUB INDO] ${s.name || "Samehadaku"}`,
+                  quality: s.quality || "720p HD",
+                  ref: s.ref,
+                }));
+              }
+            }
+          }
+        }
+      } catch {
+        // continue
       }
     }
   } catch {
@@ -946,15 +1102,46 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
     throw new Error("ID episode lama tidak dikenali, buka lagi lewat halaman anime");
   }
 
-  const stream = await cached(`stream:${episodeId}`, 3 * MIN, () =>
-    withTimeout(
-      getSource(parsed.source).getStream(parsed.slug),
-      DETAIL_TIMEOUT_MS,
-      `${parsed.source}.stream`,
-    ),
-  );
+  let stream: SourceStream;
+  try {
+    stream = await cached(`stream:${episodeId}`, 3 * MIN, () =>
+      withTimeout(
+        getSource(parsed.source).getStream(parsed.slug),
+        DETAIL_TIMEOUT_MS,
+        `${parsed.source}.stream`,
+      ),
+    );
+  } catch (err) {
+    if (parsed.source === "aniwatch") {
+      const epNumMatch = parsed.slug.match(/-(\d+)-/) ?? parsed.slug.match(/-(\d+)$/);
+      const epNumber = epNumMatch ? parseInt(epNumMatch[1], 10) : 1;
+      const cleanSlugTitle = parsed.slug
+        .replace(/^aw_(?:\d+-)?/, "")
+        .replace(/-[a-f0-9]{4,8}$/i, "")
+        .replace(/-\d+$/, "")
+        .replace(/-/g, " ")
+        .trim();
+      const subIndoServers = await findSubIndoAlternativeServers(cleanSlugTitle, epNumber);
+      if (subIndoServers.length > 0) {
+        stream = {
+          id: episodeId,
+          animeId: `aw_${parsed.slug.replace(/-\d+-[a-f0-9]+$/i, "")}`,
+          title: `${cleanSlugTitle.toUpperCase()} Episode ${epNumber}`,
+          releaseTime: null,
+          servers: subIndoServers,
+          downloads: [],
+          prevEpisodeId: null,
+          nextEpisodeId: null,
+        };
+      } else {
+        throw err;
+      }
+    } else {
+      throw err;
+    }
+  }
 
-  // If the stream is from Aniwatch (English subs), search for Sub Indo servers from AnimeIn
+  // Jika episode berasal dari sumber berbahasa Inggris (Aniwatch), otomatis cari server Sub Indo dari AnimeIn / Samehadaku
   if (parsed.source === "aniwatch") {
     try {
       const epNumMatch = parsed.slug.match(/-(\d+)-/) ?? parsed.slug.match(/-(\d+)$/);
@@ -965,6 +1152,7 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
         stream.animeId,
       );
       if (subIndoServers.length > 0) {
+        // Hapus duplikasi dan sisipkan di paling depan
         stream.servers.unshift(...subIndoServers);
       }
     } catch {
@@ -972,9 +1160,9 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
     }
   }
 
-  // Sort servers so highest resolution (1080p FHD > 720p HD > 480p > Auto > 360p) is preferred
+  // Urutkan server sehingga server Sub Indo dengan resolusi terbaik selalu diprioritaskan
   const sortedServers = [...stream.servers].sort(
-    (a, b) => qualityWeight(b.quality || "Auto") - qualityWeight(a.quality || "Auto"),
+    (a, b) => serverPreferenceWeight(b, stream.id) - serverPreferenceWeight(a, stream.id),
   );
   const preferredServer = sortedServers[0] || stream.servers[0];
   const embedUrl =

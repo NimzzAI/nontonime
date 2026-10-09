@@ -216,7 +216,7 @@ export function SiteHeader() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs transition-transform group-hover:scale-105">
                 <Play className="h-4 w-4 fill-current ml-0.5" />
               </div>
-              <span className="flex items-center tracking-tight text-base font-extrabold sm:text-lg">
+              <span className="flex items-center tracking-tight text-base font-bold sm:text-lg">
                 nonton<span className="text-primary font-bold">ime</span>
               </span>
             </Link>
@@ -231,7 +231,7 @@ export function SiteHeader() {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground cursor-pointer"
+                          className="noir-button-secondary inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium text-ink-dim transition-colors hover:text-ink cursor-pointer"
                         >
                           <Icon className="h-3.5 w-3.5 opacity-70" />
                           <span>{item.label}</span>
@@ -323,7 +323,7 @@ export function SiteHeader() {
                     setShowSearchDropdown(true);
                   }}
                   onFocus={() => setShowSearchDropdown(true)}
-                  className="h-9 w-full rounded-lg border border-border/80 bg-secondary/40 pl-8.5 pr-14 text-xs text-foreground placeholder:text-muted-foreground transition-all focus:bg-background focus:border-primary/60 focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                  className="h-9 w-full rounded-lg border border-border/80 bg-secondary/50 dark:bg-white/5 pl-8.5 pr-14 text-xs text-foreground placeholder:text-muted-foreground transition-all focus:bg-background focus:border-primary/50 focus:outline-hidden focus:ring-1 focus:ring-primary/20"
                 />
                 {searchTerm ? (
                   <button
@@ -335,7 +335,7 @@ export function SiteHeader() {
                     <X className="h-3 w-3" />
                   </button>
                 ) : (
-                  <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-border/60 bg-muted/60 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground">
+                  <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-border/80 bg-secondary/60 dark:bg-white/5 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground">
                     /
                   </kbd>
                 )}

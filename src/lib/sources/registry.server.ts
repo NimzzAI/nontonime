@@ -18,11 +18,10 @@ const ALL_SOURCES: Record<SourceId, AnimeSource> = {
 
 export const DEFAULT_SOURCE_IDS: SourceId[] = [
   "animein",
-  "nontonanimeid",
-  "gomunime",
-  "aniwatch",
-  "stucknime",
   "samehadaku",
+  "gomunime",
+  "stucknime",
+  "nontonanimeid",
 ];
 
 export function enabledSourceIds(): SourceId[] {

@@ -144,7 +144,7 @@ export function AnimeDetailPage() {
         <div className="relative z-10 p-6 sm:p-8 md:p-10">
           <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
             {/* Poster Card */}
-            <div className="relative shrink-0 w-44 sm:w-52 lg:w-60 overflow-hidden rounded-2xl border-2 border-white/10 shadow-2xl bg-muted mx-auto md:mx-0">
+            <div className="relative shrink-0 w-44 sm:w-52 lg:w-60 overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 shadow-2xl bg-muted mx-auto md:mx-0">
               {!imgError && imgSrc ? (
                 <img
                   src={imgSrc}

@@ -60,7 +60,7 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
       id="home-hero-slider"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group/slider relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-card shadow-xl"
+      className="group/slider relative overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 noir-frame shadow-xl hero-slide"
     >
       <div ref={emblaRef} className="overflow-hidden">
         <div className="flex">
@@ -78,8 +78,11 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
             const posterUrl = getSafePosterUrl(anime.poster, anime.title);
 
             return (
-              <div key={anime.id} className="relative min-w-0 shrink-0 grow-0 basis-full">
-                <div className="relative flex flex-col w-full overflow-hidden p-4 sm:p-6 md:p-7 lg:p-8 space-y-3 sm:space-y-4">
+              <div
+                key={anime.id}
+                className="relative min-w-0 shrink-0 grow-0 basis-full hero-slide"
+              >
+                <div className="relative flex flex-col w-full overflow-hidden p-5 sm:p-7 md:p-8 lg:p-10 space-y-3 sm:space-y-4">
                   {/* Atmospheric Backdrop */}
                   {posterUrl ? (
                     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
@@ -90,61 +93,53 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                         decoding="async"
                         loading="lazy"
                         referrerPolicy="no-referrer"
-                        className="h-full w-full object-cover object-center opacity-15 dark:opacity-20"
+                        className="h-full w-full object-cover object-center opacity-20 filter contrast-105"
                       />
                       {/* Gradient Masks for Clean Contrast */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/85 to-card/50" />
-                      <div className="absolute inset-0 bg-gradient-to-r from-card via-card/80 to-transparent hidden md:block" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/90 to-surface/60" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-surface via-surface/85 to-transparent hidden md:block" />
                     </div>
                   ) : null}
 
                   {/* Top Tagline / Status */}
                   <div className="relative z-10 flex items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {isOngoing ? (
-                        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/90 px-3 py-1 text-[10px] sm:text-[11px] font-extrabold text-white shadow-md shadow-emerald-500/20 backdrop-blur-xs">
-                          <span className="relative flex h-2.5 w-2.5 items-center justify-center">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-200 opacity-75" />
-                            <span className="relative inline-flex h-2 w-2 rounded-full bg-white shadow-xs" />
-                          </span>
-                          ONGOING
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-600/90 px-3 py-1 text-[10px] sm:text-[11px] font-extrabold text-white shadow-md shadow-sky-600/20 backdrop-blur-xs">
-                          <CheckCircle2 className="h-3 w-3" />
-                          TAMAT
-                        </span>
-                      )}
-
-                      <span className="inline-flex items-center rounded-full border border-border/80 bg-secondary/80 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="noir-kicker">
+                        {isOngoing ? "ONGOING" : isCompleted ? "TAMAT" : "FEATURED"}
+                      </span>
+                      <span className="text-muted-foreground/30">·</span>
+                      <span className="text-xs font-mono text-muted-foreground">
                         Pilihan Editor
                       </span>
-
                       {anime.episodeCount ? (
-                        <span className="hidden sm:inline-flex rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                          {anime.episodeCount} Episode
-                        </span>
+                        <>
+                          <span className="text-muted-foreground/30 hidden sm:inline">·</span>
+                          <span className="text-xs font-mono text-muted-foreground/75 hidden sm:inline">
+                            {anime.episodeCount} Eps
+                          </span>
+                        </>
                       ) : null}
-
                       {anime.releaseDay ? (
-                        <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                          <Calendar className="h-3 w-3 text-primary" />
-                          {anime.releaseDay}
-                        </span>
+                        <>
+                          <span className="text-muted-foreground/30 hidden sm:inline">·</span>
+                          <span className="text-xs font-mono text-muted-foreground/75 hidden sm:inline">
+                            {anime.releaseDay}
+                          </span>
+                        </>
                       ) : null}
                     </div>
 
                     {/* Score Badge Top Right */}
                     {anime.score ? (
-                      <div className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold text-amber-500">
-                        <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                      <div className="flex items-center gap-1.5 rounded-sm border border-white/15 bg-black/60 px-2.5 py-0.5 text-xs font-mono font-bold text-amber-300">
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                         <span>{anime.score}</span>
                       </div>
                     ) : null}
                   </div>
 
                   {/* Middle Section: Split Content with PROMINENT POSTER THUMBNAIL */}
-                  <div className="relative z-10 my-2 sm:my-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="relative z-10 my-2 sm:my-3 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     {/* Left: Text & Actions */}
                     <div className="max-w-2xl space-y-3 sm:space-y-4">
                       {/* Mobile Layout: Inline Poster + Title */}
@@ -153,7 +148,7 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                           <Link
                             to="/anime/$animeId"
                             params={{ animeId: anime.id }}
-                            className="relative shrink-0 block w-20 sm:w-24 aspect-[3/4] overflow-hidden rounded-xl border border-border/70 shadow-md bg-muted"
+                            className="relative shrink-0 block w-20 sm:w-24 aspect-[3/4] overflow-hidden rounded-lg border border-white/15 shadow-md bg-black/50"
                           >
                             <img
                               src={posterUrl}
@@ -161,17 +156,20 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                               referrerPolicy="no-referrer"
                               className="h-full w-full object-cover"
                             />
-                            <div className="absolute bottom-1 right-1 rounded bg-black/75 px-1 py-0.5 text-[8px] font-bold text-white">
+                            <div className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-[8px] font-mono font-bold text-white">
                               HD
                             </div>
                           </Link>
                         ) : null}
 
                         <div className="min-w-0 flex-1 space-y-1">
-                          <h1 className="line-clamp-2 font-display text-base sm:text-xl font-black tracking-tight text-foreground">
+                          <h1
+                            className="line-clamp-2 font-display text-lg sm:text-2xl font-bold tracking-tight text-ink"
+                            style={{ textWrap: "balance" }}
+                          >
                             {anime.title}
                           </h1>
-                          <p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                          <p className="line-clamp-2 text-xs text-ink-dim leading-relaxed">
                             {anime.synopsis ||
                               `Streaming anime ${anime.title} subtitle Indonesia kualitas jernih tanpa ribet.`}
                           </p>
@@ -180,32 +178,35 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
 
                       {/* Desktop Title & Synopsis */}
                       <div className="hidden md:block space-y-2">
-                        <h1 className="font-display text-2xl font-black tracking-tight text-foreground sm:text-3xl lg:text-4xl lg:leading-tight">
+                        <h1
+                          className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl lg:text-4xl lg:leading-tight"
+                          style={{ textWrap: "balance" }}
+                        >
                           {anime.title}
                         </h1>
-                        <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground sm:text-sm max-w-xl">
+                        <p className="line-clamp-3 text-xs leading-relaxed text-ink-dim sm:text-sm max-w-xl">
                           {anime.synopsis ||
                             `Streaming dan download ${anime.title} subtitle Indonesia resolusi 360p, 480p, hingga 720p HD dengan multi-server tercepat.`}
                         </p>
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-2.5 pt-2">
                         <Link
                           to="/anime/$animeId"
                           params={{ animeId: anime.id }}
-                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 sm:px-5 text-xs sm:text-sm font-bold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
+                          className="noir-button inline-flex h-9 sm:h-10 items-center gap-2 rounded-lg bg-primary px-4 sm:px-6 text-xs sm:text-sm font-bold text-primary-foreground shadow-lg shadow-black/40 cursor-pointer"
                         >
-                          <Play className="h-4 w-4 fill-current ml-0.5" />
+                          <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
                           <span>Nonton Sekarang</span>
                         </Link>
 
                         <Link
                           to="/anime/$animeId"
                           params={{ animeId: anime.id }}
-                          className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border/80 bg-secondary/60 px-3.5 text-xs font-semibold text-foreground transition-all hover:bg-secondary active:scale-95"
+                          className="noir-button-secondary inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-lg border border-border/80 bg-secondary/80 px-4 text-xs font-semibold text-foreground hover:bg-secondary cursor-pointer"
                         >
-                          <Info className="h-4 w-4 text-muted-foreground" />
+                          <Info className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="hidden sm:inline">Detail Anime</span>
                         </Link>
 
@@ -224,7 +225,7 @@ export function HeroSlider({ items }: { items: AnimeSummary[] }) {
                         <Link
                           to="/anime/$animeId"
                           params={{ animeId: anime.id }}
-                          className="group/poster relative block w-40 lg:w-48 aspect-[3/4] overflow-hidden rounded-2xl border border-border/80 bg-muted shadow-xl transition-transform duration-300 hover:scale-105"
+                          className="group/poster relative block w-40 lg:w-48 aspect-[3/4] overflow-hidden rounded-xl border border-border/80 dark:border-white/15 bg-card shadow-2xl transition-transform duration-300 hover:scale-105"
                         >
                           <img
                             src={posterUrl}

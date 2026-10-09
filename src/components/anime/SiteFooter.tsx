@@ -3,7 +3,7 @@ import { Play } from "lucide-react";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-20 border-t border-border/80 bg-card/80 backdrop-blur-md">
+    <footer className="mt-20 border-t border-border/80 bg-card/80 dark:bg-surface/80 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           {/* Brand Col */}
@@ -12,7 +12,7 @@ export function SiteFooter() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
                 <Play className="h-4 w-4 fill-current ml-0.5" />
               </div>
-              <span className="font-display text-lg font-extrabold tracking-tight text-foreground">
+              <span className="font-display text-lg font-bold tracking-tight text-foreground">
                 nonton<span className="text-primary font-bold">ime</span>
               </span>
             </Link>
@@ -21,11 +21,8 @@ export function SiteFooter() {
               tanpa ribet. Seluruh data disediakan oleh API pihak ketiga tanpa menyimpan berkas
               video di server kami.
             </p>
-            <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Layanan Aktif
-              </span>
+            <div className="flex items-center gap-2 pt-1 text-xs">
+              <span className="noir-kicker text-muted-foreground/80">LAYANAN AKTIF · SUB INDO</span>
             </div>
           </div>
 

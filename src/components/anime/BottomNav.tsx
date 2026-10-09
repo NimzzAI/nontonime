@@ -226,7 +226,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 lg:hidden pb-[env(safe-area-inset-bottom)] pointer-events-none"
     >
       {/* Blurred glass-morphism container */}
-      <div className="relative mx-auto w-full pointer-events-auto border-t border-white/15 dark:border-white/10 bg-background/80 dark:bg-card/75 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.25)] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent">
+      <div className="relative mx-auto w-full pointer-events-auto border-t border-border/80 dark:border-white/10 bg-card/95 dark:bg-surface/90 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(15,23,42,0.08)] dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35)] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-border/60 dark:before:via-white/20 before:to-transparent">
         <div className="flex h-16 w-full items-center justify-around px-2">
           {TABS.map((tab) => {
             const isActive = tab.exact ? currentPath === tab.to : currentPath.startsWith(tab.to);

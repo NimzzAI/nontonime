@@ -96,18 +96,29 @@ function WatchPage() {
     return stream.data?.servers?.qualities ?? [];
   }, [stream.data?.servers?.qualities]);
 
-  // Set default quality: prefer 1080p FHD first!
+  // Set default quality: prefer Sub Indo server with highest resolution first!
   useEffect(() => {
     if (!selectedQuality && qualityGroups.length > 0) {
       const preferred =
+        qualityGroups.find(
+          (q) =>
+            q.serverList.some((s) => s.title.includes("[SUB INDO]")) && q.quality.includes("1080"),
+        ) ??
+        qualityGroups.find(
+          (q) =>
+            q.serverList.some((s) => s.title.includes("[SUB INDO]")) && q.quality.includes("720"),
+        ) ??
+        qualityGroups.find((q) => q.serverList.some((s) => s.title.includes("[SUB INDO]"))) ??
         qualityGroups.find((q) => q.quality.includes("1080")) ??
         qualityGroups.find((q) => q.quality.includes("720")) ??
-        qualityGroups.find((q) => q.quality.includes("480")) ??
         qualityGroups[0];
       if (preferred) {
         setSelectedQuality(preferred.quality);
-        if (preferred.serverList.length > 0 && !selectedServerId) {
-          setSelectedServerId(preferred.serverList[0].serverId);
+        const subIndoSrv =
+          preferred.serverList.find((s) => s.title.includes("[SUB INDO]")) ??
+          preferred.serverList[0];
+        if (subIndoSrv && !selectedServerId) {
+          setSelectedServerId(subIndoSrv.serverId);
         }
       }
     }
@@ -117,9 +128,11 @@ function WatchPage() {
     setSelectedQuality(quality);
     const targetGroup = qualityGroups.find((q) => q.quality === quality);
     if (targetGroup && targetGroup.serverList.length > 0) {
-      const firstSrv = targetGroup.serverList[0];
-      if (firstSrv && firstSrv.serverId !== selectedServerId) {
-        handleServerSelect(firstSrv.serverId);
+      const subIndoSrv =
+        targetGroup.serverList.find((s) => s.title.includes("[SUB INDO]")) ??
+        targetGroup.serverList[0];
+      if (subIndoSrv && subIndoSrv.serverId !== selectedServerId) {
+        handleServerSelect(subIndoSrv.serverId);
       }
     }
   };
@@ -127,6 +140,28 @@ function WatchPage() {
   const activeGroup = useMemo(() => {
     return qualityGroups.find((q) => q.quality === selectedQuality) ?? qualityGroups[0];
   }, [qualityGroups, selectedQuality]);
+
+  const activeServer = useMemo(() => {
+    return (
+      activeGroup?.serverList?.find((s) => s.serverId === selectedServerId) ||
+      activeGroup?.serverList?.[0]
+    );
+  }, [activeGroup, selectedServerId]);
+
+  const isCurrentSubIndo = useMemo(() => {
+    if (!activeServer) return true;
+    return activeServer.title.includes("[SUB INDO]") || !activeServer.title.includes("[SUB ENG]");
+  }, [activeServer]);
+
+  const bestSubIndoServer = useMemo(() => {
+    for (const q of qualityGroups) {
+      const s = q.serverList.find((srv) => srv.title.includes("[SUB INDO]"));
+      if (s) return { quality: q.quality, serverId: s.serverId, title: s.title };
+    }
+    return null;
+  }, [qualityGroups]);
+
+  const [serverLanguageFilter, setServerLanguageFilter] = useState<"sub-indo" | "all">("sub-indo");
 
   // Automated Failover Tracking
   const [failedServerList, setFailedServerList] = useState<FailedServerLog[]>([]);
@@ -626,11 +661,25 @@ function WatchPage() {
             {qualityGroups.length > 0 ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                      <i className="fa-solid fa-server text-primary mr-1.5" />
-                      Pilihan Server
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <i className="fa-solid fa-server text-primary" />
+                      <span>Pilihan Server</span>
                     </span>
+
+                    {/* Subtitle Language Badge */}
+                    {isCurrentSubIndo ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        <span>🇮🇩 Subtitle Indonesia Aktif</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                        <span>🇬🇧 Subtitle Inggris</span>
+                      </span>
+                    )}
+
                     {isResolving ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
                         <i className="fa-solid fa-circle-notch animate-spin text-[10px]" />
@@ -644,6 +693,7 @@ function WatchPage() {
                     {qualityGroups.map((q) => {
                       const isFhd = q.quality.includes("1080");
                       const isHd = q.quality.includes("720");
+                      const hasSubIndo = q.serverList.some((s) => s.title.includes("[SUB INDO]"));
                       return (
                         <button
                           key={q.quality}
@@ -657,6 +707,11 @@ function WatchPage() {
                           )}
                         >
                           <span>{q.quality}</span>
+                          {hasSubIndo ? (
+                            <span className="rounded bg-emerald-500/30 text-[9px] font-black tracking-tight px-1 py-0.2">
+                              ID
+                            </span>
+                          ) : null}
                           {isFhd ? (
                             <span className="rounded bg-amber-400 text-black px-1 py-0.2 text-[9px] font-black tracking-tight">
                               FHD
@@ -673,63 +728,123 @@ function WatchPage() {
                 </div>
 
                 {/* Sub Indo Quick Switcher Notice if viewing English stream and Sub Indo is available */}
-                {selectedQuality === "Auto" &&
-                  qualityGroups.some(
-                    (q) => q.quality.includes("1080") || q.quality.includes("720"),
-                  ) && (
-                    <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-xs">
-                      <div className="flex items-center gap-2 text-emerald-400 font-semibold">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                        <span>
-                          Tersedia Server Subtitle Indonesia (Sub Indo 1080p FHD & 720p HD)
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const target =
-                            qualityGroups.find((q) => q.quality.includes("1080"))?.quality ||
-                            qualityGroups.find((q) => q.quality.includes("720"))?.quality;
-                          if (target) handleSelectQuality(target);
-                        }}
-                        className="rounded-lg bg-emerald-500 px-3 py-1 font-bold text-black hover:bg-emerald-400 transition cursor-pointer shrink-0 shadow-xs text-[11px]"
-                      >
-                        Beralih ke Sub Indo (1080p)
-                      </button>
+                {!isCurrentSubIndo && bestSubIndoServer ? (
+                  <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-xs">
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                      <span>Tersedia Server Subtitle Indonesia ({bestSubIndoServer.quality})</span>
                     </div>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedQuality(bestSubIndoServer.quality);
+                        handleServerSelect(bestSubIndoServer.serverId);
+                      }}
+                      className="rounded-lg bg-emerald-500 px-3 py-1 font-bold text-black hover:bg-emerald-400 transition cursor-pointer shrink-0 shadow-xs text-[11px]"
+                    >
+                      Beralih ke Sub Indo ({bestSubIndoServer.quality})
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* Language Filter Tabs (Sub Indo vs Semua Server) */}
+                {activeGroup &&
+                activeGroup.serverList.some((s) => s.title.includes("[SUB INDO]")) &&
+                activeGroup.serverList.some((s) => !s.title.includes("[SUB INDO]")) ? (
+                  <div className="flex items-center gap-2 border-b border-border/40 pb-1.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setServerLanguageFilter("sub-indo")}
+                      className={cn(
+                        "font-bold pb-1 transition cursor-pointer",
+                        serverLanguageFilter === "sub-indo"
+                          ? "text-primary border-b-2 border-primary"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      🇮🇩 Server Sub Indo (
+                      {activeGroup.serverList.filter((s) => s.title.includes("[SUB INDO]")).length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServerLanguageFilter("all")}
+                      className={cn(
+                        "font-bold pb-1 transition cursor-pointer",
+                        serverLanguageFilter === "all"
+                          ? "text-primary border-b-2 border-primary"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Semua Server ({activeGroup.serverList.length})
+                    </button>
+                  </div>
+                ) : null}
 
                 {/* Server list inside active quality */}
                 {activeGroup && activeGroup.serverList.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    {activeGroup.serverList.map((srv) => {
-                      const isSelected = selectedServerId === srv.serverId;
-                      return (
-                        <button
-                          key={srv.serverId}
-                          onClick={() => handleServerSelect(srv.serverId)}
-                          disabled={isResolving}
-                          className={cn(
-                            "press-soft inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all",
-                            isSelected
-                              ? "border-primary bg-primary/15 text-primary shadow-xs"
-                              : "border-border/80 bg-background text-foreground hover:border-primary/50 hover:bg-accent",
-                          )}
-                        >
-                          <span
+                    {activeGroup.serverList
+                      .filter((srv) => {
+                        if (
+                          serverLanguageFilter === "sub-indo" &&
+                          activeGroup.serverList.some((s) => s.title.includes("[SUB INDO]"))
+                        ) {
+                          return srv.title.includes("[SUB INDO]");
+                        }
+                        return true;
+                      })
+                      .map((srv) => {
+                        const isSelected = selectedServerId === srv.serverId;
+                        const isSubIndoServer = srv.title.includes("[SUB INDO]");
+                        const isSubEngServer = srv.title.includes("[SUB ENG]");
+                        const cleanTitle = srv.title
+                          .replace(/^\[SUB INDO\]\s*/i, "")
+                          .replace(/^\[SUB ENG\]\s*/i, "");
+
+                        return (
+                          <button
+                            key={srv.serverId}
+                            onClick={() => handleServerSelect(srv.serverId)}
+                            disabled={isResolving}
                             className={cn(
-                              "h-1.5 w-1.5 rounded-full",
-                              isSelected ? "bg-primary" : "bg-muted-foreground/60",
+                              "press-soft inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                              isSelected
+                                ? "border-primary bg-primary/15 text-primary shadow-xs"
+                                : "border-border/80 bg-background text-foreground hover:border-primary/50 hover:bg-accent",
                             )}
-                          />
-                          {srv.title}
-                        </button>
-                      );
-                    })}
+                          >
+                            <span
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full shrink-0",
+                                isSelected ? "bg-primary" : "bg-muted-foreground/60",
+                              )}
+                            />
+                            <span>{cleanTitle}</span>
+                            {isSubIndoServer ? (
+                              <span className="rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-1 py-0.2 text-[9px] font-bold">
+                                Sub Indo
+                              </span>
+                            ) : isSubEngServer ? (
+                              <span className="rounded bg-muted text-muted-foreground px-1 py-0.2 text-[9px]">
+                                Sub Eng
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">Gunakan pemutar bawaan di atas.</p>
                 )}
+
+                {/* Info Tip regarding Sub Indo Hardsub */}
+                <div className="rounded-xl bg-muted/40 border border-border/50 p-2.5 text-[11px] text-muted-foreground flex items-center gap-2">
+                  <i className="fa-solid fa-circle-info text-primary shrink-0" />
+                  <span>
+                    Seluruh server berlabel <strong>Sub Indo</strong> sudah menyertakan takarir
+                    bahasa Indonesia yang langsung tercetak di dalam video (Hardsub HD).
+                  </span>
+                </div>
               </div>
             ) : null}
           </div>

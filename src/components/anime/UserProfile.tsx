@@ -161,7 +161,7 @@ export function UserProfile({ onOpenAuth, className, defaultEditing = false }: U
     }
   };
 
-  // Avatar upload handler using Firebase Storage
+  // Avatar upload handler using Supabase Storage
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -552,7 +552,7 @@ export function UserProfile({ onOpenAuth, className, defaultEditing = false }: U
               </span>
             </div>
 
-            {/* Avatar Upload Feature using Firebase Storage */}
+            {/* Avatar Upload Feature using Supabase Storage */}
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>

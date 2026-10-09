@@ -69,12 +69,12 @@ export const AnimeCard = memo(function AnimeCard({
 
   return (
     <>
-      <div className="group relative flex h-full flex-col justify-between overflow-hidden rounded-xl sm:rounded-2xl border border-border/80 bg-card shadow-xs transition-all duration-300 hover:border-primary/50 hover:shadow-xl isolate">
+      <div className="group relative flex h-full flex-col justify-between overflow-hidden rounded-xl border border-border/80 dark:border-white/10 bg-card shadow-xs transition-all duration-300 hover:border-primary/50 dark:hover:border-white/25 hover:shadow-xl noir-interactive isolate">
         {/* Main Clickable Poster & Link */}
         <Link
           to="/anime/$animeId"
           params={{ animeId: anime.id }}
-          className="relative aspect-[2/3] w-full overflow-hidden bg-muted/60 block"
+          className="relative aspect-[2/3] w-full overflow-hidden bg-black/40 block"
         >
           {imgSrc && !imgError ? (
             <img
@@ -88,17 +88,17 @@ export const AnimeCard = memo(function AnimeCard({
             />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
-              <Film className="h-6 w-6 text-muted-foreground/40" />
+              <Film className="h-6 w-6 text-muted-foreground/60" />
               <span className="line-clamp-2 text-xs font-medium leading-tight">{anime.title}</span>
             </div>
           )}
 
           {/* Cinematic gradient overlay */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-90" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-95" />
 
           {/* Hover quick play icon */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/95 text-primary-foreground shadow-lg shadow-primary/40 backdrop-blur-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/60">
               <Play className="h-4 w-4 fill-current ml-0.5" />
             </div>
           </div>
@@ -108,19 +108,17 @@ export const AnimeCard = memo(function AnimeCard({
             {/* Status badge */}
             <div className="flex flex-col gap-1 items-start">
               {isOngoing ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                <span className="inline-flex items-center rounded-sm bg-black/75 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider text-emerald-400 border border-emerald-500/30 backdrop-blur-md">
                   ONGOING
                 </span>
               ) : isCompleted ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-sky-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
-                  <CheckCircle2 className="h-2.5 w-2.5" />
+                <span className="inline-flex items-center gap-1 rounded-sm bg-black/75 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider text-ink-dim border border-white/15 backdrop-blur-md">
                   TAMAT
                 </span>
               ) : null}
 
               {!anime.id.startsWith("aw_") && (
-                <span className="inline-flex items-center rounded-md bg-emerald-600/95 px-1.5 py-0.2 text-[9px] font-black text-white shadow-xs backdrop-blur-xs tracking-tight">
+                <span className="inline-flex items-center rounded-sm bg-white/10 px-1.5 py-0.2 text-[8px] font-mono font-bold text-white border border-white/10 backdrop-blur-md tracking-wider uppercase">
                   SUB INDO
                 </span>
               )}
@@ -129,7 +127,7 @@ export const AnimeCard = memo(function AnimeCard({
             {/* Right: Score + Spring Watchlist Toggle Button */}
             <div className="flex items-center gap-1 pointer-events-auto">
               {anime.score ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 shadow-xs backdrop-blur-md pointer-events-none">
+                <span className="inline-flex items-center gap-1 rounded-sm bg-black/80 px-1.5 py-0.5 text-[10px] font-mono font-bold text-amber-300 border border-white/10 backdrop-blur-md pointer-events-none">
                   <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
                   {anime.score}
                 </span>
