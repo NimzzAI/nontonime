@@ -8,7 +8,10 @@ export const Route = createFileRoute("/berita")({
   head: () => ({
     meta: [
       { title: "Berita Anime : Nontonime" },
-      { name: "description", content: "Kabar terbaru dunia anime, dikumpulkan dari beberapa sumber." },
+      {
+        name: "description",
+        content: "Kabar terbaru dunia anime, dikumpulkan dari beberapa sumber.",
+      },
     ],
   }),
   component: NewsPage,

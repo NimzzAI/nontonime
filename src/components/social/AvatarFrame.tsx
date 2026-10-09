@@ -31,7 +31,10 @@ export function AvatarFrame({
   } as CSSProperties;
 
   return (
-    <span className={cn("nt-frame inline-flex shrink-0", border.className, className)} style={style}>
+    <span
+      className={cn("nt-frame inline-flex shrink-0", border.className, className)}
+      style={style}
+    >
       <span className="nt-frame-inner flex h-full w-full items-center justify-center bg-muted">
         {src ? (
           <img

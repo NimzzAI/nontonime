@@ -106,7 +106,9 @@ export function ProfileCustomizer({
                 className={cn(
                   "relative flex flex-col items-center gap-1.5 rounded-xl border-2 bg-card p-2.5 text-center transition-all",
                   selected ? "border-primary ring-2 ring-primary/25" : "border-border/70",
-                  unlocked ? "cursor-pointer hover:border-primary/50" : "cursor-not-allowed opacity-55",
+                  unlocked
+                    ? "cursor-pointer hover:border-primary/50"
+                    : "cursor-not-allowed opacity-55",
                 )}
               >
                 <AvatarFrame src={avatarUrl} name={name} borderId={b.id} size={44} />

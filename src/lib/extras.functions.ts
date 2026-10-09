@@ -1,11 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import {
-  getCharacters,
-  getNews,
-  getNextEpisode,
-  getTopSearch,
-} from "./sources/extras.server";
+import { getCharacters, getNews, getNextEpisode, getTopSearch } from "./sources/extras.server";
 
 const titleInput = (data: unknown) => z.object({ title: z.string().min(1).max(200) }).parse(data);
 

@@ -164,7 +164,8 @@ export function useSocialActor(): SocialActor | null {
   if (!user || !uid) return null;
   return {
     uid,
-    displayName: profile?.displayName || user.displayName || user.email?.split("@")[0] || "Pengguna",
+    displayName:
+      profile?.displayName || user.displayName || user.email?.split("@")[0] || "Pengguna",
     avatarUrl: profile?.avatarUrl || user.photoURL || "",
   };
 }
@@ -238,7 +239,11 @@ export async function syncPublicLevel(
 /* ============================== Cari pengguna ============================== */
 
 export async function searchProfiles(term: string): Promise<PublicProfile[]> {
-  const q = term.trim().toLowerCase().replace(/^@/, "").replace(/[^a-z0-9_]/g, "");
+  const q = term
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replace(/[^a-z0-9_]/g, "");
   if (q.length < 2) return [];
   const snap = await getDocs(
     query(
@@ -254,7 +259,8 @@ export async function searchProfiles(term: string): Promise<PublicProfile[]> {
 
 /* ================================ Follow ================================ */
 
-export const followDocId = (followerId: string, followeeId: string) => `${followerId}_${followeeId}`;
+export const followDocId = (followerId: string, followeeId: string) =>
+  `${followerId}_${followeeId}`;
 export const pairId = (a: string, b: string) => [a, b].sort().join("_");
 
 function assertCanAct(actor: SocialActor, targetUid: string) {
@@ -358,7 +364,11 @@ export interface Relationship {
 
 /** Status hubungan antara pengguna login dan target: teman, permintaan, dan follow. */
 export function useRelationship(meUid: string | null, targetUid: string | null): Relationship {
-  const [state, setState] = useState<Relationship>({ friend: "none", following: false, ready: false });
+  const [state, setState] = useState<Relationship>({
+    friend: "none",
+    following: false,
+    ready: false,
+  });
 
   useEffect(() => {
     if (!meUid || !targetUid || meUid === targetUid || meUid.startsWith("guest_")) {

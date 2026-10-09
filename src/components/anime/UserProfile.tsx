@@ -380,23 +380,28 @@ export function UserProfile({ onOpenAuth, className, defaultEditing = false }: U
               <div
                 className={cn("nt-frame shadow-md", activeBorder.className)}
                 style={
-                  { "--nt-frame-w": activeBorder.id === "none" ? "4px" : "3px", "--nt-frame-r": "20px" } as React.CSSProperties
+                  {
+                    "--nt-frame-w": activeBorder.id === "none" ? "4px" : "3px",
+                    "--nt-frame-r": "20px",
+                  } as React.CSSProperties
                 }
               >
-              <div className="nt-frame-inner h-[88px] w-[88px] sm:h-[104px] sm:w-[104px] bg-muted flex items-center justify-center">
-                {currentAvatar ? (
-                  <img
-                    src={currentAvatar}
-                    alt={displayName || "User Avatar"}
-                    className="h-full w-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-tr from-primary to-primary/80 text-3xl font-black text-primary-foreground">
-                    {(displayName || user.displayName || user.email || "W").charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
+                <div className="nt-frame-inner h-[88px] w-[88px] sm:h-[104px] sm:w-[104px] bg-muted flex items-center justify-center">
+                  {currentAvatar ? (
+                    <img
+                      src={currentAvatar}
+                      alt={displayName || "User Avatar"}
+                      className="h-full w-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-gradient-to-tr from-primary to-primary/80 text-3xl font-black text-primary-foreground">
+                      {(displayName || user.displayName || user.email || "W")
+                        .charAt(0)
+                        .toUpperCase()}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {isEditing && (
@@ -542,7 +547,9 @@ export function UserProfile({ onOpenAuth, className, defaultEditing = false }: U
                 <Edit3 className="h-4 w-4 text-primary" />
                 <span>Pengaturan Data Profil & Avatar</span>
               </h3>
-              <span className="text-xs text-muted-foreground">Data di Firestore, gambar di Supabase</span>
+              <span className="text-xs text-muted-foreground">
+                Data di Firestore, gambar di Supabase
+              </span>
             </div>
 
             {/* Avatar Upload Feature using Firebase Storage */}
@@ -561,7 +568,9 @@ export function UserProfile({ onOpenAuth, className, defaultEditing = false }: U
                   className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-all cursor-pointer w-fit"
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  <span>{uploadingAvatar ? "Mengunggah..." : "Pilih File Gambar (otomatis dikompres)"}</span>
+                  <span>
+                    {uploadingAvatar ? "Mengunggah..." : "Pilih File Gambar (otomatis dikompres)"}
+                  </span>
                 </button>
               </div>
 

@@ -95,32 +95,32 @@ Logika scraper berasal dari backend hwaverseB (Bun dan Fastify). Kodenya ditulis
 
 Nontonime sekarang berfungsi seperti media sosial kecil di atas Firebase (akun, Firestore) dan Supabase (gambar profil).
 
-| Fitur                   | Cara kerja                                                                                                                                                                |
-| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Owner otomatis**      | Akun Google dengan email `nimzz8444@gmail.com` (harus terverifikasi) otomatis jadi **Owner**: lencana, level tampilan 999, border Royal, dan hak moderasi komentar.       |
-| **Komentar + balasan**  | Balasan satu tingkat (`parentId`), notifikasi ke yang dibalas, like, spoiler, hapus. Komentar induk yang punya balasan dikosongkan, bukan dihapus.                         |
-| **Banner dan avatar**   | Diunggah dari halaman Profil, dikompres di browser, disimpan di Supabase Storage lewat server. Banner tampil di profil dan di atas komentar.                              |
-| **Efek border**         | Tujuh gaya border (neon, sakura, senja, aurora, emas, dan Royal khusus owner). Border dibuka lewat level, dipakai pada avatar dan kartu komentar.                          |
-| **Nama klan**           | Tag dan nama klan tampil di komentar, profil publik, dan hasil pencarian pengguna.                                                                                        |
-| **Profil publik**       | `/u/<uid>`: banner, avatar, level, klan, bio, jumlah pengikut, mengikuti, dan teman.                                                                                      |
-| **Follow dan teman**    | Ikuti pengguna, kirim dan terima permintaan pertemanan di `/komunitas`.                                                                                                    |
-| **Chat**                | Pesan langsung antar pengguna di `/chat`, realtime lewat Firestore.                                                                                                        |
-| **Notifikasi**          | Lonceng di header: balasan, pengikut baru, permintaan teman, pesan, dan pengumuman update situs. Owner bisa menulis pengumuman dari panel notifikasi.                      |
+| Fitur                  | Cara kerja                                                                                                                                                          |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Owner otomatis**     | Akun Google dengan email `nimzz8444@gmail.com` (harus terverifikasi) otomatis jadi **Owner**: lencana, level tampilan 999, border Royal, dan hak moderasi komentar. |
+| **Komentar + balasan** | Balasan satu tingkat (`parentId`), notifikasi ke yang dibalas, like, spoiler, hapus. Komentar induk yang punya balasan dikosongkan, bukan dihapus.                  |
+| **Banner dan avatar**  | Diunggah dari halaman Profil, dikompres di browser, disimpan di Supabase Storage lewat server. Banner tampil di profil dan di atas komentar.                        |
+| **Efek border**        | Tujuh gaya border (neon, sakura, senja, aurora, emas, dan Royal khusus owner). Border dibuka lewat level, dipakai pada avatar dan kartu komentar.                   |
+| **Nama klan**          | Tag dan nama klan tampil di komentar, profil publik, dan hasil pencarian pengguna.                                                                                  |
+| **Profil publik**      | `/u/<uid>`: banner, avatar, level, klan, bio, jumlah pengikut, mengikuti, dan teman.                                                                                |
+| **Follow dan teman**   | Ikuti pengguna, kirim dan terima permintaan pertemanan di `/komunitas`.                                                                                             |
+| **Chat**               | Pesan langsung antar pengguna di `/chat`, realtime lewat Firestore.                                                                                                 |
+| **Notifikasi**         | Lonceng di header: balasan, pengikut baru, permintaan teman, pesan, dan pengumuman update situs. Owner bisa menulis pengumuman dari panel notifikasi.               |
 
 Struktur data di Firestore:
 
-| Koleksi                              | Isi                                                                         | Siapa yang boleh                                   |
-| :----------------------------------- | :-------------------------------------------------------------------------- | :------------------------------------------------- |
-| `users/{uid}`                        | Data pribadi (termasuk email), watchlist, riwayat.                          | Hanya pemiliknya.                                  |
-| `profiles/{uid}`                     | Salinan aman untuk publik: nama, avatar, banner, border, level, klan, role. | Baca semua orang, tulis pemiliknya.                |
-| `follows/{a}_{b}`                    | Relasi follow.                                                              | Baca semua orang, buat dan hapus oleh pengikut.    |
-| `friendRequests/{a}_{b}`             | Permintaan teman.                                                           | Dua pihak yang terlibat.                           |
-| `friendships/{a}_{b}`                | Pertemanan (id = uid terurut).                                              | Dibuat penerima, hanya bila permintaannya ada.     |
-| `chats/{a}_{b}/messages/{id}`        | Pesan chat.                                                                 | Dua peserta.                                       |
-| `users/{uid}/notifications/{id}`     | Kotak masuk notifikasi.                                                     | Pemilik membaca, orang lain hanya menambah.        |
-| `announcements/{id}`                 | Pengumuman update situs.                                                    | Baca semua orang, tulis hanya owner.               |
-| `clans/{id}` dan `.../members/{uid}` | Klan dan anggotanya.                                                        | Pemimpin mengelola, anggota bergabung dan keluar.  |
-| `episodes/{id}/comments/{id}`        | Komentar dan balasan.                                                       | Penulis, owner (moderasi), dan like oleh siapa pun.|
+| Koleksi                              | Isi                                                                         | Siapa yang boleh                                    |
+| :----------------------------------- | :-------------------------------------------------------------------------- | :-------------------------------------------------- |
+| `users/{uid}`                        | Data pribadi (termasuk email), watchlist, riwayat.                          | Hanya pemiliknya.                                   |
+| `profiles/{uid}`                     | Salinan aman untuk publik: nama, avatar, banner, border, level, klan, role. | Baca semua orang, tulis pemiliknya.                 |
+| `follows/{a}_{b}`                    | Relasi follow.                                                              | Baca semua orang, buat dan hapus oleh pengikut.     |
+| `friendRequests/{a}_{b}`             | Permintaan teman.                                                           | Dua pihak yang terlibat.                            |
+| `friendships/{a}_{b}`                | Pertemanan (id = uid terurut).                                              | Dibuat penerima, hanya bila permintaannya ada.      |
+| `chats/{a}_{b}/messages/{id}`        | Pesan chat.                                                                 | Dua peserta.                                        |
+| `users/{uid}/notifications/{id}`     | Kotak masuk notifikasi.                                                     | Pemilik membaca, orang lain hanya menambah.         |
+| `announcements/{id}`                 | Pengumuman update situs.                                                    | Baca semua orang, tulis hanya owner.                |
+| `clans/{id}` dan `.../members/{uid}` | Klan dan anggotanya.                                                        | Pemimpin mengelola, anggota bergabung dan keluar.   |
+| `episodes/{id}/comments/{id}`        | Komentar dan balasan.                                                       | Penulis, owner (moderasi), dan like oleh siapa pun. |
 
 > Notifikasi berjalan realtime lewat Firestore dan notifikasi sistem browser selama situs atau PWA masih terbuka (termasuk tab di latar belakang). Push saat browser benar-benar tertutup butuh Firebase Cloud Messaging dengan service account, dan belum disertakan.
 
@@ -347,16 +347,16 @@ Sumber anime tidak memakai variabel lingkungan sama sekali. Alamat, daftar sumbe
 
 Variabel di bawah untuk akun Firebase, fitur sosial, unggah gambar, dan notifikasi push. Semuanya opsional untuk bagian anime.
 
-| Variabel                         | Fungsi                                                                                      |
-| :------------------------------- | :------------------------------------------------------------------------------------------ |
-| `VITE_FIREBASE_API_KEY`          | API key Firebase untuk akun dan sosial. Server juga memakainya untuk memverifikasi login.   |
-| `VITE_FIREBASE_AUTH_DOMAIN`      | Domain autentikasi Firebase.                                                                |
-| `VITE_FIREBASE_PROJECT_ID`       | ID proyek Firebase.                                                                         |
-| `SUPABASE_URL`                   | URL proyek Supabase, misalnya `https://xxxx.supabase.co`. Hanya server.                     |
-| `SUPABASE_SERVICE_ROLE_KEY`      | Service role key Supabase. **Rahasia**, hanya server, jangan diawali `VITE_`.               |
-| `VAPID_PRIVATE_KEY`              | Kunci privat Web Push, hanya dipakai di server.                                             |
-| `VITE_VAPID_PUBLIC_KEY`          | Kunci publik Web Push untuk browser.                                                        |
-| `EXTRAS_URL`, `EXTRAS_CDN_URL`   | Opsional. `EXTRAS_URL` adalah alamat sumber fitur tambahan (karakter, hitung mundur, berita, top search); kosong berarti fitur itu nonaktif. |
+| Variabel                       | Fungsi                                                                                                                                       |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_FIREBASE_API_KEY`        | API key Firebase untuk akun dan sosial. Server juga memakainya untuk memverifikasi login.                                                    |
+| `VITE_FIREBASE_AUTH_DOMAIN`    | Domain autentikasi Firebase.                                                                                                                 |
+| `VITE_FIREBASE_PROJECT_ID`     | ID proyek Firebase.                                                                                                                          |
+| `SUPABASE_URL`                 | URL proyek Supabase, misalnya `https://xxxx.supabase.co`. Hanya server.                                                                      |
+| `SUPABASE_SERVICE_ROLE_KEY`    | Service role key Supabase. **Rahasia**, hanya server, jangan diawali `VITE_`.                                                                |
+| `VAPID_PRIVATE_KEY`            | Kunci privat Web Push, hanya dipakai di server.                                                                                              |
+| `VITE_VAPID_PUBLIC_KEY`        | Kunci publik Web Push untuk browser.                                                                                                         |
+| `EXTRAS_URL`, `EXTRAS_CDN_URL` | Opsional. `EXTRAS_URL` adalah alamat sumber fitur tambahan (karakter, hitung mundur, berita, top search); kosong berarti fitur itu nonaktif. |
 
 Kalau suatu saat alamat sumber pindah, ubah konstanta di bagian atas file sumbernya di `src/lib/sources/`: `DEFAULT_BASE` untuk NontonAnimeID, Gomunime, Aniwatch, Stucknime, dan Kusonime, `DEFAULT_DOMAINS` untuk Samehadaku, serta `BASE_URL` dan `API_BASE` untuk AnimeIn. Untuk mematikan sumber atau mengubah prioritasnya, ubah `DEFAULT_SOURCE_IDS` di `registry.server.ts`.
 
@@ -376,6 +376,7 @@ Kalau suatu saat alamat sumber pindah, ubah konstanta di bagian atas file sumber
    ```
 
    Atau salin isinya ke Firebase Console, Firestore, Rules, lalu Publish.
+
 3. Jadikan akun owner: masuk dengan **Google** memakai `nimzz8444@gmail.com`. Email harus terverifikasi, dan aturan Firestore memeriksa hal yang sama, jadi orang lain tidak bisa mengaku owner. Ganti email di `src/lib/roles.ts` (`OWNER_EMAILS`) dan di fungsi `isOwner()` pada `firestore.rules` bila perlu.
 4. Login sebagai owner lalu buka halaman **Klan** sekali. Klan bawaan hanya boleh dibuat oleh owner, dan pengguna lain baru bisa bergabung setelah klannya ada.
 
@@ -452,11 +453,11 @@ Metode yang tidak diisi tidak menjadi masalah. Lapisan gabungan melewati sumber 
 | Server tertentu di pemutar kosong atau error   | Token server gagal diurai, host ditolak pemeriksaan keamanan, atau nonce NontonAnimeID kedaluwarsa. Muat ulang halaman episode.                                               |
 | Detail anime lambat                            | AnimeIn mengambil episode per halaman. Anime dengan banyak episode butuh beberapa request, hasilnya di-cache 15 menit.                                                        |
 | Tombol batch tidak muncul                      | Kusonime tidak menemukan judul yang cocok, atau pencarian melewati batas 4 detik. Batch bersifat tambahan, bukan kewajiban.                                                   |
-| Unggah avatar atau banner gagal                | Cek `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY`, pastikan `supabase/setup.sql` sudah dijalankan, dan akun yang dipakai bukan mode tamu. Pesan error menyebut penyebabnya.     |
+| Unggah avatar atau banner gagal                | Cek `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY`, pastikan `supabase/setup.sql` sudah dijalankan, dan akun yang dipakai bukan mode tamu. Pesan error menyebut penyebabnya.  |
 | `Missing or insufficient permissions`          | `firestore.rules` terbaru belum dideploy, atau pengguna belum login (mode tamu tidak bisa berkomentar, chat, atau berteman).                                                  |
 | Tidak bisa bergabung ke klan bawaan            | Klan bawaan dibuat oleh owner. Login sebagai owner dan buka halaman Klan sekali.                                                                                              |
 | Judul tidak muncul di pencarian                | Lihat bagian Pencarian. Coba kata inti saja (`yuru camp`), dan cek log server untuk baris `[sources] ... gagal`. Sumber yang domainnya pindah akan terus kosong.              |
-| Karakter, hitung mundur, atau berita kosong    | Fitur tambahan bergantung pada sumber eksternal dan sengaja disembunyikan saat gagal. Pastikan `EXTRAS_URL` terisi (kosong berarti nonaktif) dan cek log server.                                                      |
+| Karakter, hitung mundur, atau berita kosong    | Fitur tambahan bergantung pada sumber eksternal dan sengaja disembunyikan saat gagal. Pastikan `EXTRAS_URL` terisi (kosong berarti nonaktif) dan cek log server.              |
 | Error 403 dari satu sumber di produksi         | IP datacenter diblokir situs sumber. Keluarkan sumber itu dari `DEFAULT_SOURCE_IDS` atau pakai alamat mirror.                                                                 |
 
 ---

@@ -66,16 +66,27 @@ function ChatListItem({
       search={{ with: otherUid }}
       className={cn(
         "flex items-center gap-3 rounded-2xl border p-3 transition-colors",
-        active ? "border-primary/50 bg-primary/5" : "border-border/70 bg-card hover:bg-secondary/40",
+        active
+          ? "border-primary/50 bg-primary/5"
+          : "border-border/70 bg-card hover:bg-secondary/40",
       )}
     >
       <AvatarFrame src={p?.avatarUrl} name={p?.displayName ?? "?"} borderId={border} size={42} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-bold text-foreground">{p?.displayName ?? "Pengguna"}</span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(updatedAt)}</span>
+          <span className="truncate text-sm font-bold text-foreground">
+            {p?.displayName ?? "Pengguna"}
+          </span>
+          <span className="shrink-0 text-[10px] text-muted-foreground">
+            {formatTime(updatedAt)}
+          </span>
         </div>
-        <p className={cn("truncate text-xs", unread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+        <p
+          className={cn(
+            "truncate text-xs",
+            unread ? "font-semibold text-foreground" : "text-muted-foreground",
+          )}
+        >
           {preview}
         </p>
       </div>
@@ -104,7 +115,11 @@ function Thread({ me, otherUid }: { me: SocialActor; otherUid: string }) {
     void markNotificationRead(me.uid, `chat_${otherUid}`);
   }, [chatId, me.uid, otherUid, messages.length]);
 
-  const border = effectiveBorderId(other?.borderStyle, displayLevel(other?.role, other?.level), other?.role);
+  const border = effectiveBorderId(
+    other?.borderStyle,
+    displayLevel(other?.role, other?.level),
+    other?.role,
+  );
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,8 +148,17 @@ function Thread({ me, otherUid }: { me: SocialActor; otherUid: string }) {
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <Link to="/u/$userId" params={{ userId: otherUid }} className="flex min-w-0 items-center gap-3">
-          <AvatarFrame src={other?.avatarUrl} name={other?.displayName ?? "?"} borderId={border} size={38} />
+        <Link
+          to="/u/$userId"
+          params={{ userId: otherUid }}
+          className="flex min-w-0 items-center gap-3"
+        >
+          <AvatarFrame
+            src={other?.avatarUrl}
+            name={other?.displayName ?? "?"}
+            borderId={border}
+            size={38}
+          />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="truncate text-sm font-bold text-foreground">
@@ -170,7 +194,12 @@ function Thread({ me, otherUid }: { me: SocialActor; otherUid: string }) {
                   )}
                 >
                   <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                  <p className={cn("mt-1 text-[10px]", mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                  <p
+                    className={cn(
+                      "mt-1 text-[10px]",
+                      mine ? "text-primary-foreground/70" : "text-muted-foreground",
+                    )}
+                  >
                     {formatTime(m.createdAt)}
                   </p>
                 </div>
@@ -234,7 +263,8 @@ function ChatPage() {
       ) : chats.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/80 p-6 text-center text-xs text-muted-foreground">
           <MessageCircle className="mx-auto mb-2 h-6 w-6" />
-          Belum ada percakapan. Buka profil seseorang lalu tekan Pesan, atau cari teman di Komunitas.
+          Belum ada percakapan. Buka profil seseorang lalu tekan Pesan, atau cari teman di
+          Komunitas.
           <div className="mt-3">
             <Link
               to="/komunitas"

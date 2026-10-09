@@ -16,11 +16,7 @@ import { showLocalNotification } from "./push";
 import { getUnreadUpdatesCount } from "./notifications";
 
 export type SocialNotificationType =
-  | "reply"
-  | "follow"
-  | "friend_request"
-  | "friend_accept"
-  | "chat";
+  "reply" | "follow" | "friend_request" | "friend_accept" | "chat";
 
 export interface SocialNotification {
   id: string;
@@ -165,7 +161,10 @@ export function useAnnouncements() {
     return () => window.removeEventListener(READ_EVENT, sync);
   }, []);
 
-  const unread = useMemo(() => items.filter((a) => !readIds.includes(a.id)).length, [items, readIds]);
+  const unread = useMemo(
+    () => items.filter((a) => !readIds.includes(a.id)).length,
+    [items, readIds],
+  );
 
   const markAllRead = useCallback(() => {
     try {

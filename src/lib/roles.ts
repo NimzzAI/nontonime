@@ -20,10 +20,16 @@ export function resolveRole(email?: string | null, emailVerified?: boolean): Use
   return isOwnerEmail(email, emailVerified) ? "owner" : "member";
 }
 
-export function displayLevel(role: UserRole | string | undefined, level: number | undefined): number {
+export function displayLevel(
+  role: UserRole | string | undefined,
+  level: number | undefined,
+): number {
   return role === "owner" ? OWNER_LEVEL : Math.max(1, level || 1);
 }
 
-export function displayRank(role: UserRole | string | undefined, rankTitle: string | undefined): string {
+export function displayRank(
+  role: UserRole | string | undefined,
+  rankTitle: string | undefined,
+): string {
   return role === "owner" ? OWNER_RANK_TITLE : rankTitle || "Penonton Pemula";
 }

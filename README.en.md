@@ -52,25 +52,25 @@ Anime IDs are prefixed by their source (for example `na_one-piece` or `ai_1234`)
 
 ## // Features
 
-| Category       | Feature                          | Description                                                                                                        |
-| :------------- | :------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
-| **Catalog**    | Multi-source                     | Home, latest, popular, search, genres, and schedule are merged from several sites. Duplicate titles show once.     |
-| **Catalog**    | Cross-source search              | One keyword goes to every source at once, ranked by title match and season. See [Search](#-search).                |
-| **Streaming**  | Multi-server player              | Direct files (MP4 or HLS) and embeds, with servers grouped by quality.                                             |
-| **Streaming**  | Auto failover and retry          | A failed, stalled (over 10 s), or dead stream moves on to the next server.                                         |
-| **Streaming**  | Autoplay next episode            | A cancelable countdown before the next episode starts.                                                             |
-| **Streaming**  | Range-aware proxy                | `/api/stream-proxy` forwards the `Range` header (RFC 7233), so seeking does not wait for the full download.        |
-| **Streaming**  | Diagnostics panel                | Shows source URL, upstream Content-Type, 206 status, ping, and buffer duration.                                    |
-| **Search**     | Spotlight (`Ctrl+K` or `/`)      | Search modal with keyboard navigation and debounce.                                                                |
-| **Offline**    | Segmented downloader             | Video is downloaded in 2 MB blocks to IndexedDB, pausable and resumable.                                           |
-| **Offline**    | Offline player                   | Saved episodes play without a connection, or export as MP4.                                                        |
-| **Collection** | Watchlist and history            | Planned, Watching, Completed, last position saved, JSON export and import.                                         |
-| **Gamification** | Levels and badges              | EXP and badges earned from watching.                                                                               |
-| **Mobile**     | PWA and bottom navigation        | Installable, safe-area aware, with optional push notifications.                                                    |
-| **Extras**     | Characters and voice actors      | On the anime detail page, adapted from the hianime-api project.                                                    |
-| **Extras**     | Next-episode countdown           | Time until the next episode airs, adapted from hianime-api.                                                        |
-| **Extras**     | Anime news and Top Search        | A `/berita` page and trending keyword chips on the search page, adapted from hianime-api.                          |
-| **Social**     | Community                        | Comment replies, friends, followers, clans, public profiles, chat, and notifications. See below.                   |
+| Category         | Feature                     | Description                                                                                                    |
+| :--------------- | :-------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| **Catalog**      | Multi-source                | Home, latest, popular, search, genres, and schedule are merged from several sites. Duplicate titles show once. |
+| **Catalog**      | Cross-source search         | One keyword goes to every source at once, ranked by title match and season. See [Search](#-search).            |
+| **Streaming**    | Multi-server player         | Direct files (MP4 or HLS) and embeds, with servers grouped by quality.                                         |
+| **Streaming**    | Auto failover and retry     | A failed, stalled (over 10 s), or dead stream moves on to the next server.                                     |
+| **Streaming**    | Autoplay next episode       | A cancelable countdown before the next episode starts.                                                         |
+| **Streaming**    | Range-aware proxy           | `/api/stream-proxy` forwards the `Range` header (RFC 7233), so seeking does not wait for the full download.    |
+| **Streaming**    | Diagnostics panel           | Shows source URL, upstream Content-Type, 206 status, ping, and buffer duration.                                |
+| **Search**       | Spotlight (`Ctrl+K` or `/`) | Search modal with keyboard navigation and debounce.                                                            |
+| **Offline**      | Segmented downloader        | Video is downloaded in 2 MB blocks to IndexedDB, pausable and resumable.                                       |
+| **Offline**      | Offline player              | Saved episodes play without a connection, or export as MP4.                                                    |
+| **Collection**   | Watchlist and history       | Planned, Watching, Completed, last position saved, JSON export and import.                                     |
+| **Gamification** | Levels and badges           | EXP and badges earned from watching.                                                                           |
+| **Mobile**       | PWA and bottom navigation   | Installable, safe-area aware, with optional push notifications.                                                |
+| **Extras**       | Characters and voice actors | On the anime detail page, adapted from the hianime-api project.                                                |
+| **Extras**       | Next-episode countdown      | Time until the next episode airs, adapted from hianime-api.                                                    |
+| **Extras**       | Anime news and Top Search   | A `/berita` page and trending keyword chips on the search page, adapted from hianime-api.                      |
+| **Social**       | Community                   | Comment replies, friends, followers, clans, public profiles, chat, and notifications. See below.               |
 
 ---
 
@@ -78,32 +78,32 @@ Anime IDs are prefixed by their source (for example `na_one-piece` or `ai_1234`)
 
 nontonime now works like a small social network on top of Firebase (accounts, Firestore) and Supabase (profile images).
 
-| Feature                 | How it works                                                                                                                                                                     |
-| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Automatic owner**     | A Google account with the email `nimzz8444@gmail.com` (must be verified) automatically becomes **Owner**: badge, displayed level 999, Royal border, and comment moderation.      |
-| **Comments and replies**| One-level replies (`parentId`), a notification to the person replied to, likes, spoilers, delete. A parent comment that has replies is blanked instead of removed.                |
-| **Banner and avatar**   | Uploaded from the Profile page, compressed in the browser, stored in Supabase Storage through the server. The banner shows on the profile and above the user's comments.        |
-| **Border effects**      | Seven border styles (neon, sakura, sunset, aurora, gold, and an owner-only Royal). Borders unlock by level and apply to the avatar and comment cards.                            |
-| **Clan name**           | The clan tag and name show on comments, public profiles, and user search results.                                                                                                |
-| **Public profile**      | `/u/<uid>`: banner, avatar, level, clan, bio, and follower, following, and friend counts.                                                                                        |
-| **Follow and friends**  | Follow users, and send and accept friend requests at `/komunitas`.                                                                                                                |
-| **Chat**                | Direct messages between users at `/chat`, realtime through Firestore.                                                                                                             |
-| **Notifications**       | The header bell shows replies, new followers, friend requests, messages, and site update announcements. The owner can post announcements from the notification panel.            |
+| Feature                  | How it works                                                                                                                                                                |
+| :----------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Automatic owner**      | A Google account with the email `nimzz8444@gmail.com` (must be verified) automatically becomes **Owner**: badge, displayed level 999, Royal border, and comment moderation. |
+| **Comments and replies** | One-level replies (`parentId`), a notification to the person replied to, likes, spoilers, delete. A parent comment that has replies is blanked instead of removed.          |
+| **Banner and avatar**    | Uploaded from the Profile page, compressed in the browser, stored in Supabase Storage through the server. The banner shows on the profile and above the user's comments.    |
+| **Border effects**       | Seven border styles (neon, sakura, sunset, aurora, gold, and an owner-only Royal). Borders unlock by level and apply to the avatar and comment cards.                       |
+| **Clan name**            | The clan tag and name show on comments, public profiles, and user search results.                                                                                           |
+| **Public profile**       | `/u/<uid>`: banner, avatar, level, clan, bio, and follower, following, and friend counts.                                                                                   |
+| **Follow and friends**   | Follow users, and send and accept friend requests at `/komunitas`.                                                                                                          |
+| **Chat**                 | Direct messages between users at `/chat`, realtime through Firestore.                                                                                                       |
+| **Notifications**        | The header bell shows replies, new followers, friend requests, messages, and site update announcements. The owner can post announcements from the notification panel.       |
 
 Firestore data layout:
 
-| Collection                           | Contents                                                                  | Access                                              |
-| :----------------------------------- | :------------------------------------------------------------------------ | :-------------------------------------------------- |
-| `users/{uid}`                        | Private data (including email), watchlist, history.                       | Owner of the document only.                         |
-| `profiles/{uid}`                     | Public-safe copy: name, avatar, banner, border, level, clan, role.        | Anyone reads, only the owner writes.                |
-| `follows/{a}_{b}`                    | Follow relation.                                                          | Anyone reads, the follower creates and deletes.     |
-| `friendRequests/{a}_{b}`             | Friend requests.                                                          | The two people involved.                            |
-| `friendships/{a}_{b}`                | Friendships (id = sorted uids).                                           | Created by the recipient, only if a request exists. |
-| `chats/{a}_{b}/messages/{id}`        | Chat messages.                                                            | The two participants.                               |
-| `users/{uid}/notifications/{id}`     | Notification inbox.                                                       | Owner reads, others can only add.                   |
-| `announcements/{id}`                 | Site update announcements.                                                | Anyone reads, only the owner writes.                |
-| `clans/{id}` and `.../members/{uid}` | Clans and their members.                                                  | Leader manages, members join and leave.             |
-| `episodes/{id}/comments/{id}`        | Comments and replies.                                                     | Author, owner (moderation), and likes by anyone.    |
+| Collection                           | Contents                                                           | Access                                              |
+| :----------------------------------- | :----------------------------------------------------------------- | :-------------------------------------------------- |
+| `users/{uid}`                        | Private data (including email), watchlist, history.                | Owner of the document only.                         |
+| `profiles/{uid}`                     | Public-safe copy: name, avatar, banner, border, level, clan, role. | Anyone reads, only the owner writes.                |
+| `follows/{a}_{b}`                    | Follow relation.                                                   | Anyone reads, the follower creates and deletes.     |
+| `friendRequests/{a}_{b}`             | Friend requests.                                                   | The two people involved.                            |
+| `friendships/{a}_{b}`                | Friendships (id = sorted uids).                                    | Created by the recipient, only if a request exists. |
+| `chats/{a}_{b}/messages/{id}`        | Chat messages.                                                     | The two participants.                               |
+| `users/{uid}/notifications/{id}`     | Notification inbox.                                                | Owner reads, others can only add.                   |
+| `announcements/{id}`                 | Site update announcements.                                         | Anyone reads, only the owner writes.                |
+| `clans/{id}` and `.../members/{uid}` | Clans and their members.                                           | Leader manages, members join and leave.             |
+| `episodes/{id}/comments/{id}`        | Comments and replies.                                              | Author, owner (moderation), and likes by anyone.    |
 
 > Notifications run in realtime through Firestore and as browser system notifications while the site or PWA is still open (including a background tab). Push while the browser is fully closed needs Firebase Cloud Messaging with a service account, and is not included.
 
@@ -171,28 +171,28 @@ Browser
 
 ### Modules
 
-| File                                 | Purpose                                                                                               |
-| :----------------------------------- | :---------------------------------------------------------------------------------------------------- |
-| `src/lib/anime-service.server.ts`    | Backend entry point. Merges sources, maps data to frontend types, handles cache and timeouts.         |
-| `src/lib/search-query.ts`            | Query cleaning, season detection, title matching helpers.                                             |
-| `src/lib/sources/types.ts`           | `AnimeSource` interface and internal types.                                                           |
-| `src/lib/sources/registry.server.ts` | Source list and priority order.                                                                       |
-| `src/lib/sources/ids.ts`             | Source-prefixed ID creation and parsing, title normalization.                                         |
-| `src/lib/sources/http.server.ts`     | `fetch` wrapper with timeout, browser User-Agent, and source-named errors.                            |
-| `src/lib/sources/cache.server.ts`    | In-memory cache, duplicate-request merging, `withTimeout`.                                            |
-| `src/lib/sources/token.server.ts`    | Encodes server references into tokens and checks for public URLs.                                     |
-| `src/lib/social.ts`                  | Public profiles, follow, friends, user search.                                                        |
-| `src/lib/social-notifications.ts`    | Social notifications, announcements, realtime notifier.                                               |
-| `src/lib/chat.ts`                    | Direct messages.                                                                                      |
-| `src/lib/media-upload.server.ts`     | Verifies the Firebase token and stores images in Supabase.                                            |
+| File                                 | Purpose                                                                                       |
+| :----------------------------------- | :-------------------------------------------------------------------------------------------- |
+| `src/lib/anime-service.server.ts`    | Backend entry point. Merges sources, maps data to frontend types, handles cache and timeouts. |
+| `src/lib/search-query.ts`            | Query cleaning, season detection, title matching helpers.                                     |
+| `src/lib/sources/types.ts`           | `AnimeSource` interface and internal types.                                                   |
+| `src/lib/sources/registry.server.ts` | Source list and priority order.                                                               |
+| `src/lib/sources/ids.ts`             | Source-prefixed ID creation and parsing, title normalization.                                 |
+| `src/lib/sources/http.server.ts`     | `fetch` wrapper with timeout, browser User-Agent, and source-named errors.                    |
+| `src/lib/sources/cache.server.ts`    | In-memory cache, duplicate-request merging, `withTimeout`.                                    |
+| `src/lib/sources/token.server.ts`    | Encodes server references into tokens and checks for public URLs.                             |
+| `src/lib/social.ts`                  | Public profiles, follow, friends, user search.                                                |
+| `src/lib/social-notifications.ts`    | Social notifications, announcements, realtime notifier.                                       |
+| `src/lib/chat.ts`                    | Direct messages.                                                                              |
+| `src/lib/media-upload.server.ts`     | Verifies the Firebase token and stores images in Supabase.                                    |
 
 ### ID format
 
-| Kind    | Format                  | Example                       |
-| :------ | :---------------------- | :---------------------------- |
-| Anime   | `<prefix>_<slug>`       | `na_one-piece`, `ai_1234`     |
-| Episode | `<prefix>_ep_<slug>`    | `na_ep_one-piece-episode-1`   |
-| Batch   | `ks_<slug>`             | `ks_one-piece-batch-sub-indo` |
+| Kind    | Format               | Example                       |
+| :------ | :------------------- | :---------------------------- |
+| Anime   | `<prefix>_<slug>`    | `na_one-piece`, `ai_1234`     |
+| Episode | `<prefix>_ep_<slug>` | `na_ep_one-piece-episode-1`   |
+| Batch   | `ks_<slug>`          | `ks_one-piece-batch-sub-indo` |
 
 Source prefixes: `ai` AnimeIn, `na` NontonAnimeID, `gm` Gomunime, `aw` Aniwatch, `stk` Stucknime, `sh` Samehadaku, `ks` Kusonime.
 
@@ -200,16 +200,16 @@ Source prefixes: `ai` AnimeIn, `na` NontonAnimeID, `gm` Gomunime, `aw` Aniwatch,
 
 The cache lives in process memory, at most 500 entries, oldest evicted first.
 
-| Data                         | TTL        |
-| :--------------------------- | :--------- |
-| Home, latest, search         | 5 minutes  |
-| Popular                      | 10 minutes |
-| Anime detail, genre pages    | 15 minutes |
-| Release schedule             | 30 minutes |
-| Download batches             | 30 minutes |
-| Genre list                   | 60 minutes |
-| Kusonime batch search        | 6 hours    |
-| Episode stream               | 3 minutes  |
+| Data                                       | TTL                            |
+| :----------------------------------------- | :----------------------------- |
+| Home, latest, search                       | 5 minutes                      |
+| Popular                                    | 10 minutes                     |
+| Anime detail, genre pages                  | 15 minutes                     |
+| Release schedule                           | 30 minutes                     |
+| Download batches                           | 30 minutes                     |
+| Genre list                                 | 60 minutes                     |
+| Kusonime batch search                      | 6 hours                        |
+| Episode stream                             | 3 minutes                      |
 | News, top search, next episode, characters | 15 min, 30 min, 5 min, 6 hours |
 
 Behavior:
@@ -314,16 +314,16 @@ Anime sources use no environment variables at all. Addresses, the source list, a
 
 The variables below are for Firebase accounts, the social features, image upload, and push. All are optional for the anime part.
 
-| Variable                           | Purpose                                                                                        |
-| :--------------------------------- | :--------------------------------------------------------------------------------------------- |
-| `VITE_FIREBASE_API_KEY`            | Firebase API key for accounts and social. The server also uses it to verify logins.            |
-| `VITE_FIREBASE_AUTH_DOMAIN`        | Firebase auth domain.                                                                          |
-| `VITE_FIREBASE_PROJECT_ID`         | Firebase project ID.                                                                           |
-| `SUPABASE_URL`                     | Supabase project URL, for example `https://xxxx.supabase.co`. Server only.                     |
-| `SUPABASE_SERVICE_ROLE_KEY`        | Supabase service role key. **Secret**, server only, never prefix it with `VITE_`.              |
-| `VAPID_PRIVATE_KEY`                | Web Push private key, server only.                                                             |
-| `VITE_VAPID_PUBLIC_KEY`            | Web Push public key for the browser.                                                           |
-| `EXTRAS_URL`, `EXTRAS_CDN_URL`     | Optional. `EXTRAS_URL` is the source address for the extras (characters, countdown, news, top search); empty means disabled. |
+| Variable                       | Purpose                                                                                                                      |
+| :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_FIREBASE_API_KEY`        | Firebase API key for accounts and social. The server also uses it to verify logins.                                          |
+| `VITE_FIREBASE_AUTH_DOMAIN`    | Firebase auth domain.                                                                                                        |
+| `VITE_FIREBASE_PROJECT_ID`     | Firebase project ID.                                                                                                         |
+| `SUPABASE_URL`                 | Supabase project URL, for example `https://xxxx.supabase.co`. Server only.                                                   |
+| `SUPABASE_SERVICE_ROLE_KEY`    | Supabase service role key. **Secret**, server only, never prefix it with `VITE_`.                                            |
+| `VAPID_PRIVATE_KEY`            | Web Push private key, server only.                                                                                           |
+| `VITE_VAPID_PUBLIC_KEY`        | Web Push public key for the browser.                                                                                         |
+| `EXTRAS_URL`, `EXTRAS_CDN_URL` | Optional. `EXTRAS_URL` is the source address for the extras (characters, countdown, news, top search); empty means disabled. |
 
 If a source moves, change the constants at the top of its file in `src/lib/sources/`: `DEFAULT_BASE` for NontonAnimeID, Gomunime, Aniwatch, Stucknime, and Kusonime, `DEFAULT_DOMAINS` for Samehadaku, and `BASE_URL` and `API_BASE` for AnimeIn. To disable a source or reorder priority, edit `DEFAULT_SOURCE_IDS` in `registry.server.ts`.
 
@@ -343,6 +343,7 @@ If a source moves, change the constants at the top of its file in `src/lib/sourc
    ```
 
    Or paste its contents into Firebase Console, Firestore, Rules, then Publish.
+
 3. Make yourself owner: sign in with **Google** using `nimzz8444@gmail.com`. The email must be verified, and the Firestore rules check the same thing, so nobody else can claim owner. To change the email, edit `OWNER_EMAILS` in `src/lib/roles.ts` and the `isOwner()` function in `firestore.rules`.
 4. Sign in as owner and open the **Clans** page once. Default clans can only be created by the owner, and other users can join them only after they exist.
 
@@ -402,17 +403,17 @@ Unimplemented methods are fine. The merge layer skips sources that lack them.
 
 ## // Troubleshooting
 
-| Symptom                                    | Likely cause and fix                                                                                                                                   |
-| :----------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Empty home page                            | Every source failed. Look for `[sources] ... failed` in the server log, then check each source's address.                                              |
-| One source never appears                   | Its domain moved or its HTML changed. Update `DEFAULT_BASE` in its file, or check the selectors there.                                                 |
-| A title is missing from search             | See [Search](#-search). Try the core title only (`yuru camp`) and check the log. A source whose domain moved will stay empty.                           |
-| A server in the player is empty or errors | Token failed to decode, the host failed the security check, or a NontonAnimeID nonce expired. Reload the episode page.                                  |
-| Avatar or banner upload fails              | Check `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, make sure `supabase/setup.sql` ran, and that you are not in guest mode. The error names the cause. |
-| `Missing or insufficient permissions`      | The latest `firestore.rules` is not deployed, or the user is not signed in (guest mode cannot comment, chat, or add friends).                          |
-| Cannot join a default clan                 | Default clans are created by the owner. Sign in as owner and open the Clans page once.                                                                 |
-| Characters, countdown, or news are empty   | The extras depend on an external source and hide on failure. Make sure `EXTRAS_URL` is set (empty means disabled) and check the server log.                                                  |
-| 403 from one source in production          | The source blocks datacenter IPs. Remove it from `DEFAULT_SOURCE_IDS` or use a mirror address.                                                         |
+| Symptom                                   | Likely cause and fix                                                                                                                                     |
+| :---------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Empty home page                           | Every source failed. Look for `[sources] ... failed` in the server log, then check each source's address.                                                |
+| One source never appears                  | Its domain moved or its HTML changed. Update `DEFAULT_BASE` in its file, or check the selectors there.                                                   |
+| A title is missing from search            | See [Search](#-search). Try the core title only (`yuru camp`) and check the log. A source whose domain moved will stay empty.                            |
+| A server in the player is empty or errors | Token failed to decode, the host failed the security check, or a NontonAnimeID nonce expired. Reload the episode page.                                   |
+| Avatar or banner upload fails             | Check `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, make sure `supabase/setup.sql` ran, and that you are not in guest mode. The error names the cause. |
+| `Missing or insufficient permissions`     | The latest `firestore.rules` is not deployed, or the user is not signed in (guest mode cannot comment, chat, or add friends).                            |
+| Cannot join a default clan                | Default clans are created by the owner. Sign in as owner and open the Clans page once.                                                                   |
+| Characters, countdown, or news are empty  | The extras depend on an external source and hide on failure. Make sure `EXTRAS_URL` is set (empty means disabled) and check the server log.              |
+| 403 from one source in production         | The source blocks datacenter IPs. Remove it from `DEFAULT_SOURCE_IDS` or use a mirror address.                                                           |
 
 ---
 

@@ -3,7 +3,10 @@ import { uploadProfileMedia } from "./media.functions";
 
 export type ProfileImageKind = "avatar" | "banner";
 
-const LIMITS: Record<ProfileImageKind, { maxInput: number; w: number; h: number; quality: number }> = {
+const LIMITS: Record<
+  ProfileImageKind,
+  { maxInput: number; w: number; h: number; quality: number }
+> = {
   avatar: { maxInput: 8 * 1024 * 1024, w: 512, h: 512, quality: 0.86 },
   banner: { maxInput: 12 * 1024 * 1024, w: 1600, h: 600, quality: 0.82 },
 };
@@ -24,7 +27,11 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> {
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality: number,
+): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 

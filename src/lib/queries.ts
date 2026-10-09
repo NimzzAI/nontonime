@@ -13,12 +13,7 @@ import {
   fetchSearch,
   fetchStream,
 } from "./anime.functions";
-import {
-  fetchCharacters,
-  fetchNews,
-  fetchNextEpisode,
-  fetchTopSearch,
-} from "./extras.functions";
+import { fetchCharacters, fetchNews, fetchNextEpisode, fetchTopSearch } from "./extras.functions";
 import type { AnimeSummary } from "./anime-types";
 
 const common = {

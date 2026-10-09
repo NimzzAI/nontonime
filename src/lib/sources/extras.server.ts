@@ -49,7 +49,8 @@ async function bootstrapSession(): Promise<Session> {
   const html = await res.text();
   const token = html.match(/window\.AJAX_TOKEN\s*=\s*"([^"]+)"/)?.[1];
   if (!token) throw new Error("[extras] token halaman tidak ditemukan");
-  const setCookies = (res.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.() ?? [];
+  const setCookies =
+    (res.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.() ?? [];
   const cookie = setCookies
     .map((c) => c.split(";")[0]?.trim() ?? "")
     .filter(Boolean)
@@ -123,9 +124,11 @@ export async function getNextEpisode(title: string): Promise<NextEpisodeInfo | n
     const id = await findAnimeId(title);
     if (!id) return null;
     return await cached(`${SOURCE}:next:${id}`, 5 * MIN, async () => {
-      const json = await ajax<{ episode?: number; airing_at_iso?: string; timeUntilAiring?: number }>(
-        `/ajax/schedule?animeId=${encodeURIComponent(id)}`,
-      );
+      const json = await ajax<{
+        episode?: number;
+        airing_at_iso?: string;
+        timeUntilAiring?: number;
+      }>(`/ajax/schedule?animeId=${encodeURIComponent(id)}`);
       if (typeof json.episode !== "number") return null;
       return {
         episode: json.episode,
@@ -175,10 +178,13 @@ export async function getCharacters(title: string): Promise<CharacterInfo[]> {
     const id = await findAnimeId(title);
     if (!id) return [];
     return await cached(`${SOURCE}:chars:${id}`, 6 * HOUR, async () => {
-      const json = await fetchJson<CharactersJson>(`${cdnUrl()}/anime/${encodeURIComponent(id)}/characters`, {
-        source: SOURCE,
-        timeoutMs: 12000,
-      });
+      const json = await fetchJson<CharactersJson>(
+        `${cdnUrl()}/anime/${encodeURIComponent(id)}/characters`,
+        {
+          source: SOURCE,
+          timeoutMs: 12000,
+        },
+      );
       return (Array.isArray(json.data) ? json.data : [])
         .map((c): CharacterInfo => ({
           name: nameOf(c.name),
@@ -254,7 +260,9 @@ export async function getTopSearch(): Promise<string[]> {
   if (!extrasEnabled()) return [];
   try {
     return await cached(`${SOURCE}:top-search`, 30 * MIN, async () => {
-      const html = await (await request(`${baseUrl()}/`, { source: SOURCE, timeoutMs: 12000 })).text();
+      const html = await (
+        await request(`${baseUrl()}/`, { source: SOURCE, timeoutMs: 12000 })
+      ).text();
       const $ = cheerio.load(html);
       const seen = new Set<string>();
       const out: string[] = [];

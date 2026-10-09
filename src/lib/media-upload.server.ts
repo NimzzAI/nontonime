@@ -10,7 +10,11 @@ export type MediaKind = "avatar" | "banner";
 
 const BUCKETS: Record<MediaKind, string> = { avatar: "avatars", banner: "banners" };
 const MAX_BYTES: Record<MediaKind, number> = { avatar: 1_000_000, banner: 2_500_000 };
-const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+const EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 function env(name: string): string {
   return (typeof process !== "undefined" ? process.env[name] : undefined) ?? "";
@@ -20,7 +24,9 @@ function supabaseConfig(): { url: string; key: string } {
   const url = env("SUPABASE_URL").replace(/\/+$/, "");
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) {
-    throw new Error("Supabase belum dikonfigurasi di server (SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY).");
+    throw new Error(
+      "Supabase belum dikonfigurasi di server (SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY).",
+    );
   }
   return { url, key };
 }
@@ -51,7 +57,8 @@ async function verifyFirebaseIdToken(idToken: string): Promise<VerifiedUser> {
 }
 
 function detectMime(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | null {
-  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+    return "image/jpeg";
   if (
     bytes.length > 8 &&
     bytes[0] === 0x89 &&
@@ -125,7 +132,9 @@ export async function uploadProfileMediaServer(input: {
   const bytes = Uint8Array.from(Buffer.from(input.data, "base64"));
   if (bytes.length === 0) throw new Error("File kosong.");
   if (bytes.length > MAX_BYTES[input.kind]) {
-    throw new Error(`Ukuran ${input.kind === "avatar" ? "avatar" : "banner"} terlalu besar setelah dikompres.`);
+    throw new Error(
+      `Ukuran ${input.kind === "avatar" ? "avatar" : "banner"} terlalu besar setelah dikompres.`,
+    );
   }
   const mime = detectMime(bytes);
   if (!mime) throw new Error("Format gambar tidak didukung. Gunakan JPG, PNG, atau WebP.");

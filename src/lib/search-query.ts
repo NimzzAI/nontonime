@@ -47,11 +47,14 @@ export function parseSearchQuery(raw: string): ParsedQuery {
   };
   const num = (m: RegExpMatchArray) => Number(m[1]);
 
-  (take(/\b(\d{1,2})(?:st|nd|rd|th)\s*season\b/i, num) ||
+  void (
+    take(/\b(\d{1,2})(?:st|nd|rd|th)\s*season\b/i, num) ||
     take(/\b(?:season|musim|sezon)\s*(\d{1,2})\b/i, num) ||
     take(/\bseason\s*(ii|iii|iv|v|vi)\b/i, (m) => ROMAN[(m[1] ?? "").toLowerCase()] ?? null) ||
-    take(/\bs(\d{1,2})\b/i, num)) ||
-    (s.split(" ").length >= 2 && take(/\s(\d{1,2})$/, (m) => (Number(m[1]) >= 2 && Number(m[1]) <= 12 ? Number(m[1]) : null)));
+    take(/\bs(\d{1,2})\b/i, num) ||
+    (s.split(" ").length >= 2 &&
+      take(/\s(\d{1,2})$/, (m) => (Number(m[1]) >= 2 && Number(m[1]) <= 12 ? Number(m[1]) : null)))
+  );
 
   return { raw, base: s || squash(raw), season };
 }
@@ -142,6 +145,9 @@ export function looksRelated(query: string, candidates: (string | null | undefin
     if (!n) return false;
     if (n.includes(q) || q.includes(n)) return true;
     if (tokenCoverage(q, n) >= 0.6) return true;
-    return levenshtein(q, n, Math.max(2, Math.floor(q.length * 0.3))) <= Math.max(2, Math.floor(q.length * 0.3));
+    return (
+      levenshtein(q, n, Math.max(2, Math.floor(q.length * 0.3))) <=
+      Math.max(2, Math.floor(q.length * 0.3))
+    );
   });
 }

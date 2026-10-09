@@ -395,14 +395,14 @@ export async function search(
   const safePage = Math.max(1, page);
 
   // 1. Direct URL / ID check (e.g. https://aniwatch.cx/episode/yuruyuri-nachuyachumi-1-c5d95)
-  const parsed = parseId(term);
-  if (parsed && safePage === 1) {
+  const parsedDirect = parseId(term);
+  if (parsedDirect && safePage === 1) {
     try {
-      if (parsed.kind === "episode") {
-        const stream = await getSource(parsed.source).getStream(parsed.slug);
+      if (parsedDirect.kind === "episode") {
+        const stream = await getSource(parsedDirect.source).getStream(parsedDirect.slug);
         if (stream) {
           const item: AnimeSummary = {
-            id: stream.animeId || toEpisodeId(parsed.source, parsed.slug),
+            id: stream.animeId || toEpisodeId(parsedDirect.source, parsedDirect.slug),
             title: stream.title,
             poster: null,
             type: "Episode",
@@ -412,7 +412,7 @@ export async function search(
           if (stream.animeId) {
             try {
               const cleanOwner = stream.animeId.replace(/^[a-z]+_/, "");
-              const parentDetail = await getSource(parsed.source).getDetail(cleanOwner);
+              const parentDetail = await getSource(parsedDirect.source).getDetail(cleanOwner);
               if (parentDetail) {
                 return { items: [toSummary(parentDetail)], page: 1, hasNext: false };
               }
@@ -422,8 +422,8 @@ export async function search(
           }
           return { items: [item], page: 1, hasNext: false };
         }
-      } else if (parsed.kind === "anime") {
-        const detail = await getSource(parsed.source).getDetail(parsed.slug);
+      } else if (parsedDirect.kind === "anime") {
+        const detail = await getSource(parsedDirect.source).getDetail(parsedDirect.slug);
         if (detail) {
           return { items: [toSummary(detail)], page: 1, hasNext: false };
         }
@@ -484,7 +484,8 @@ export async function search(
     if (safePage === 1) {
       const batchQueries = [primaryTerm];
       if (aliasData?.romaji) batchQueries.push(aliasData.romaji.replace(/[△▲★☆]/g, " ").trim());
-      if (parsed.season && parsed.season > 1) batchQueries.push(`${primaryTerm} season ${parsed.season}`);
+      if (parsed.season && parsed.season > 1)
+        batchQueries.push(`${primaryTerm} season ${parsed.season}`);
       for (const bQuery of [...new Set(batchQueries.filter(Boolean))]) {
         try {
           const batchHits = await withTimeout(searchBatch(bQuery), 3500, "kusonime.searchBatch");

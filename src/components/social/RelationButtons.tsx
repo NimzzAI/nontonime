@@ -24,7 +24,11 @@ const base =
 const solid = "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/25";
 const soft = "border border-border bg-secondary text-foreground hover:bg-secondary/70";
 
-export function RelationButtons({ targetUid, showMessage = true, className }: RelationButtonsProps) {
+export function RelationButtons({
+  targetUid,
+  showMessage = true,
+  className,
+}: RelationButtonsProps) {
   const actor = useSocialActor();
   const rel = useRelationship(actor?.uid ?? null, targetUid);
   const [busy, setBusy] = useState(false);
@@ -60,11 +64,19 @@ export function RelationButtons({ targetUid, showMessage = true, className }: Re
           type="button"
           disabled={busy || !rel.ready}
           onClick={() =>
-            run(() => (rel.following ? unfollowUser(actor.uid, targetUid) : followUser(actor, targetUid)))
+            run(() =>
+              rel.following ? unfollowUser(actor.uid, targetUid) : followUser(actor, targetUid),
+            )
           }
           className={cn(base, rel.following ? soft : solid)}
         >
-          {busy ? Spinner : rel.following ? <UserCheck className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+          {busy ? (
+            Spinner
+          ) : rel.following ? (
+            <UserCheck className="h-3.5 w-3.5" />
+          ) : (
+            <UserPlus className="h-3.5 w-3.5" />
+          )}
           {rel.following ? "Mengikuti" : "Ikuti"}
         </button>
 

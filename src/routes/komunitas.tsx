@@ -35,7 +35,10 @@ export const Route = createFileRoute("/komunitas")({
   head: () => ({
     meta: [
       { title: "Komunitas : Nontonime" },
-      { name: "description", content: "Cari pengguna, berteman, mengikuti, dan ngobrol di Nontonime." },
+      {
+        name: "description",
+        content: "Cari pengguna, berteman, mengikuti, dan ngobrol di Nontonime.",
+      },
     ],
   }),
   component: CommunityPage,
@@ -238,7 +241,10 @@ function CommunityPage() {
       ) : tab === "cari" ? (
         <SearchTab />
       ) : tab === "teman" ? (
-        <IdList ids={friends} empty="Belum ada teman. Cari pengguna lalu kirim permintaan pertemanan." />
+        <IdList
+          ids={friends}
+          empty="Belum ada teman. Cari pengguna lalu kirim permintaan pertemanan."
+        />
       ) : tab === "permintaan" ? (
         <RequestsTab />
       ) : tab === "mengikuti" ? (

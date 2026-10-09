@@ -52,7 +52,9 @@ export function AnimeCharacters({ title }: { title: string }) {
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-bold text-foreground">{c.name}</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">{c.role}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+                  {c.role}
+                </p>
               </div>
               {va && (
                 <div className="flex min-w-0 max-w-[45%] items-center gap-2 text-right">
