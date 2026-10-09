@@ -64,7 +64,7 @@ export const fetchSearch = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z
       .object({
-        keyword: z.string().max(100),
+        keyword: z.string().max(500),
         page: z.number().int().min(1),
         provider: z.string().optional(),
       })
@@ -121,7 +121,7 @@ export const fetchDetail = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z
       .object({
-        id: z.string().min(1).max(150),
+        id: z.string().min(1).max(1000),
         provider: z.string().optional(),
       })
       .parse(data),
@@ -132,7 +132,7 @@ export const fetchStream = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z
       .object({
-        episodeId: z.string().min(1).max(150),
+        episodeId: z.string().min(1).max(1000),
         provider: z.string().optional(),
       })
       .parse(data),

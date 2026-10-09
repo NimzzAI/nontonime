@@ -24,6 +24,7 @@ import {
 } from "@/lib/watchlist";
 import { useAuth, useFirestoreWatchlist } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
+import { getSafePosterUrl } from "@/lib/poster";
 
 interface WatchingListProps {
   initialFilter?: "all" | WatchlistStatus;
@@ -283,9 +284,10 @@ export function WatchingList({
                   >
                     {item.poster ? (
                       <img
-                        src={item.poster}
+                        src={getSafePosterUrl(item.poster, item.title)}
                         alt={item.title}
                         loading="lazy"
+                        referrerPolicy="no-referrer"
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (

@@ -28,6 +28,8 @@ import {
 } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import rawFirebaseConfig from "../../firebase-applet-config.json";
+import { syncPublicProfile } from "./social";
+import { BORDER_STYLES } from "./profile-style";
 import { readWatchlist, type WatchlistItem, type WatchlistStatus } from "./watchlist";
 import { readHistory, type HistoryItem } from "./history";
 import {
@@ -166,11 +168,41 @@ export function loginAsGuest(name?: string): LocalGuestUser {
 export interface FirestoreUserProfile {
   uid: string;
   displayName: string;
+  username?: string;
   email: string;
   photoURL?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  borderStyle?: string;
+  bio?: string;
+  clan?: string;
+  clanId?: string;
+  clanTag?: string;
+  clanRole?: "leader" | "elder" | "member";
   gamification: UserGamification;
   createdAt?: string;
   lastLogin?: string;
+}
+
+/**
+ * Deep sanitization helper that recursively strips out any fields with `undefined` values,
+ * which Firestore strictly forbids and throws "Unsupported field value: undefined".
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) return null as unknown as T;
+  if (typeof data !== "object") return data;
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeForFirestore(item)) as unknown as T;
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    if (value !== undefined) {
+      result[key] = sanitizeForFirestore(value);
+    }
+  }
+  return result as T;
 }
 
 // Helper to save or update user doc in Firestore
@@ -199,28 +231,169 @@ export async function persistUserDoc(user: User, customDisplayName?: string) {
         }
       : currentLocalGamification;
 
-    await setDoc(
-      userRef,
-      {
-        uid: user.uid,
-        displayName:
-          customDisplayName || user.displayName || user.email?.split("@")[0] || "Pengguna",
-        email: user.email || "",
-        photoURL: user.photoURL || "",
-        gamification: gamificationToSave,
-        lastLogin: new Date().toISOString(),
-      },
-      { merge: true },
-    );
+    // Clean gamification object to ensure no undefined properties exist
+    const cleanGamification: Record<string, unknown> = {
+      level: gamificationToSave.level || 1,
+      exp: gamificationToSave.exp || 0,
+      maxExp: gamificationToSave.maxExp || 100,
+      totalExp: gamificationToSave.totalExp || 0,
+      rankTitle: gamificationToSave.rankTitle || "Penonton Pemula",
+      rankBadgeColor: gamificationToSave.rankBadgeColor || "from-zinc-500 to-zinc-600",
+      dailyStreak: gamificationToSave.dailyStreak || 0,
+    };
+    if (gamificationToSave.lastCheckIn && typeof gamificationToSave.lastCheckIn === "string") {
+      cleanGamification.lastCheckIn = gamificationToSave.lastCheckIn;
+    }
+
+    const defaultUsername = (
+      user.displayName?.toLowerCase().replace(/[^a-z0-9_]/g, "") ||
+      user.email
+        ?.split("@")[0]
+        ?.toLowerCase()
+        .replace(/[^a-z0-9_]/g, "") ||
+      "wibu_" + user.uid.slice(0, 5)
+    ).slice(0, 20);
+
+    const docPayload = sanitizeForFirestore({
+      uid: user.uid,
+      displayName:
+        customDisplayName ||
+        existingData?.displayName ||
+        user.displayName ||
+        user.email?.split("@")[0] ||
+        "Pengguna",
+      username: existingData?.username || defaultUsername,
+      email: user.email || "",
+      photoURL: existingData?.photoURL || user.photoURL || "",
+      avatarUrl: existingData?.avatarUrl || existingData?.photoURL || user.photoURL || "",
+      bannerUrl: existingData?.bannerUrl || "",
+      bio: existingData?.bio || "Penggemar anime & petualangan seru",
+      clan: existingData?.clan || "",
+      clanId: existingData?.clanId || "",
+      clanTag: existingData?.clanTag || "",
+      clanRole: existingData?.clanRole || "",
+      gamification: cleanGamification,
+      lastLogin: new Date().toISOString(),
+    });
+
+    await setDoc(userRef, docPayload, { merge: true });
 
     // Save synced gamification back to local
     saveGamification(gamificationToSave);
+
+    // Salin data aman ke profil publik (komentar, profil pengguna, pencarian)
+    await syncPublicProfile(user.uid);
 
     // Sync watchlist & history
     await syncUserDataOnLogin(user.uid);
   } catch (err) {
     console.warn("Could not sync user profile to Firestore:", err);
   }
+}
+
+/**
+ * Mengunggah avatar ke Supabase Storage lewat server (ID token Firebase diverifikasi di sana).
+ * Tidak ada lagi cadangan Data URL: gambar base64 membengkakkan dokumen Firestore dan
+ * ditolak oleh photoURL Firebase Auth, jadi lebih baik gagal dengan pesan yang jelas.
+ */
+export async function uploadAvatar(file: File, userId: string): Promise<string> {
+  if (!userId || userId.startsWith("guest_")) {
+    throw new Error("Masuk dengan akun dulu untuk mengunggah avatar.");
+  }
+  const { uploadProfileImage } = await import("./media-client");
+  return uploadProfileImage("avatar", file);
+}
+
+/** Mengunggah banner profil ke Supabase Storage, cara kerjanya sama seperti avatar. */
+export async function uploadBanner(file: File, userId: string): Promise<string> {
+  if (!userId || userId.startsWith("guest_")) {
+    throw new Error("Masuk dengan akun dulu untuk mengunggah banner.");
+  }
+  const { uploadProfileImage } = await import("./media-client");
+  return uploadProfileImage("banner", file);
+}
+
+/**
+ * Updates user profile (username, displayName, avatar, banner, bio) in Auth and Firestore.
+ */
+export async function updateUserProfileData(
+  userId: string,
+  data: {
+    displayName?: string;
+    username?: string;
+    photoURL?: string;
+    avatarUrl?: string;
+    bannerUrl?: string;
+    borderStyle?: string;
+    bio?: string;
+    clan?: string;
+  },
+): Promise<void> {
+  if (!userId) throw new Error("ID pengguna tidak valid.");
+
+  const avatar = data.avatarUrl || data.photoURL;
+
+  // 1. Update Auth Current User if active
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      await updateProfile(auth.currentUser, {
+        displayName: data.displayName || auth.currentUser.displayName,
+        photoURL: avatar || auth.currentUser.photoURL,
+      });
+    } catch (err) {
+      console.warn("Could not update Auth profile:", err);
+    }
+  }
+
+  // 2. If guest user, persist to local storage
+  if (userId.startsWith("guest_")) {
+    const guestStr =
+      typeof window !== "undefined" ? localStorage.getItem("nonton-guest-user") : null;
+    if (guestStr) {
+      try {
+        const guest = JSON.parse(guestStr);
+        const updated = {
+          ...guest,
+          displayName: data.displayName || guest.displayName,
+          username: data.username || guest.username,
+          photoURL: avatar || guest.photoURL,
+          avatarUrl: avatar || guest.avatarUrl,
+          bannerUrl: data.bannerUrl !== undefined ? data.bannerUrl : guest.bannerUrl,
+          bio: data.bio !== undefined ? data.bio : guest.bio,
+          clan: data.clan !== undefined ? data.clan : guest.clan,
+        };
+        localStorage.setItem("nonton-guest-user", JSON.stringify(updated));
+        window.dispatchEvent(new Event("guest-auth-changed"));
+      } catch {
+        // no-op
+      }
+    }
+    return;
+  }
+
+  // 3. Update Firestore Document
+  const userRef = doc(db, "users", userId);
+  const updatePayload = sanitizeForFirestore({
+    ...(data.displayName ? { displayName: data.displayName.trim() } : {}),
+    ...(data.username
+      ? {
+          username: data.username
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, "")
+            .slice(0, 25),
+        }
+      : {}),
+    ...(avatar ? { photoURL: avatar, avatarUrl: avatar } : {}),
+    ...(data.bannerUrl !== undefined ? { bannerUrl: data.bannerUrl } : {}),
+    ...(data.borderStyle !== undefined && BORDER_STYLES.some((b) => b.id === data.borderStyle)
+      ? { borderStyle: data.borderStyle }
+      : {}),
+    ...(data.bio !== undefined ? { bio: data.bio.trim().slice(0, 300) } : {}),
+    ...(data.clan !== undefined ? { clan: data.clan.trim() } : {}),
+    updatedAt: new Date().toISOString(),
+  });
+  await setDoc(userRef, updatePayload, { merge: true });
+  await syncPublicProfile(userId);
 }
 
 export async function signInWithGoogle(): Promise<User> {
@@ -423,10 +596,42 @@ export function useFirestoreUserProfile(userId: string | undefined | null) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId || userId.startsWith("guest_")) {
+    if (!userId) {
       setLoading(false);
+      setProfile(null);
       setGamification(readGamification());
       return;
+    }
+
+    if (userId.startsWith("guest_")) {
+      setLoading(false);
+      setGamification(readGamification());
+      const readGuest = () => {
+        const guestStr =
+          typeof window !== "undefined" ? localStorage.getItem("nonton-guest-user") : null;
+        if (guestStr) {
+          try {
+            const guest = JSON.parse(guestStr);
+            setProfile({
+              uid: guest.uid,
+              displayName: guest.displayName || "Wibu Tamu",
+              username: guest.username || "wibu_tamu",
+              email: guest.email || "tamu@nontonime.local",
+              photoURL: guest.photoURL || guest.avatarUrl || "",
+              avatarUrl: guest.avatarUrl || guest.photoURL || "",
+              bannerUrl: guest.bannerUrl || "",
+              bio: guest.bio || "Pencinta anime santai",
+              clan: guest.clan || "",
+              gamification: readGamification(),
+            });
+          } catch {
+            // no-op
+          }
+        }
+      };
+      readGuest();
+      window.addEventListener("guest-auth-changed", readGuest);
+      return () => window.removeEventListener("guest-auth-changed", readGuest);
     }
 
     setLoading(true);
@@ -537,6 +742,18 @@ export function useFirestoreWatchlist(userId: string | undefined | null) {
 }
 
 // Hook for Auth state
+function ensurePublicProfileOnce(uid: string): void {
+  if (typeof window === "undefined" || !uid || uid.startsWith("guest_")) return;
+  const key = `nonton-profile-synced:${uid}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+  } catch {
+    // sessionStorage diblokir, tetap lanjut sinkron sekali
+  }
+  void syncPublicProfile(uid);
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | LocalGuestUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -573,6 +790,7 @@ export function useAuth() {
           localStorage.removeItem("nonton-guest-user");
         }
         setUser(currentUser);
+        ensurePublicProfileOnce(currentUser.uid);
       } else {
         const guest = getStoredGuest();
         setUser(guest);

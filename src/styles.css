@@ -67,7 +67,7 @@
   --muted-foreground: oklch(0.38 0.02 260);
   --accent: oklch(0.94 0.012 260);
   --accent-foreground: oklch(0.18 0.02 260);
-  --highlight: oklch(0.60 0.20 28);
+  --highlight: oklch(0.6 0.2 28);
   --highlight-foreground: oklch(0.99 0.002 260);
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: oklch(0.99 0.002 260);
@@ -75,10 +75,10 @@
   --input: oklch(0.88 0.008 260);
   --ring: oklch(0.58 0.22 25);
   --chart-1: oklch(0.58 0.22 25);
-  --chart-2: oklch(0.60 0.14 185);
+  --chart-2: oklch(0.6 0.14 185);
   --chart-3: oklch(0.45 0.12 250);
   --chart-4: oklch(0.75 0.16 85);
-  --chart-5: oklch(0.70 0.18 55);
+  --chart-5: oklch(0.7 0.18 55);
   --sidebar: oklch(0.985 0.003 260);
   --sidebar-foreground: oklch(0.16 0.02 260);
   --sidebar-primary: oklch(0.58 0.22 25);
@@ -101,8 +101,8 @@
   --secondary: oklch(0.19 0.02 265);
   --secondary-foreground: oklch(0.97 0.006 260);
   --muted: oklch(0.18 0.015 265);
-  --muted-foreground: oklch(0.70 0.015 260);
-  --accent: oklch(0.20 0.02 265);
+  --muted-foreground: oklch(0.7 0.015 260);
+  --accent: oklch(0.2 0.02 265);
   --accent-foreground: oklch(0.97 0.006 260);
   --highlight: oklch(0.65 0.18 28);
   --highlight-foreground: oklch(0.99 0.002 260);
@@ -205,5 +205,112 @@
       transform: translateY(-4px);
       box-shadow: 0 18px 34px -18px color-mix(in oklch, var(--color-foreground) 30%, transparent);
     }
+  }
+}
+
+/* ==========================================================================
+   Efek border profil (avatar dan kartu komentar)
+   Dipakai bersama .nt-frame (pembungkus) dan .nt-frame-inner (isi).
+   ========================================================================== */
+@property --nt-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes nt-spin {
+  to {
+    --nt-angle: 360deg;
+  }
+}
+
+@keyframes nt-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.nt-frame {
+  position: relative;
+  padding: var(--nt-frame-w, 2px);
+  border-radius: var(--nt-frame-r, 0.9rem);
+}
+
+.nt-frame-inner {
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--nt-frame-r, 0.9rem) - var(--nt-frame-w, 2px));
+  background: var(--card);
+}
+
+.nt-border-none {
+  background: var(--border);
+}
+
+.nt-border-neon {
+  background: linear-gradient(135deg, oklch(0.82 0.14 215), oklch(0.62 0.2 265));
+  box-shadow:
+    0 0 14px -3px oklch(0.75 0.15 230 / 0.75),
+    0 0 2px oklch(0.85 0.12 215 / 0.8);
+}
+
+.nt-border-sakura {
+  background: linear-gradient(135deg, #ffb7d5, #ff7eb6, #ffd1e8, #ff9ccb);
+  background-size: 220% 220%;
+  animation: nt-shift 8s ease infinite;
+  box-shadow: 0 0 14px -4px rgba(255, 126, 182, 0.65);
+}
+
+.nt-border-sunset {
+  background: linear-gradient(120deg, #ff7a18, #ff2e63, #8e2de2, #ff7a18);
+  background-size: 300% 300%;
+  animation: nt-shift 6s linear infinite;
+  box-shadow: 0 0 16px -4px rgba(255, 46, 99, 0.6);
+}
+
+.nt-border-aurora {
+  background: conic-gradient(from var(--nt-angle), #22d3ee, #a78bfa, #34d399, #22d3ee);
+  animation: nt-spin 5s linear infinite;
+  box-shadow: 0 0 16px -4px rgba(52, 211, 153, 0.55);
+}
+
+.nt-border-gold {
+  background: linear-gradient(110deg, #b8860b, #ffd700, #fff3a8, #ffd700, #b8860b);
+  background-size: 250% 250%;
+  animation: nt-shift 4s linear infinite;
+  box-shadow: 0 0 16px -4px rgba(255, 215, 0, 0.6);
+}
+
+.nt-border-royal {
+  background: conic-gradient(from var(--nt-angle), #ff2e63, #ffd700, #22d3ee, #a78bfa, #ff2e63);
+  animation: nt-spin 3.5s linear infinite;
+  box-shadow:
+    0 0 20px -3px rgba(255, 215, 0, 0.55),
+    0 0 32px -10px rgba(255, 46, 99, 0.65);
+}
+
+.nt-owner-name {
+  background: linear-gradient(90deg, #ffd700, #ff7a18, #ff2e63, #ffd700);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: nt-shift 5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-border-sakura,
+  .nt-border-sunset,
+  .nt-border-aurora,
+  .nt-border-gold,
+  .nt-border-royal,
+  .nt-owner-name {
+    animation: none;
   }
 }

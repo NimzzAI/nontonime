@@ -10,7 +10,8 @@ import { WelcomeModal } from "@/components/anime/WelcomeModal";
 import { FloatingTools } from "@/components/anime/FloatingTools";
 import { SearchFilterPanel } from "@/components/anime/SearchFilterPanel";
 import { RecentlyWatchedSection } from "@/components/anime/RecentlyWatchedSection";
-import { homeQuery, currentDayName } from "@/lib/queries";
+import { GenreFilterBar, ALL_GENRE_OPTIONS } from "@/components/anime/GenreFilterBar";
+import { homeQuery, currentDayName, genreAnimeQuery } from "@/lib/queries";
 import {
   AlertTriangle,
   ArrowRight,
@@ -18,10 +19,12 @@ import {
   CalendarCheck,
   CalendarDays,
   CheckCircle2,
+  Clock,
   Dices,
   Film,
   Flame,
   History,
+  Layers,
   Play,
   Zap,
 } from "lucide-react";
@@ -105,7 +108,15 @@ function HomePage() {
   const { data, isPending, error, refetch } = useQuery(homeQuery());
   const [gachaOpen, setGachaOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedGenreId, setSelectedGenreId] = useState<string | null>(null);
   const todayDay = currentDayName();
+
+  const activeGenreOption = ALL_GENRE_OPTIONS.find((g) => g.id === selectedGenreId);
+
+  const { data: genreAnimeData, isPending: isGenrePending } = useQuery({
+    ...genreAnimeQuery(selectedGenreId || "", 1),
+    enabled: Boolean(selectedGenreId),
+  });
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 sm:space-y-12 px-4 py-4 sm:py-6">
@@ -183,48 +194,28 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Recently Watched Section */}
+      {/* Recently Watched / Continue Watching Section */}
       <RecentlyWatchedSection />
 
-      {/* Popular Genres Quick Navigation Bar */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-base sm:text-lg font-bold tracking-tight text-foreground">
-              Jelajahi Berdasarkan Genre
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Pilih kategori favorit untuk menemukan anime pilihan terbaik
-            </p>
-          </div>
-          <Link
-            to="/genre"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-          >
-            <span>Semua Genre</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-        <div className="edge-fade no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1">
-          {POPULAR_GENRES.map((g) => (
-            <Link
-              key={g.id}
-              to="/genre/$genreId"
-              params={{ genreId: g.id }}
-              search={{ page: 1, name: g.name }}
-              className="inline-flex h-8 shrink-0 items-center rounded-lg border border-border/80 bg-card px-3 text-xs font-medium text-foreground transition-colors hover:border-primary/60 hover:bg-secondary hover:text-primary active:scale-95 shadow-2xs"
-            >
-              {g.name}
-            </Link>
-          ))}
-          <Link
-            to="/genre"
-            className="inline-flex h-8 shrink-0 items-center rounded-lg border border-dashed border-border bg-secondary/40 px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary hover:text-primary hover:bg-secondary"
-          >
-            +30 Genre Lainnya
-          </Link>
-        </div>
-      </section>
+      {/* Genre Filter Bar: Dropdown, Pills & Sidebar Trigger */}
+      <GenreFilterBar
+        activeGenreId={selectedGenreId}
+        onSelectGenre={setSelectedGenreId}
+        onOpenSidebar={() => setFilterOpen(true)}
+      />
+
+      {/* Dynamic Shelf When User Filters by Specific Genre */}
+      {selectedGenreId ? (
+        <Shelf
+          title={`Hasil Filter: Genre ${activeGenreOption?.name || selectedGenreId}`}
+          icon={Layers}
+          items={genreAnimeData?.items ?? []}
+          isLoading={isGenrePending}
+          viewAllTo="/genre/$genreId"
+          viewAllParams={{ genreId: selectedGenreId }}
+          viewAllSearch={{ page: 1, name: activeGenreOption?.name }}
+        />
+      ) : null}
 
       {/* Ongoing / Tayang Section */}
       <Shelf
@@ -236,7 +227,16 @@ function HomePage() {
       />
 
       <Shelf
-        title="Sedang Tayang (Ongoing)"
+        title="Episode Terbaru (Baru Rilis)"
+        icon={Clock}
+        items={data?.new ?? []}
+        isLoading={isPending}
+        viewAllTo="/ongoing"
+        viewAllSearch={{ page: 1 }}
+      />
+
+      <Shelf
+        title="Sedang Tayang (Ongoing Terpopuler)"
         icon={Flame}
         items={data?.hot ?? []}
         isLoading={isPending}
@@ -251,13 +251,6 @@ function HomePage() {
         isLoading={isPending}
         viewAllTo="/tamat"
         viewAllSearch={{ page: 1 }}
-      />
-
-      <Shelf
-        title="Rekomendasi Pilihan"
-        icon={Film}
-        items={data?.new ?? []}
-        isLoading={isPending}
       />
 
       {/* Platform Features Highlight */}

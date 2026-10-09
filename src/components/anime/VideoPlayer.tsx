@@ -772,12 +772,11 @@ export function VideoPlayer({
               allowFullScreen
               allow="autoplay; encrypted-media; fullscreen"
               referrerPolicy="origin"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-presentation"
               onError={() => triggerAutomatedFailover("Server MEGA menolak memuat iframe")}
             />
           </div>
         ) : (
-          /* Standard Embed Player with Ad Shield */
+          /* Standard Embed Player */
           <iframe
             key={`${iframeSrc}-${adShieldActive}`}
             src={iframeSrc}
@@ -785,12 +784,7 @@ export function VideoPlayer({
             className="h-full w-full border-0"
             allowFullScreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            referrerPolicy="no-referrer"
-            sandbox={
-              adShieldActive
-                ? "allow-scripts allow-same-origin allow-forms allow-presentation"
-                : undefined
-            }
+            referrerPolicy="origin"
             onError={() => triggerAutomatedFailover("Server Embed menolak koneksi frame")}
           />
         )}

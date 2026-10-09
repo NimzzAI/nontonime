@@ -24,6 +24,9 @@ import { ErrorState, LoadingState } from "@/components/anime/StateViews";
 import { animeDetailQuery } from "@/lib/queries";
 import { readHistory, type HistoryItem } from "@/lib/history";
 import { cn } from "@/lib/utils";
+import { NextEpisodeCountdown } from "@/components/anime/NextEpisodeCountdown";
+import { AnimeCharacters } from "@/components/anime/AnimeCharacters";
+import { getSafePosterUrl } from "@/lib/poster";
 
 export const Route = createFileRoute("/anime/$animeId")({
   head: ({ params }) => {
@@ -54,6 +57,25 @@ export function AnimeDetailPage() {
   const [synopsisOpen, setSynopsisOpen] = useState(false);
   const [episodeSearch, setEpisodeSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [imgSrc, setImgSrc] = useState<string>("");
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (anime) {
+      setImgSrc(getSafePosterUrl(anime.poster, anime.title));
+      setImgError(false);
+    }
+  }, [anime]);
+
+  const handleImgError = () => {
+    if (!imgSrc.includes("/api/image-proxy") && anime?.title) {
+      setImgSrc(
+        `/api/image-proxy?title=${encodeURIComponent(anime.title)}&url=${encodeURIComponent(anime.poster || "")}`,
+      );
+    } else {
+      setImgError(true);
+    }
+  };
 
   useEffect(() => {
     const history = readHistory();
@@ -104,12 +126,13 @@ export function AnimeDetailPage() {
     <div className="mx-auto max-w-7xl space-y-10 px-4 py-6 sm:py-8">
       {/* Hero Backdrop Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card shadow-xl">
-        {anime.poster ? (
+        {!imgError && imgSrc ? (
           <div className="absolute inset-0 overflow-hidden">
             <img
-              src={anime.poster}
+              src={imgSrc}
               alt=""
               aria-hidden="true"
+              onError={handleImgError}
               className="h-full w-full object-cover blur-2xl scale-125 opacity-25 dark:opacity-15"
             />
           </div>
@@ -122,10 +145,11 @@ export function AnimeDetailPage() {
           <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
             {/* Poster Card */}
             <div className="relative shrink-0 w-44 sm:w-52 lg:w-60 overflow-hidden rounded-2xl border-2 border-white/10 shadow-2xl bg-muted mx-auto md:mx-0">
-              {anime.poster ? (
+              {!imgError && imgSrc ? (
                 <img
-                  src={anime.poster}
+                  src={imgSrc}
                   alt={anime.title}
+                  onError={handleImgError}
                   className="h-full w-full object-cover aspect-[2/3]"
                 />
               ) : (
@@ -165,6 +189,21 @@ export function AnimeDetailPage() {
 
               {/* Stats badges */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
+                {!anime.id.startsWith("aw_") ? (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Subtitle Indonesia (Sub Indo)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 text-xs font-semibold text-blue-500">
+                    Audio Jepang • Multi Sub / Sub Indo
+                  </span>
+                )}
+
+                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/15 border border-primary/30 px-2.5 py-1 text-xs font-bold text-primary">
+                  1080p FHD & 720p
+                </span>
+
                 {anime.score ? (
                   <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-xs font-bold text-amber-500">
                     <Star className="h-3 w-3 fill-amber-400" />
@@ -199,6 +238,8 @@ export function AnimeDetailPage() {
                   </span>
                 ) : null}
               </div>
+
+              <NextEpisodeCountdown title={anime.title} />
 
               {/* Genre Pills */}
               {anime.genres && anime.genres.length > 0 ? (
@@ -287,6 +328,8 @@ export function AnimeDetailPage() {
               </button>
             </div>
           ) : null}
+
+          <AnimeCharacters title={anime.title} />
 
           {/* Episode List Section */}
           <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 space-y-4 shadow-xs">

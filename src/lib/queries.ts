@@ -13,6 +13,12 @@ import {
   fetchSearch,
   fetchStream,
 } from "./anime.functions";
+import {
+  fetchCharacters,
+  fetchNews,
+  fetchNextEpisode,
+  fetchTopSearch,
+} from "./extras.functions";
 import type { AnimeSummary } from "./anime-types";
 
 const common = {
@@ -141,3 +147,45 @@ export const streamQuery = (episodeId: string, provider = "otakudesu") =>
   });
 
 export type { AnimeSummary };
+
+/* ---------- Fitur tambahan (adaptasi hianime-api) ---------- */
+
+export const nextEpisodeQuery = (title: string) =>
+  queryOptions({
+    queryKey: ["next-episode", title],
+    queryFn: () => fetchNextEpisode({ data: { title } }),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: 0,
+    refetchOnWindowFocus: false,
+  });
+
+export const charactersQuery = (title: string) =>
+  queryOptions({
+    queryKey: ["characters", title],
+    queryFn: () => fetchCharacters({ data: { title } }),
+    staleTime: 6 * 60 * 60 * 1000,
+    gcTime: 12 * 60 * 60 * 1000,
+    retry: 0,
+    refetchOnWindowFocus: false,
+  });
+
+export const newsQuery = (page: number) =>
+  queryOptions({
+    queryKey: ["news", page],
+    queryFn: () => fetchNews({ data: { page } }),
+    staleTime: 15 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+
+export const topSearchQuery = () =>
+  queryOptions({
+    queryKey: ["top-search"],
+    queryFn: () => fetchTopSearch({ data: {} }),
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 0,
+    refetchOnWindowFocus: false,
+  });

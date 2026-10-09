@@ -7,8 +7,12 @@
       "properties": {
         "uid": { "type": "string" },
         "displayName": { "type": "string" },
+        "username": { "type": "string" },
         "email": { "type": "string" },
         "photoURL": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "bannerUrl": { "type": "string" },
+        "bio": { "type": "string" },
         "gamification": {
           "type": "object",
           "properties": {
@@ -61,12 +65,76 @@
         "watchedAt": { "type": "number" }
       },
       "required": ["episodeId", "animeId", "episodeTitle"]
+    },
+    "Clan": {
+      "title": "Clan",
+      "description": "Anime guild or clan with member count, total XP, leader and tag",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "tag": { "type": "string" },
+        "description": { "type": "string" },
+        "leaderId": { "type": "string" },
+        "leaderName": { "type": "string" },
+        "leaderAvatar": { "type": "string" },
+        "badgeColor": { "type": "string" },
+        "memberCount": { "type": "number" },
+        "totalXp": { "type": "number" },
+        "isOpen": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "tag", "leaderId"]
+    },
+    "ClanMember": {
+      "title": "ClanMember",
+      "description": "Membership record of a user in a clan",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "clanId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "username": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["leader", "elder", "member"]
+        },
+        "level": { "type": "number" },
+        "rankTitle": { "type": "string" },
+        "joinedAt": { "type": "number" }
+      },
+      "required": ["userId", "clanId", "role"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "User discussion comment on a specific anime episode",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "episodeId": { "type": "string" },
+        "animeId": { "type": "string" },
+        "animeTitle": { "type": "string" },
+        "episodeTitle": { "type": "string" },
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "username": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "userLevel": { "type": "number" },
+        "userRankTitle": { "type": "string" },
+        "userClan": { "type": "string" },
+        "content": { "type": "string" },
+        "isSpoiler": { "type": "boolean" },
+        "likesCount": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "episodeId", "userId", "content", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "User" },
-      "description": "User document containing account info, rank, level, and XP"
+      "description": "User document containing account info, rank, level, clan, and XP"
     },
     "/users/{userId}/watchlist/{animeId}": {
       "schema": { "$ref": "WatchlistItem" },
@@ -75,6 +143,22 @@
     "/users/{userId}/history/{episodeId}": {
       "schema": { "$ref": "HistoryItem" },
       "description": "User watch history items"
+    },
+    "/clans/{clanId}": {
+      "schema": { "$ref": "Clan" },
+      "description": "Anime clans storing metadata, leaders, and member count"
+    },
+    "/clans/{clanId}/members/{userId}": {
+      "schema": { "$ref": "ClanMember" },
+      "description": "Clan members list and roles"
+    },
+    "/episodes/{episodeId}/comments/{commentId}": {
+      "schema": { "$ref": "Comment" },
+      "description": "Episode comments with user profile and likes"
+    },
+    "/comments/{commentId}": {
+      "schema": { "$ref": "Comment" },
+      "description": "Global index of anime episode comments"
     }
   }
 }

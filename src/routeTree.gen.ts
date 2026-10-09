@@ -15,6 +15,10 @@ import { Route as JadwalRouteImport } from './routes/jadwal'
 import { Route as OngoingRouteImport } from './routes/ongoing'
 import { Route as ProfilRouteImport } from './routes/profil'
 import { Route as RiwayatRouteImport } from './routes/riwayat'
+import { Route as BeritaRouteImport } from './routes/berita'
+import { Route as ChatRouteImport } from './routes/chat'
+import { Route as KomunitasRouteImport } from './routes/komunitas'
+import { Route as UUserIdRouteImport } from './routes/u/$userId'
 import { Route as TamatRouteImport } from './routes/tamat'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as AnimeAnimeIdRouteImport } from './routes/anime/$animeId'
@@ -52,6 +56,26 @@ const ProfilRoute = ProfilRouteImport.update({
 const RiwayatRoute = RiwayatRouteImport.update({
   id: '/riwayat',
   path: '/riwayat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BeritaRoute = BeritaRouteImport.update({
+  id: '/berita',
+  path: '/berita',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KomunitasRoute = KomunitasRouteImport.update({
+  id: '/komunitas',
+  path: '/komunitas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UUserIdRoute = UUserIdRouteImport.update({
+  id: '/u/$userId',
+  path: '/u/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TamatRoute = TamatRouteImport.update({
@@ -102,6 +126,10 @@ export interface FileRoutesByFullPath {
   '/ongoing': typeof OngoingRoute
   '/profil': typeof ProfilRoute
   '/riwayat': typeof RiwayatRoute
+  '/berita': typeof BeritaRoute
+  '/chat': typeof ChatRoute
+  '/komunitas': typeof KomunitasRoute
+  '/u/$userId': typeof UUserIdRoute
   '/tamat': typeof TamatRoute
   '/watchlist': typeof WatchlistRoute
   '/anime/$animeId': typeof AnimeAnimeIdRoute
@@ -118,6 +146,10 @@ export interface FileRoutesByTo {
   '/ongoing': typeof OngoingRoute
   '/profil': typeof ProfilRoute
   '/riwayat': typeof RiwayatRoute
+  '/berita': typeof BeritaRoute
+  '/chat': typeof ChatRoute
+  '/komunitas': typeof KomunitasRoute
+  '/u/$userId': typeof UUserIdRoute
   '/tamat': typeof TamatRoute
   '/watchlist': typeof WatchlistRoute
   '/anime/$animeId': typeof AnimeAnimeIdRoute
@@ -135,6 +167,10 @@ export interface FileRoutesById {
   '/ongoing': typeof OngoingRoute
   '/profil': typeof ProfilRoute
   '/riwayat': typeof RiwayatRoute
+  '/berita': typeof BeritaRoute
+  '/chat': typeof ChatRoute
+  '/komunitas': typeof KomunitasRoute
+  '/u/$userId': typeof UUserIdRoute
   '/tamat': typeof TamatRoute
   '/watchlist': typeof WatchlistRoute
   '/anime/$animeId': typeof AnimeAnimeIdRoute
@@ -153,6 +189,10 @@ export interface FileRouteTypes {
     | '/ongoing'
     | '/profil'
     | '/riwayat'
+    | '/berita'
+    | '/chat'
+    | '/komunitas'
+    | '/u/$userId'
     | '/tamat'
     | '/watchlist'
     | '/anime/$animeId'
@@ -169,6 +209,10 @@ export interface FileRouteTypes {
     | '/ongoing'
     | '/profil'
     | '/riwayat'
+    | '/berita'
+    | '/chat'
+    | '/komunitas'
+    | '/u/$userId'
     | '/tamat'
     | '/watchlist'
     | '/anime/$animeId'
@@ -185,6 +229,10 @@ export interface FileRouteTypes {
     | '/ongoing'
     | '/profil'
     | '/riwayat'
+    | '/berita'
+    | '/chat'
+    | '/komunitas'
+    | '/u/$userId'
     | '/tamat'
     | '/watchlist'
     | '/anime/$animeId'
@@ -202,6 +250,10 @@ export interface RootRouteChildren {
   OngoingRoute: typeof OngoingRoute
   ProfilRoute: typeof ProfilRoute
   RiwayatRoute: typeof RiwayatRoute
+  BeritaRoute: typeof BeritaRoute
+  ChatRoute: typeof ChatRoute
+  KomunitasRoute: typeof KomunitasRoute
+  UUserIdRoute: typeof UUserIdRoute
   TamatRoute: typeof TamatRoute
   WatchlistRoute: typeof WatchlistRoute
   AnimeAnimeIdRoute: typeof AnimeAnimeIdRoute
@@ -254,6 +306,34 @@ declare module '@tanstack/react-router' {
       path: '/riwayat'
       fullPath: '/riwayat'
       preLoaderRoute: typeof RiwayatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/berita': {
+      id: '/berita'
+      path: '/berita'
+      fullPath: '/berita'
+      preLoaderRoute: typeof BeritaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/komunitas': {
+      id: '/komunitas'
+      path: '/komunitas'
+      fullPath: '/komunitas'
+      preLoaderRoute: typeof KomunitasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$userId': {
+      id: '/u/$userId'
+      path: '/u/$userId'
+      fullPath: '/u/$userId'
+      preLoaderRoute: typeof UUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tamat': {
@@ -322,6 +402,10 @@ const rootRouteChildren: RootRouteChildren = {
   OngoingRoute: OngoingRoute,
   ProfilRoute: ProfilRoute,
   RiwayatRoute: RiwayatRoute,
+  BeritaRoute: BeritaRoute,
+  ChatRoute: ChatRoute,
+  KomunitasRoute: KomunitasRoute,
+  UUserIdRoute: UUserIdRoute,
   TamatRoute: TamatRoute,
   WatchlistRoute: WatchlistRoute,
   AnimeAnimeIdRoute: AnimeAnimeIdRoute,

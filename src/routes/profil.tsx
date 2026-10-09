@@ -5,6 +5,8 @@ import { SectionTitle } from "@/components/anime/StateViews";
 import { UserGamificationCard } from "@/components/anime/UserGamificationCard";
 import { NotificationsModal } from "@/components/anime/NotificationsModal";
 import { AuthModal } from "@/components/anime/AuthModal";
+import { UserProfile } from "@/components/anime/UserProfile";
+import { ClanManager } from "@/components/anime/ClanManager";
 import { WatchingList } from "@/components/anime/WatchingList";
 import { readSubscriptions, removeSubscription, type SubscriptionItem } from "@/lib/subscriptions";
 import { getPermission, requestNotificationPermission, showLocalNotification } from "@/lib/push";
@@ -56,184 +58,6 @@ export const Route = createFileRoute("/profil")({
   }),
   component: ProfilPage,
 });
-
-function UserProfileHeader({ onOpenAuth }: { onOpenAuth: (mode: "login" | "register") => void }) {
-  const { user, loading: authLoading } = useAuth();
-  // Fetch user profile, rank, totalExp, level from Firestore
-  const { profile, gamification, loading: profileLoading } = useFirestoreUserProfile(user?.uid);
-
-  const handleLogout = async () => {
-    try {
-      await signOutUser();
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
-  };
-
-  if (authLoading || (user && profileLoading)) {
-    return (
-      <div className="flex items-center gap-4 rounded-3xl border border-border bg-card p-6 animate-pulse">
-        <div className="h-16 w-16 rounded-2xl bg-muted" />
-        <div className="space-y-2.5 flex-1">
-          <div className="h-5 w-40 rounded-md bg-muted" />
-          <div className="h-3.5 w-64 rounded-md bg-muted" />
-          <div className="h-3 w-48 rounded-md bg-muted" />
-        </div>
-      </div>
-    );
-  }
-
-  if (user) {
-    const isGuest = user.uid.startsWith("guest_") || (user as { isGuest?: boolean })?.isGuest;
-
-    return (
-      <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-sm space-y-4">
-        {/* Top background accent */}
-        <div className="absolute top-0 right-0 h-32 w-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {user.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt={user.displayName || "User"}
-                className="h-16 w-16 rounded-2xl object-cover border-2 border-primary/40 shadow-sm"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-primary/80 text-2xl font-black text-primary-foreground shadow-md shadow-primary/20">
-                {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
-              </div>
-            )}
-
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-display text-lg font-black text-foreground">
-                  {user.displayName || user.email?.split("@")[0] || "Pengguna Nontonime"}
-                </h2>
-                {isGuest ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    <UserCheck className="h-3 w-3" />
-                    Mode Tamu (Lokal)
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <UserCheck className="h-3 w-3" />
-                    Firestore Aktif
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {isGuest ? "Data tersimpan di browser ini" : user.email}
-              </p>
-
-              {/* Firestore gamification badges */}
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-black text-primary">
-                  <Trophy className="h-3 w-3" />
-                  Lv. {gamification.level}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-0.5 text-xs font-extrabold text-amber-600 dark:text-amber-400">
-                  <Zap className="h-3 w-3 fill-current" />
-                  {(gamification.totalExp ?? gamification.exp ?? 0).toLocaleString()} Total XP
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-lg bg-secondary px-2 py-0.5 text-xs font-semibold text-foreground">
-                  {gamification.rankTitle}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-center">
-            {isGuest && (
-              <button
-                type="button"
-                onClick={() => onOpenAuth("login")}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90 transition-colors cursor-pointer"
-              >
-                <span>Hubungkan Akun</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-background px-3.5 py-2 text-xs font-bold text-muted-foreground hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors cursor-pointer"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>Keluar</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Cloud sync banner */}
-        {isGuest ? (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 border border-amber-500/20">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0" />
-              <span>
-                Sedang menggunakan <strong>Mode Tamu</strong>. EXP dan watchlist tersimpan aman di
-                browser Anda. Hubungkan ke Firebase untuk sinkronisasi cloud.
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground border border-border/60">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
-              <span>
-                Tersambung ke Cloud Firestore. Rank, level, total XP, dan daftar tontonan
-                tersinkronisasi otomatis.
-              </span>
-            </div>
-            <span className="text-[10px] font-mono opacity-60 shrink-0 hidden md:inline">
-              UID: {user.uid.slice(0, 8)}...
-            </span>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card to-primary/5 p-6 space-y-4 shadow-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <LogIn className="h-7 w-7" />
-          </div>
-          <div>
-            <h2 className="font-display text-base sm:text-lg font-black text-foreground">
-              Masuk ke Akun Nontonime
-            </h2>
-            <p className="text-xs text-muted-foreground max-w-md leading-relaxed mt-0.5">
-              Simpan <strong>Rank Wibu, Total XP, Account Level</strong>, dan daftar{" "}
-              <strong>Watching</strong> secara permanen di Cloud Firestore database.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => onOpenAuth("login")}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary px-4 py-2.5 text-xs font-bold text-foreground hover:bg-secondary/80 transition-all cursor-pointer shadow-xs"
-          >
-            <LogIn className="h-3.5 w-3.5 text-primary" />
-            <span>Masuk</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenAuth("register")}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all cursor-pointer"
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            <span>Buat Akun (+100 XP)</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ProfileStatsGrid() {
   const { user } = useAuth();
@@ -444,8 +268,8 @@ function ProfilPage() {
         <SectionTitle title="Profil, Level & Progres Nonton" icon={UserCheck} />
       </div>
 
-      {/* Profile Header (Shows user account & Firestore rank/XP/level) */}
-      <UserProfileHeader onOpenAuth={handleOpenAuth} />
+      {/* Profile Header (Shows user account & Firestore rank/XP/level, avatar upload via Storage, username/name edit) */}
+      <UserProfile onOpenAuth={handleOpenAuth} />
 
       {/* Gamification Level, EXP, and Rank Card */}
       <UserGamificationCard
@@ -453,6 +277,9 @@ function ProfilPage() {
         isFirestoreSynced={Boolean(user)}
         onOpenAuth={() => handleOpenAuth("register")}
       />
+
+      {/* Clan System & Guilds Component */}
+      <ClanManager onOpenAuth={handleOpenAuth} />
 
       {/* Key Statistics Grid */}
       <ProfileStatsGrid />

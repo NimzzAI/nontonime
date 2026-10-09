@@ -79,7 +79,11 @@ function cardTitle($el: Cheerio<Element>): string {
   return cleanText(text) || cleanText($el.find("a").first().attr("title"));
 }
 
-function parseCards($: CheerioAPI, selector: string, extra: { status?: string; type?: string } = {}): SourceItem[] {
+function parseCards(
+  $: CheerioAPI,
+  selector: string,
+  extra: { status?: string; type?: string } = {},
+): SourceItem[] {
   const items: SourceItem[] = [];
   const seen = new Set<string>();
   $(selector).each((_, el) => {
@@ -89,12 +93,27 @@ function parseCards($: CheerioAPI, selector: string, extra: { status?: string; t
     if (!slug || !title || seen.has(slug)) return;
     seen.add(slug);
     const episode = cleanText(card.find(".bt .epx, .epx, .ep").first().text());
+    const cardText = card.text().toLowerCase();
+    let cardStatus: string | null = null;
+    if (
+      cardText.includes("completed") ||
+      cardText.includes("tamat") ||
+      cardText.includes("finish") ||
+      cardText.includes("selesai")
+    ) {
+      cardStatus = "Completed";
+    } else if (cardText.includes("ongoing") || cardText.includes("tayang")) {
+      cardStatus = "Ongoing";
+    } else {
+      cardStatus = extra.status ?? null;
+    }
+
     items.push(
       makeItem("samehadaku", slug, {
         title,
         poster: imgOf(card),
         type: cleanText(card.find(".typez, .type").first().text()) || extra.type || "TV",
-        status: extra.status ?? null,
+        status: cardStatus,
         score: parseNumber(card.find(".numscore, .score, .rating").first().text()),
         episodeLabel: episode || null,
       }),
@@ -192,6 +211,21 @@ export const samehadaku: AnimeSource = {
     const path = page > 1 ? `/page/${page}/?s=${q}` : `/?s=${q}`;
     const $ = cheerio.load(await html(path));
     const items = parseCards($, ".animpost, .listupd article");
+
+    if (page === 1 && items.length < 3 && keyword.includes(" ")) {
+      try {
+        const altQ = encodeURIComponent(keyword.replace(/\s+/g, ""));
+        const alt$ = cheerio.load(await html(`/?s=${altQ}`));
+        const altItems = parseCards(alt$, ".animpost, .listupd article");
+        for (const item of altItems) {
+          if (!items.some((i) => i.id === item.id)) {
+            items.push(item);
+          }
+        }
+      } catch {
+        // ignore fallback failure
+      }
+    }
     return { items, hasNext: items.length >= 10 };
   },
 
@@ -205,9 +239,27 @@ export const samehadaku: AnimeSource = {
     );
     if (!title) throw new Error(`Anime ${clean} tidak ditemukan`);
 
-    const poster =
-      $("img[class*='anmsa'], img[itemprop='image'], .thumb img").first().attr("src") || null;
-    const synopsis = cleanText($(".series-synopsis, .desc, .sinopsis, .entry-content").first().text());
+    let rawPoster =
+      $("img[class*='anmsa'], img[itemprop='image'], .thumb img, .areaimg img")
+        .first()
+        .attr("src") || null;
+    if (rawPoster && (rawPoster.toLowerCase().includes("logo") || rawPoster.startsWith("data:"))) {
+      rawPoster = `/api/image-proxy?title=${encodeURIComponent(title)}`;
+    }
+    const poster = rawPoster || `/api/image-proxy?title=${encodeURIComponent(title)}`;
+    let synopsis = cleanText(
+      $(".entry-content, .sinopsis, .series-synopsis, [itemprop='description']").first().text(),
+    );
+    if (!synopsis || synopsis.includes("Tonton streaming")) {
+      const alt = cleanText($(".desc").first().text());
+      if (alt && !alt.includes("Tonton streaming")) synopsis = alt;
+    }
+    if (synopsis) {
+      synopsis = synopsis
+        .replace(/^Tonton streaming [^.]+\.\s*/i, "")
+        .replace(/^[a-z0-9\s]+ di Samehadaku\.\s*/i, "")
+        .trim();
+    }
 
     const info: Record<string, string> = {};
     $(".infox .spe span, .spe span, .seriestuinfo span").each((_, el) => {
@@ -224,11 +276,21 @@ export const samehadaku: AnimeSource = {
       return null;
     };
 
+    // Genres: strictly scoped to the main article to prevent recommendation pollution
     const genres: string[] = [];
-    $("a[href*='genre'], .seriestugenre a").each((_, el) => {
-      const name = cleanText($(el).text());
-      if (name && !genres.includes(name)) genres.push(name);
-    });
+    const mainArticle = $("article.hentry, article.post, article").first();
+    mainArticle
+      .find(".genre-info a, .genres a, .infox a[href*='genre'], a[href*='/genres/']")
+      .each((_, el) => {
+        const name = cleanText($(el).text());
+        if (name && !genres.includes(name)) genres.push(name);
+      });
+    if (genres.length === 0 && info["genre"]) {
+      info["genre"].split(",").forEach((g) => {
+        const name = cleanText(g);
+        if (name && !genres.includes(name)) genres.push(name);
+      });
+    }
 
     const episodes: SourceEpisode[] = [];
     const seen = new Set<string>();
@@ -288,13 +350,13 @@ export const samehadaku: AnimeSource = {
         .attr("href") || "";
 
     const servers: SourceServer[] = [];
-    $("iframe.embed-embed, .mirrorifram iframe, iframe[src*='embed'], iframe[src*='player'], iframe[src*='blogger']").each(
-      (idx, el) => {
-        const src = absUrl(currentBase(), $(el).attr("src"));
-        if (!src || servers.some((s) => s.ref.kind === "url" && s.ref.url === src)) return;
-        servers.push({ name: `Server ${idx + 1}`, quality: "Auto", ref: { kind: "url", url: src } });
-      },
-    );
+    $(
+      "iframe.embed-embed, .mirrorifram iframe, iframe[src*='embed'], iframe[src*='player'], iframe[src*='blogger']",
+    ).each((idx, el) => {
+      const src = absUrl(currentBase(), $(el).attr("src"));
+      if (!src || servers.some((s) => s.ref.kind === "url" && s.ref.url === src)) return;
+      servers.push({ name: `Server ${idx + 1}`, quality: "Auto", ref: { kind: "url", url: src } });
+    });
 
     $(".east_player_option").each((idx, el) => {
       const option = $(el);
@@ -303,7 +365,8 @@ export const samehadaku: AnimeSource = {
       const type = option.attr("data-type") || "";
       if (!post || !nume) return;
       servers.push({
-        name: cleanText(option.find("span").text()) || cleanText(option.text()) || `Player ${idx + 1}`,
+        name:
+          cleanText(option.find("span").text()) || cleanText(option.text()) || `Player ${idx + 1}`,
         quality: "Auto",
         ref: { kind: "samehadaku", post, nume, type, ref: pageUrl },
       });
@@ -324,7 +387,8 @@ export const samehadaku: AnimeSource = {
               const url = $(a).attr("href") || "";
               if (url) urls.push({ title: cleanText($(a).text()) || "Unduh", url });
             });
-          if (urls.length > 0) downloads.push({ quality: `${format} ${quality}`.trim(), size: null, urls });
+          if (urls.length > 0)
+            downloads.push({ quality: `${format} ${quality}`.trim(), size: null, urls });
         });
     });
 

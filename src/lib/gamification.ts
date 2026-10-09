@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { syncPublicLevel } from "./social";
 import { auth, db } from "./firebase";
 
 export interface UserGamification {
@@ -57,7 +58,7 @@ export function readGamification(): UserGamification {
     const parsed = JSON.parse(raw);
     const maxExp = getMaxExpForLevel(parsed.level || 1);
     const rank = getRankInfo(parsed.level || 1);
-    return {
+    const result: UserGamification = {
       level: parsed.level || 1,
       exp: parsed.exp || 0,
       maxExp,
@@ -65,8 +66,11 @@ export function readGamification(): UserGamification {
       rankTitle: rank.title,
       rankBadgeColor: rank.color,
       dailyStreak: parsed.dailyStreak || 0,
-      lastCheckIn: parsed.lastCheckIn,
     };
+    if (parsed.lastCheckIn && typeof parsed.lastCheckIn === "string") {
+      result.lastCheckIn = parsed.lastCheckIn;
+    }
+    return result;
   } catch {
     return DEFAULT_GAMIFICATION;
   }
@@ -80,16 +84,37 @@ export function saveGamification(data: UserGamification) {
   // Sync to Firestore if authenticated
   if (auth.currentUser) {
     const userRef = doc(db, "users", auth.currentUser.uid);
+    const cleanGamification: Record<string, unknown> = {
+      level: data.level || 1,
+      exp: data.exp || 0,
+      maxExp: data.maxExp || 100,
+      totalExp: data.totalExp || 0,
+      rankTitle: data.rankTitle || "Penonton Pemula",
+      rankBadgeColor: data.rankBadgeColor || "from-zinc-500 to-zinc-600",
+      dailyStreak: data.dailyStreak || 0,
+    };
+    if (data.lastCheckIn && typeof data.lastCheckIn === "string") {
+      cleanGamification.lastCheckIn = data.lastCheckIn;
+    }
+
     setDoc(
       userRef,
       {
-        gamification: data,
+        gamification: cleanGamification,
         updatedAt: new Date().toISOString(),
       },
       { merge: true },
-    ).catch((err) => {
-      console.warn("Failed to sync gamification to Firestore:", err);
-    });
+    )
+      .then(() =>
+        syncPublicLevel(userRef.id, {
+          level: data.level || 1,
+          totalExp: data.totalExp || 0,
+          rankTitle: data.rankTitle || "Penonton Pemula",
+        }),
+      )
+      .catch((err) => {
+        console.warn("Failed to sync gamification to Firestore:", err);
+      });
   }
 }
 

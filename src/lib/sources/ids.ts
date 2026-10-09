@@ -1,5 +1,9 @@
-import { cleanText } from "./http.server";
 import type { SourceId, SourceItem } from "./types";
+
+function cleanText(text: string | null | undefined): string {
+  if (!text) return "";
+  return text.trim().replace(/\s+/g, " ");
+}
 
 export const SOURCE_PREFIX: Record<SourceId, string> = {
   animein: "ai",
@@ -34,12 +38,47 @@ export interface ParsedId {
 }
 
 export function parseId(id: string): ParsedId | null {
-  const match = id.match(/^(ai|na|gm|aw|stk|sh)_(ep_)?(.+)$/);
-  if (!match) return null;
-  const source = PREFIX_TO_SOURCE[match[1] ?? ""];
-  const slug = match[3];
-  if (!source || !slug) return null;
-  return { source, slug, kind: match[2] ? "episode" : "anime" };
+  if (!id) return null;
+  const cleanInput = decodeURIComponent(id.trim());
+
+  // 1. Direct Aniwatch episode URL or path (e.g. https://aniwatch.cx/episode/yuruyuri-nachuyachumi-1-c5d95)
+  if (cleanInput.includes("/episode/")) {
+    const slug = cleanInput.split("/episode/")[1]?.split(/[/?#]/)[0];
+    if (slug) return { source: "aniwatch", slug, kind: "episode" };
+  }
+  // 2. Direct Aniwatch anime URL or path (e.g. https://aniwatch.cx/anime/c5d95-yuruyuri-nachuyachumi)
+  if (cleanInput.includes("/anime/")) {
+    const slug = cleanInput.split("/anime/")[1]?.split(/[/?#]/)[0];
+    if (slug) return { source: "aniwatch", slug, kind: "anime" };
+  }
+
+  // 3. Standard prefixed ID (ai_*, aw_ep_*, sh_*, etc.)
+  const match = cleanInput.match(/^(ai|na|gm|aw|stk|sh)_(ep_)?(.+)$/);
+  if (match) {
+    const source = PREFIX_TO_SOURCE[match[1] ?? ""];
+    const slug = match[3];
+    if (source && slug) return { source, slug, kind: match[2] ? "episode" : "anime" };
+  }
+
+  // 4. Bare Aniwatch episode slug (has episode indicator, e.g. "yuruyuri-nachuyachumi-1-c5d95" or "name-ep-1")
+  if (
+    cleanInput.includes("-") &&
+    (/-(\d+)-[a-f0-9]{4,8}$/i.test(cleanInput) ||
+      /-(?:ep|episode)-?\d+/i.test(cleanInput) ||
+      /-\d+$/.test(cleanInput))
+  ) {
+    return { source: "aniwatch", slug: cleanInput, kind: "episode" };
+  }
+
+  // 5. Bare Aniwatch anime slug (e.g. "c5d95-yuruyuri-nachuyachumi" or "yuruyuri-nachuyachumi-c5d95")
+  if (
+    cleanInput.includes("-") &&
+    (/^[a-f0-9]{4,8}-[a-z0-9_-]+/i.test(cleanInput) || /-[a-f0-9]{4,8}$/i.test(cleanInput))
+  ) {
+    return { source: "aniwatch", slug: cleanInput, kind: "anime" };
+  }
+
+  return null;
 }
 
 export function formatScore(value: string | number | null | undefined): string | null {
@@ -88,6 +127,7 @@ export function makeItem(source: SourceId, slug: string, init: ItemInit): Source
 export function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
+    .replace(/\b(?:season|s)(\d+)\b/g, " $1 ")
     .replace(/\b(sub(title)?\s*indo(nesia)?|nonton|streaming|season|musim)\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();

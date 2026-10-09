@@ -3,6 +3,8 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleStreamProxyRequest, handleStreamCheckRequest } from "./lib/stream-proxy.server";
+import { handleImageProxyRequest } from "./lib/image-proxy.server";
+import { handleEmbedProxyRequest } from "./lib/embed-proxy.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -61,6 +63,12 @@ export default {
     }
     if (url.pathname === "/api/stream-check") {
       return handleStreamCheckRequest(request);
+    }
+    if (url.pathname === "/api/image-proxy") {
+      return handleImageProxyRequest(request);
+    }
+    if (url.pathname === "/api/embed-proxy") {
+      return handleEmbedProxyRequest(request);
     }
     if (url.pathname === "/api/ping") {
       return new Response("pong", { status: 200 });

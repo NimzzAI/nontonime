@@ -1,15 +1,185 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ---------- Helper ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+    // Owner = Google/email yang SUDAH terverifikasi. Samakan dengan OWNER_EMAILS di src/lib/roles.ts
+    function isOwner() {
+      return signedIn()
+        && 'email' in request.auth.token
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() == 'nimzz8444@gmail.com';
+    }
+    function pairHas(id) {
+      return signedIn() && request.auth.uid in id.split('_');
+    }
+
     match /test/{document=**} {
       allow read: if true;
       allow write: if false;
     }
+
+    // ---------- Data pribadi (email dan lainnya tidak bisa dibaca orang lain) ----------
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isSelf(userId);
+
       match /{allSubcollections=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isSelf(userId);
       }
+
+      // Orang lain boleh menaruh notifikasi di kotak masuk, tapi hanya atas namanya sendiri.
+      match /notifications/{notificationId} {
+        allow create: if signedIn()
+          && request.resource.data.fromId == request.auth.uid
+          && request.resource.data.read == false
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 300;
+        allow update: if signedIn()
+          && resource.data.fromId == request.auth.uid
+          && request.resource.data.fromId == request.auth.uid
+          && request.resource.data.text.size() <= 300;
+      }
+    }
+
+    // ---------- Profil publik (aman dibaca semua orang) ----------
+    match /profiles/{uid} {
+      allow read: if true;
+      allow create, update: if isSelf(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.get('displayName', '').size() <= 60
+        && request.resource.data.get('bio', '').size() <= 300
+        && (request.resource.data.get('role', 'member') == 'member' || isOwner())
+        && (request.resource.data.get('borderStyle', 'none') != 'royal' || isOwner());
+      allow delete: if isSelf(uid);
+    }
+
+    // ---------- Follow ----------
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.followerId == request.auth.uid
+        && request.resource.data.followeeId != request.auth.uid
+        && followId == request.resource.data.followerId + '_' + request.resource.data.followeeId;
+      allow delete: if signedIn() && resource.data.followerId == request.auth.uid;
+    }
+
+    // ---------- Teman ----------
+    match /friendRequests/{requestId} {
+      allow get: if pairHas(requestId);
+      allow list: if signedIn()
+        && (resource.data.toId == request.auth.uid || resource.data.fromId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.fromId == request.auth.uid
+        && request.resource.data.toId != request.auth.uid
+        && requestId == request.auth.uid + '_' + request.resource.data.toId;
+      allow delete: if pairHas(requestId);
+    }
+
+    match /friendships/{friendshipId} {
+      allow get: if pairHas(friendshipId);
+      allow list: if signedIn() && request.auth.uid in resource.data.users;
+      // Pertemanan hanya bisa dibuat penerima, dan hanya bila permintaan dari pihak lain ada.
+      allow create: if signedIn()
+        && request.resource.data.users.size() == 2
+        && request.auth.uid in request.resource.data.users
+        && friendshipId == request.resource.data.users[0] + '_' + request.resource.data.users[1]
+        && friendRequestExists(request.resource.data.users);
+      allow delete: if pairHas(friendshipId);
+    }
+    function friendRequestExists(users) {
+      let other = users[0] == request.auth.uid ? users[1] : users[0];
+      return exists(/databases/$(database)/documents/friendRequests/$(other + '_' + request.auth.uid));
+    }
+
+    // ---------- Chat antar pengguna ----------
+    match /chats/{chatId} {
+      allow get: if pairHas(chatId);
+      allow list: if signedIn() && request.auth.uid in resource.data.users;
+      allow create: if signedIn()
+        && request.resource.data.users.size() == 2
+        && request.auth.uid in request.resource.data.users
+        && chatId == request.resource.data.users[0] + '_' + request.resource.data.users[1]
+        && request.resource.data.lastSenderId == request.auth.uid;
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.users
+        && request.resource.data.users == resource.data.users;
+
+      match /messages/{messageId} {
+        allow read: if pairHas(chatId);
+        allow create: if pairHas(chatId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+        allow delete: if signedIn() && resource.data.senderId == request.auth.uid;
+      }
+    }
+
+    // ---------- Pengumuman situs (hanya owner yang boleh menulis) ----------
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create, update, delete: if isOwner();
+    }
+
+    // ---------- Klan ----------
+    match /clans/{clanId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && (request.resource.data.leaderId == request.auth.uid || isOwner());
+      // Orang lain hanya boleh mengubah hitungan anggota (maks 1 per aksi) saat gabung atau keluar.
+      allow update: if signedIn()
+        && (resource.data.leaderId == request.auth.uid || isOwner() || clanCounterOnly());
+      allow delete: if signedIn() && (resource.data.leaderId == request.auth.uid || isOwner());
+
+      match /members/{memberId} {
+        allow read: if true;
+        allow create, update: if isSelf(memberId)
+          && request.resource.data.userId == memberId
+          && (request.resource.data.role == 'member'
+              || get(/databases/$(database)/documents/clans/$(clanId)).data.leaderId == request.auth.uid);
+        allow delete: if isSelf(memberId)
+          || isOwner()
+          || (signedIn()
+              && get(/databases/$(database)/documents/clans/$(clanId)).data.leaderId == request.auth.uid);
+      }
+    }
+    function clanCounterOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount', 'totalXp'])
+        && math.abs(request.resource.data.get('memberCount', 0) - resource.data.get('memberCount', 0)) <= 1;
+    }
+
+    // ---------- Komentar episode (dengan balasan lewat parentId) ----------
+    match /episodes/{episodeId}/comments/{commentId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 500
+        && request.resource.data.get('likesCount', 0) == 0
+        && request.resource.data.get('likedBy', []).size() == 0
+        && request.resource.data.get('userRole', 'member') in ['member', 'owner']
+        && (request.resource.data.get('userRole', 'member') == 'member' || isOwner());
+      // Penulis mengubah komentarnya sendiri, owner moderasi, orang lain hanya boleh like.
+      allow update: if signedIn()
+        && ((resource.data.userId == request.auth.uid
+              && request.resource.data.userId == request.auth.uid
+              && request.resource.data.content.size() <= 500
+              && (request.resource.data.get('userRole', 'member') == 'member' || isOwner()))
+            || isOwner()
+            || likeOnly());
+      allow delete: if signedIn() && (resource.data.userId == request.auth.uid || isOwner());
+    }
+    function likeOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'likesCount'])
+        && request.resource.data.likesCount == request.resource.data.likedBy.size()
+        && request.resource.data.likedBy.toSet().difference(resource.data.likedBy.toSet()).hasOnly([request.auth.uid])
+        && resource.data.likedBy.toSet().difference(request.resource.data.likedBy.toSet()).hasOnly([request.auth.uid]);
     }
   }
 }

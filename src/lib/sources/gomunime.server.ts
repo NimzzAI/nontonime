@@ -30,7 +30,16 @@ function baseUrl(): string {
 }
 
 async function html(url: string, timeoutMs = 10000): Promise<string> {
-  return fetchText(url, { source: "gomunime", headers: { Referer: `${baseUrl()}/` }, timeoutMs });
+  try {
+    return await fetchText(url, {
+      source: "gomunime",
+      headers: { Referer: `${baseUrl()}/` },
+      timeoutMs,
+    });
+  } catch (error) {
+    // If blocked with 403 or server unreachable, recover silently without spamming errors
+    return "";
+  }
 }
 
 // Player Putarin menaruh konfigurasi terenkripsi AES-GCM di halamannya, kuncinya diminta dari origin yang sama
@@ -88,12 +97,24 @@ function parseCards($: CheerioAPI, selector: string): SourceItem[] {
       ?.trim();
     if (!slug || !title || seen.has(slug)) return;
     seen.add(slug);
+    const nodeText = node.text().toLowerCase();
+    let status: string | null = null;
+    if (
+      nodeText.includes("completed") ||
+      nodeText.includes("tamat") ||
+      nodeText.includes("finish")
+    ) {
+      status = "Completed";
+    } else if (nodeText.includes("ongoing") || nodeText.includes("tayang")) {
+      status = "Ongoing";
+    }
+
     items.push(
       makeItem("gomunime", slug, {
         title,
         poster,
         type: "TV",
-        status: "Ongoing",
+        status,
         score: parseNumber(node.find(".gm-b-rt").text().replace("★", "").trim()),
         episodeLabel: node.find(".gm-b-ep").text().trim() || null,
       }),
@@ -184,10 +205,13 @@ export const gomunime: AnimeSource = {
         .text()
         .replace(/^Nonton\s+Anime\s+/i, "")
         .replace(/\s+Sub\s+Indo.*$/i, "")
-        .trim() || $("title").text().split("–")[0]?.trim() || "";
+        .trim() ||
+      $("title").text().split("–")[0]?.trim() ||
+      "";
     if (!title) throw new Error(`Anime ${clean} tidak ditemukan`);
 
-    const poster = $(".gm-poster img, .gm-detail img, .animeposter img, img").first().attr("src") || null;
+    const poster =
+      $(".gm-poster img, .gm-detail img, .animeposter img, img").first().attr("src") || null;
     const synopsis =
       $(".gm-sinopsis, .sinopsis, .desc, p")
         .map((_, el) => $(el).text().trim())
@@ -259,7 +283,11 @@ export const gomunime: AnimeSource = {
     if (iframeSrc.includes("putarin")) {
       const direct = await decryptPutarin(iframeSrc);
       if (direct) {
-        servers.push({ name: "Putarin Langsung", quality: "Auto", ref: { kind: "url", url: direct } });
+        servers.push({
+          name: "Putarin Langsung",
+          quality: "Auto",
+          ref: { kind: "url", url: direct },
+        });
       }
     }
     if (iframeSrc) {
@@ -268,7 +296,8 @@ export const gomunime: AnimeSource = {
 
     $("option, .gm-server-btn, .server-btn").each((idx, el) => {
       const url = $(el).attr("value") || $(el).attr("data-src") || "";
-      if (!url.startsWith("http") || servers.some((s) => s.ref.kind === "url" && s.ref.url === url)) return;
+      if (!url.startsWith("http") || servers.some((s) => s.ref.kind === "url" && s.ref.url === url))
+        return;
       servers.push({
         name: $(el).text().trim() || `Server ${idx + 1}`,
         quality: "Auto",

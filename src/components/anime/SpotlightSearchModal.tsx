@@ -251,15 +251,26 @@ export function SpotlightSearchModal({
                           <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                             {anime.title}
                           </h4>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                          {anime.englishTitle &&
+                          anime.englishTitle.toLowerCase() !== anime.title.toLowerCase() ? (
+                            <p className="line-clamp-1 text-[11px] text-muted-foreground/80 italic">
+                              {anime.englishTitle}
+                            </p>
+                          ) : null}
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                             {anime.score ? (
                               <span className="inline-flex items-center gap-1 font-bold text-amber-500">
                                 ★ {anime.score}
                               </span>
                             ) : null}
-                            <span className="rounded bg-background/80 px-1.5 py-0.5 border border-border/60 text-[10px] font-medium">
-                              {anime.status || "Sub Indo"}
+                            <span className="rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                              Sub Indo
                             </span>
+                            {anime.status && anime.status !== "Sub Indo" ? (
+                              <span className="rounded bg-background/80 px-1.5 py-0.5 border border-border/60 text-[10px] font-medium">
+                                {anime.status}
+                              </span>
+                            ) : null}
                             {anime.type ? (
                               <span className="text-[10px] opacity-80">{anime.type}</span>
                             ) : null}

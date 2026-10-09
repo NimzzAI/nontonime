@@ -2,23 +2,39 @@ import { memo } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AnimeSummary } from "@/lib/anime-types";
 import { Clapperboard, Star, ChevronRight } from "lucide-react";
+import { getSafePosterUrl } from "@/lib/poster";
 
 export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: AnimeSummary }) {
-  const isOngoing = /ongoing|tayang/i.test(anime.status ?? "");
+  const currentYear = new Date().getFullYear();
+  const yearNum = anime.year ? parseInt(anime.year, 10) : null;
+  const isPastYear = yearNum !== null && yearNum > 1900 && yearNum < currentYear;
+
+  const isCompleted =
+    /tamat|complete|finish|selesai|ended/i.test(anime.status ?? "") ||
+    (isPastYear && !/ongoing|tayang/i.test(anime.status ?? ""));
+
+  const isOngoing = !isCompleted && /ongoing|tayang/i.test(anime.status ?? "");
+  const statusLabel = isCompleted ? "Tamat" : isOngoing ? "Ongoing" : null;
+  const isBatch = anime.id.startsWith("ks_") || anime.type === "Batch";
+  const posterUrl = getSafePosterUrl(anime.poster, anime.title);
+
+  const linkProps = isBatch
+    ? { to: "/download/$batchId" as const, params: { batchId: anime.id } }
+    : { to: "/anime/$animeId" as const, params: { animeId: anime.id } };
 
   return (
     <Link
-      to="/anime/$animeId"
-      params={{ animeId: anime.id }}
+      {...linkProps}
       className="press-soft group flex items-center gap-3.5 rounded-2xl border border-border/80 bg-card p-3 transition-all hover:border-primary/50 hover:bg-accent hover:shadow-sm"
     >
       <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-muted">
-        {anime.poster ? (
+        {posterUrl ? (
           <img
-            src={anime.poster}
+            src={posterUrl}
             alt={anime.title}
             loading="lazy"
             decoding="async"
+            referrerPolicy="no-referrer"
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         ) : (
@@ -28,10 +44,17 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
         )}
       </div>
 
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground group-hover:text-primary transition-colors">
-          {anime.title}
-        </h3>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div>
+          <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground group-hover:text-primary transition-colors">
+            {anime.title}
+          </h3>
+          {anime.englishTitle && anime.englishTitle.toLowerCase() !== anime.title.toLowerCase() ? (
+            <p className="line-clamp-1 text-[11px] text-muted-foreground/80 italic font-medium">
+              {anime.englishTitle}
+            </p>
+          ) : null}
+        </div>
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           {anime.score ? (
@@ -41,7 +64,7 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
             </span>
           ) : null}
 
-          {anime.status ? (
+          {statusLabel ? (
             <span
               className={
                 isOngoing
@@ -49,9 +72,20 @@ export const AnimeListRow = memo(function AnimeListRow({ anime }: { anime: Anime
                   : "font-semibold text-sky-600 dark:text-sky-400"
               }
             >
-              {isOngoing ? "Ongoing" : "Tamat"}
+              {statusLabel}
             </span>
           ) : null}
+
+          {/* Sub Indo Indicator Badge */}
+          {!anime.id.startsWith("aw_") ? (
+            <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+              Sub Indo
+            </span>
+          ) : (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
+              Multi / Eng
+            </span>
+          )}
 
           {anime.type ? <span>{anime.type}</span> : null}
           {anime.episodeCount ? <span>{anime.episodeCount} Eps</span> : null}

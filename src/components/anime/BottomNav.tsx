@@ -130,6 +130,32 @@ function CustomHistoryIcon({ active, className }: { active?: boolean; className?
   );
 }
 
+function CustomUsersIcon({ active, className }: { active?: boolean; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle
+        cx="9"
+        cy="8"
+        r="3.5"
+        fill={active ? "currentColor" : "none"}
+        fillOpacity={active ? 0.22 : 0}
+      />
+      <path d="M2.5 20c0-3.3 2.9-6 6.5-6s6.5 2.7 6.5 6" />
+      <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" />
+      <path d="M18 14.3c2 .8 3.5 2.7 3.5 5.7" />
+    </svg>
+  );
+}
+
 interface TabItem {
   to: string;
   label: string;
@@ -171,6 +197,13 @@ const TABS: readonly TabItem[] = [
     label: "Riwayat",
     exact: false,
     IconComponent: CustomHistoryIcon,
+  },
+  {
+    to: "/komunitas",
+    label: "Komunitas",
+    exact: false,
+    search: { tab: "cari" },
+    IconComponent: CustomUsersIcon,
   },
 ];
 

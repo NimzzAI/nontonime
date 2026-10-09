@@ -60,6 +60,9 @@ export function decodeServerRef(token: string): ServerRef | null {
 
 // Token datang dari browser, jadi URL di dalamnya harus publik dan berprotokol http atau https
 export function assertPublicHttpUrl(raw: string): URL {
+  if (raw.startsWith("/api/")) {
+    return new URL(raw, "http://localhost");
+  }
   let url: URL;
   try {
     url = new URL(raw);

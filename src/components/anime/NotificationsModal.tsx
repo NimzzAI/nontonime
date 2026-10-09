@@ -16,6 +16,16 @@ import {
   type SiteUpdateItem,
 } from "@/lib/notifications";
 import { getPermission } from "@/lib/push";
+import { isGuestUser, useAuth } from "@/lib/firebase";
+import {
+  markAllNotificationsRead,
+  useAnnouncements,
+  useSocialNotifications,
+} from "@/lib/social-notifications";
+import {
+  AnnouncementsPanel,
+  SocialNotificationsPanel,
+} from "@/components/social/SocialNotificationsPanel";
 import {
   Bell,
   Smartphone,
@@ -37,6 +47,11 @@ export function NotificationsModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { user } = useAuth();
+  const socialUid = user && !isGuestUser(user) ? user.uid : null;
+  const social = useSocialNotifications(socialUid);
+  const announcements = useAnnouncements();
+  const [tab, setTab] = useState<"sosial" | "update">("update");
   const [readIds, setReadIds] = useState<string[]>(getReadUpdateIds());
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
     getPermission(),
@@ -79,6 +94,8 @@ export function NotificationsModal({
 
   const handleReadAll = () => {
     markAllUpdatesAsRead();
+    announcements.markAllRead();
+    if (socialUid) void markAllNotificationsRead(socialUid, social.items);
     setReadIds(RECENT_SITE_UPDATES.map((u) => u.id));
   };
 
@@ -190,8 +207,42 @@ export function NotificationsModal({
           </div>
         </div>
 
-        {/* Updates List */}
+        {/* Tab */}
+        <div className="flex gap-1.5 border-b border-border/60 px-5 pt-3 sm:px-6">
+          {(
+            [
+              ["update", "Pengumuman & Update", announcements.unread],
+              ["sosial", "Sosial", social.unread],
+            ] as const
+          ).map(([id, label, count]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={cn(
+                "relative -mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-bold cursor-pointer",
+                tab === id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+              {count > 0 && (
+                <span className="rounded-full bg-primary px-1.5 text-[9px] font-black text-primary-foreground">
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {tab === "sosial" ? (
+          <div className="p-5 sm:p-6 max-h-[50vh] overflow-y-auto">
+            <SocialNotificationsPanel onNavigate={() => onOpenChange(false)} />
+          </div>
+        ) : (
         <div className="p-5 sm:p-6 space-y-3 max-h-[50vh] overflow-y-auto">
+          <AnnouncementsPanel />
           <h4 className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
             Log Pembaruan Situs Nontonime
           </h4>
@@ -237,6 +288,7 @@ export function NotificationsModal({
             })}
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -14,11 +14,26 @@ import { SCHEDULE_DAYS } from "./anime-types";
 import { cached, withTimeout } from "./sources/cache.server";
 import { BROWSER_UA, fetchText, isDirectMediaUrl, slugify } from "./sources/http.server";
 import { normalizeTitle, parseId } from "./sources/ids";
-import { findBatchFor, getBatchDetail } from "./sources/kusonime.server";
+import {
+  normalizeLoose,
+  parseSearchQuery,
+  stripSeasonWords,
+  titleSeason,
+  tokenCoverage,
+  type ParsedQuery,
+} from "./search-query";
+import { findBatchFor, getBatchDetail, searchBatch } from "./sources/kusonime.server";
 import { resolveNontonAnimeIdPlayer } from "./sources/nontonanimeid.server";
 import { enabledSources, getSource } from "./sources/registry.server";
+import { animein } from "./sources/animein.server";
 import { resolveSamehadakuPlayer } from "./sources/samehadaku.server";
 import { assertPublicHttpUrl, decodeServerRef, encodeServerRef } from "./sources/token.server";
+import { formatSafePoster } from "./sources/poster.server";
+import {
+  getSearchQueryTerms,
+  resolveAnimeAliases,
+  type AnimeAliasData,
+} from "./sources/alias.server";
 import type {
   AnimeSource,
   HomeFeed,
@@ -37,20 +52,41 @@ const DETAIL_TIMEOUT_MS = 25000;
 /* ========================================================================== */
 
 function toSummary(item: SourceItem): AnimeSummary {
+  const poster = formatSafePoster(item.poster, item.title);
+  const cover = formatSafePoster(item.cover || item.poster, item.title);
+
+  // Accurate status normalization for old vs ongoing anime
+  let normalizedStatus = item.status;
+  const currentYear = new Date().getFullYear();
+  const yearNum = item.year ? parseInt(item.year, 10) : null;
+  const isPastYear = yearNum !== null && yearNum > 1900 && yearNum < currentYear;
+
+  if (normalizedStatus && /tamat|complete|finish|selesai|ended/i.test(normalizedStatus)) {
+    normalizedStatus = "Completed";
+  } else if (isPastYear && (!normalizedStatus || !/ongoing|tayang/i.test(normalizedStatus))) {
+    // Anime from past years that are not actively airing are Completed
+    normalizedStatus = "Completed";
+  } else if (item.type === "Movie" && (!normalizedStatus || isPastYear)) {
+    normalizedStatus = "Completed";
+  }
+
+  // Only assign active broadcast day if the anime is not completed
+  const activeDay = isPastYear || normalizedStatus === "Completed" ? null : item.day;
+
   return {
     id: item.id,
     title: item.title,
-    poster: item.poster,
-    cover: item.cover,
+    poster,
+    cover,
     score: item.score,
-    status: item.status,
+    status: normalizedStatus,
     type: item.type ?? "TV",
     genres: item.genres,
     synopsis: item.synopsis,
     year: item.year,
     views: item.views,
-    day: item.day,
-    releaseDay: item.day,
+    day: activeDay,
+    releaseDay: activeDay,
     latestReleaseDate: item.episodeLabel,
     episodeCount: null,
   };
@@ -70,7 +106,10 @@ async function fromSources<T>(
   for (const source of enabledSources()) {
     const promise = pick(source);
     if (promise) {
-      calls.push({ source, promise: withTimeout(promise, SOURCE_TIMEOUT_MS, `${source.id}.${label}`) });
+      calls.push({
+        source,
+        promise: withTimeout(promise, SOURCE_TIMEOUT_MS, `${source.id}.${label}`),
+      });
     }
   }
   const settled = await Promise.allSettled(calls.map((c) => c.promise));
@@ -82,7 +121,9 @@ async function fromSources<T>(
       results.push({ source: call.source.id, value: res.value });
     } else {
       const reason = res.reason instanceof Error ? res.reason.message : String(res.reason);
-      console.warn(`[sources] ${call.source.id}.${label} gagal: ${reason}`);
+      if (!reason.includes("403")) {
+        console.warn(`[sources] ${call.source.id}.${label} gagal: ${reason}`);
+      }
     }
   });
   return { results, attempted: calls.length };
@@ -135,14 +176,60 @@ function titleCaseDay(value: string): string {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-function relevance(title: string, query: string): number {
-  const t = title.toLowerCase();
-  const q = query.toLowerCase().trim();
-  if (t === q) return 1000;
-  if (t.startsWith(q)) return 500;
-  const words = q.split(/\s+/).filter(Boolean);
-  const hits = words.filter((w) => t.includes(w)).length;
-  return hits * 10 - Math.abs(t.length - q.length) / 100;
+function relevance(
+  title: string,
+  itemId: string,
+  parsed: ParsedQuery,
+  aliasData?: AnimeAliasData | null,
+): number {
+  const t = normalizeLoose(title);
+  const tCore = stripSeasonWords(t);
+  const q = normalizeLoose(parsed.base);
+
+  // Kecocokan judul inti dengan yang diketik (season diabaikan di sini, dinilai terpisah)
+  let baseScore = 0;
+  if (q) {
+    if (tCore === q) baseScore = 1000;
+    else if (tCore.startsWith(q)) baseScore = 600;
+    else if (t.includes(q)) baseScore = 400;
+    else baseScore = Math.round(tokenCoverage(q, t) * 300);
+  }
+
+  // Alias (Romaji, Inggris, Jepang, sinonim): "Yuru Camp" = "Laid-Back Camp" = ゆるキャン
+  let aliasBonus = 0;
+  if (aliasData) {
+    const names = [
+      aliasData.romaji,
+      aliasData.english,
+      aliasData.native,
+      ...aliasData.synonyms.slice(0, 4),
+    ];
+    for (const name of names) {
+      if (!name) continue;
+      const n = stripSeasonWords(normalizeLoose(name));
+      if (!n) continue;
+      if (tCore === n) aliasBonus = Math.max(aliasBonus, 900);
+      else if (tCore.startsWith(n)) aliasBonus = Math.max(aliasBonus, 500);
+      else if (t.includes(n)) aliasBonus = Math.max(aliasBonus, 300);
+    }
+  }
+
+  // Season: cocok dengan permintaan naik jauh, season lain turun, tanpa penanda dianggap season 1
+  let seasonBonus = 0;
+  if (parsed.season && parsed.season > 1) {
+    const found = titleSeason(title);
+    if (found === parsed.season) seasonBonus = 600;
+    else if (found !== null) seasonBonus = -300;
+    else seasonBonus = -50;
+  } else if (parsed.season === null) {
+    const found = titleSeason(title);
+    if (found !== null && found > 1) seasonBonus = -20;
+  }
+
+  // Sub Indo diprioritaskan untuk penonton Indonesia
+  const subIndoBonus = itemId.startsWith("aw_") ? 0 : 150;
+
+  return baseScore + aliasBonus + subIndoBonus + seasonBonus - Math.abs(t.length - q.length) / 100;
 }
 
 /* ========================================================================== */
@@ -188,20 +275,50 @@ export async function getHome(
       requireResults(results, attempted, "beranda");
       const feeds = results.map((r) => r.value);
 
-      const latest = mergeItems(pool(feeds, "latest", "today"));
-      const popular = mergeItems(pool(feeds, "popular", "hot", "latest"));
-      const hot = mergeItems(pool(feeds, "hot", "popular", "latest"));
-      const slider = mergeItems(pool(feeds, "slider", "hot", "popular", "latest"));
-      const today = mergeItems(day ? pool(feeds, "today") : pool(feeds, "today", "latest"));
-      const waiting = mergeItems(pool(feeds, "waiting", "movies"));
+      const rawLatest = mergeItems(pool(feeds, "latest", "today")).map(toSummary);
+      const rawPopular = mergeItems(pool(feeds, "popular", "hot", "latest")).map(toSummary);
+      const rawHot = mergeItems(pool(feeds, "hot", "popular", "latest")).map(toSummary);
+      const rawSlider = mergeItems(pool(feeds, "slider", "hot", "popular", "latest")).map(
+        toSummary,
+      );
+      const rawToday = mergeItems(day ? pool(feeds, "today") : pool(feeds, "today", "latest")).map(
+        toSummary,
+      );
+      const rawWaiting = mergeItems(pool(feeds, "waiting", "movies")).map(toSummary);
+
+      const isCompleted = (item: AnimeSummary) =>
+        item.status === "Completed" ||
+        /tamat|complete|finish|selesai|ended/i.test(item.status ?? "");
+
+      // 1. Sedang Tayang (Ongoing): STRICTLY ongoing! Filter out any completed series
+      const ongoingItems = rawHot.filter((item) => !isCompleted(item));
+
+      // 2. Tayang Hari Ini: STRICTLY ongoing broadcast series
+      const todayItems = rawToday.filter((item) => !isCompleted(item));
+
+      // 3. Episode Terbaru (Baru Rilis): fresh ongoing releases / latest episodes, never old completed series
+      const freshNewItems = rawLatest.filter((item) => !isCompleted(item));
+
+      // 4. Anime Tamat (Completed): STRICTLY completed anime
+      const completedItems = rawPopular.filter(isCompleted);
+      if (completedItems.length < 10) {
+        const poolCompleted = [...rawHot, ...rawLatest, ...rawSlider].filter(isCompleted);
+        const seen = new Set(completedItems.map((c) => c.id));
+        for (const c of poolCompleted) {
+          if (!seen.has(c.id)) {
+            seen.add(c.id);
+            completedItems.push(c);
+          }
+        }
+      }
 
       const home: HomeSections = {
-        slider: slider.slice(0, 8).map(toSummary),
-        today: (today.length > 0 ? today : latest).slice(0, 18).map(toSummary),
-        hot: hot.slice(0, 10).map(toSummary),
-        popular: popular.slice(0, 12).map(toSummary),
-        new: latest.slice(0, 18).map(toSummary),
-        waiting: (waiting.length > 0 ? waiting : popular.slice(6)).slice(0, 10).map(toSummary),
+        slider: rawSlider.slice(0, 8),
+        today: (todayItems.length > 0 ? todayItems : freshNewItems).slice(0, 18),
+        hot: ongoingItems.slice(0, 10),
+        popular: completedItems.slice(0, 12),
+        new: freshNewItems.slice(0, 18),
+        waiting: (rawWaiting.length > 0 ? rawWaiting : completedItems.slice(6)).slice(0, 10),
       };
       return home;
     });
@@ -230,7 +347,11 @@ export async function getLatest(page = 1, _provider = "otakudesu"): Promise<List
   const safePage = Math.max(1, page);
   return cached(`latest:${safePage}`, 5 * MIN, async () => {
     const { results, attempted } = await fromSources<SourcePage>("latest", (s) =>
-      s.getLatest ? s.getLatest(safePage) : safePage === 1 ? pageFromHome(s, ["latest"]) : undefined,
+      s.getLatest
+        ? s.getLatest(safePage)
+        : safePage === 1
+          ? pageFromHome(s, ["latest"])
+          : undefined,
     );
     return mergePages(requireResults(results, attempted, "daftar terbaru"), safePage);
   });
@@ -273,13 +394,146 @@ export async function search(
   if (!term) return { items: [], page: 1, hasNext: false };
   const safePage = Math.max(1, page);
 
-  return cached(`search:${term.toLowerCase()}:${safePage}`, 5 * MIN, async () => {
+  // 1. Direct URL / ID check (e.g. https://aniwatch.cx/episode/yuruyuri-nachuyachumi-1-c5d95)
+  const parsed = parseId(term);
+  if (parsed && safePage === 1) {
+    try {
+      if (parsed.kind === "episode") {
+        const stream = await getSource(parsed.source).getStream(parsed.slug);
+        if (stream) {
+          const item: AnimeSummary = {
+            id: stream.animeId || toEpisodeId(parsed.source, parsed.slug),
+            title: stream.title,
+            poster: null,
+            type: "Episode",
+            status: "Ongoing",
+          };
+          // Try fetching parent anime detail for rich poster
+          if (stream.animeId) {
+            try {
+              const cleanOwner = stream.animeId.replace(/^[a-z]+_/, "");
+              const parentDetail = await getSource(parsed.source).getDetail(cleanOwner);
+              if (parentDetail) {
+                return { items: [toSummary(parentDetail)], page: 1, hasNext: false };
+              }
+            } catch {
+              // ignore detail lookup error
+            }
+          }
+          return { items: [item], page: 1, hasNext: false };
+        }
+      } else if (parsed.kind === "anime") {
+        const detail = await getSource(parsed.source).getDetail(parsed.slug);
+        if (detail) {
+          return { items: [toSummary(detail)], page: 1, hasNext: false };
+        }
+      }
+    } catch {
+      // ignore URL resolution error
+    }
+  }
+
+  // 2. Clean query if a URL was pasted
+  const cleanTerm =
+    term
+      .replace(/^https?:\/\/[^/]+\/(?:episode|anime|watch)\//i, "")
+      .replace(/-[a-f0-9]{4,8}$/i, "")
+      .replace(/-\d+$/, "")
+      .replace(/-/g, " ")
+      .trim() || term;
+
+  // Kata pengganggu ("sub indo", "nonton") dan nomor season dibuang sebelum dikirim ke situs sumber
+  const parsed = parseSearchQuery(cleanTerm);
+  const primaryTerm = parsed.base || cleanTerm;
+
+  return cached(`search2:${cleanTerm.toLowerCase()}:${safePage}`, 5 * MIN, async () => {
+    const [aliasData, variants] = await Promise.all([
+      resolveAnimeAliases(primaryTerm),
+      getSearchQueryTerms(cleanTerm),
+    ]);
+
+    // 1. Semua sumber mencari judul inti, supaya semua season ikut muncul lalu diurutkan di akhir
     const { results, attempted } = await fromSources<SourcePage>("search", (s) =>
-      s.search(term, safePage),
+      s.search(primaryTerm, safePage),
     );
     requireResults(results, attempted, "pencarian");
     const merged = mergePages(results, safePage);
-    merged.items.sort((a, b) => relevance(b.title, term) - relevance(a.title, term));
+
+    // 2. Halaman 1: coba juga nama lain (Romaji, Inggris, sinonim, "<nama> Season N") di semua sumber
+    if (safePage === 1) {
+      const extra = variants
+        .filter((v) => normalizeTitle(v) !== normalizeTitle(primaryTerm))
+        .slice(0, 3);
+      const settled = await Promise.allSettled(
+        extra.map((v) => fromSources<SourcePage>("search", (s) => s.search(v, 1))),
+      );
+      const seen = new Set(merged.items.map((i) => normalizeTitle(i.title) || i.id));
+      for (const outcome of settled) {
+        if (outcome.status !== "fulfilled" || outcome.value.results.length === 0) continue;
+        for (const item of mergePages(outcome.value.results, 1).items) {
+          const key = normalizeTitle(item.title) || item.id;
+          if (!seen.has(key)) {
+            seen.add(key);
+            merged.items.push(item);
+          }
+        }
+      }
+    }
+
+    // 3. Halaman 1: sertakan batch Kusonime yang cocok (misalnya Yuru Camp Season 2 BD Batch)
+    if (safePage === 1) {
+      const batchQueries = [primaryTerm];
+      if (aliasData?.romaji) batchQueries.push(aliasData.romaji.replace(/[△▲★☆]/g, " ").trim());
+      if (parsed.season && parsed.season > 1) batchQueries.push(`${primaryTerm} season ${parsed.season}`);
+      for (const bQuery of [...new Set(batchQueries.filter(Boolean))]) {
+        try {
+          const batchHits = await withTimeout(searchBatch(bQuery), 3500, "kusonime.searchBatch");
+          if (batchHits && batchHits.length > 0) {
+            const existingKeys = new Set(merged.items.map((i) => normalizeTitle(i.title)));
+            for (const hit of batchHits.slice(0, 5)) {
+              const hitKey = normalizeTitle(hit.title);
+              if (!existingKeys.has(hitKey)) {
+                existingKeys.add(hitKey);
+                merged.items.push({
+                  id: `ks_${hit.slug}`,
+                  title: hit.title,
+                  poster: hit.poster,
+                  cover: hit.poster,
+                  score: null,
+                  status: "Completed",
+                  type: "Batch",
+                  genres: [],
+                  synopsis: null,
+                  year: null,
+                  views: null,
+                  day: null,
+                  releaseDay: null,
+                  latestReleaseDate: "Batch Lengkap",
+                  episodeCount: null,
+                });
+              }
+            }
+          }
+        } catch {
+          // ignore kusonime batch lookup error
+        }
+      }
+    }
+
+    // 4. Judul alternatif untuk tampilan
+    for (const item of merged.items) {
+      if (!item.englishTitle && aliasData?.english) {
+        item.englishTitle = aliasData.english;
+      }
+      if (!item.romajiTitle && aliasData?.romaji) {
+        item.romajiTitle = aliasData.romaji;
+      }
+    }
+
+    merged.items.sort(
+      (a, b) =>
+        relevance(b.title, b.id, parsed, aliasData) - relevance(a.title, a.id, parsed, aliasData),
+    );
     return merged;
   });
 }
@@ -288,18 +542,73 @@ export async function search(
 /*                                   GENRES                                   */
 /* ========================================================================== */
 
+const STANDARD_GENRES = [
+  "Action",
+  "Adventure",
+  "Comedy",
+  "Demons",
+  "Drama",
+  "Ecchi",
+  "Fantasy",
+  "Game",
+  "Harem",
+  "Historical",
+  "Horror",
+  "Isekai",
+  "Josei",
+  "Kids",
+  "Magic",
+  "Martial Arts",
+  "Mecha",
+  "Military",
+  "Music",
+  "Mystery",
+  "Parody",
+  "Police",
+  "Psychological",
+  "Romance",
+  "Samurai",
+  "School",
+  "Sci-Fi",
+  "Seinen",
+  "Shoujo",
+  "Shounen",
+  "Slice of Life",
+  "Space",
+  "Sports",
+  "Super Power",
+  "Supernatural",
+  "Thriller",
+  "Vampire",
+];
+
 export async function getGenres(_provider = "otakudesu"): Promise<GenreItem[]> {
   return cached("genres", 60 * MIN, async () => {
-    const { results, attempted } = await fromSources("genres", (s) => s.getGenres?.());
-    requireResults(results, attempted, "daftar genre");
+    const { results } = await fromSources("genres", (s) => s.getGenres?.());
     const map = new Map<string, GenreItem>();
+
     for (const { value } of results) {
+      if (!Array.isArray(value)) continue;
       for (const genre of value) {
-        const id = slugify(genre.name);
+        const cleanName = genre.name
+          .replace(/\s*\(\s*\d+\s*\)/g, "")
+          .replace(/\s+anime$/i, "")
+          .replace(/^-+|-+$/g, "")
+          .trim();
+        if (!cleanName || cleanName.length <= 1) continue;
+        const id = slugify(cleanName);
         if (!id || map.has(id)) continue;
-        map.set(id, { id, name: genre.name, image: genre.image });
+        map.set(id, { id, name: cleanName, image: genre.image });
       }
     }
+
+    for (const standard of STANDARD_GENRES) {
+      const id = slugify(standard);
+      if (!map.has(id)) {
+        map.set(id, { id, name: standard, image: null });
+      }
+    }
+
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
 }
@@ -311,12 +620,35 @@ export async function getByGenre(
   _provider = "otakudesu",
 ): Promise<ListResult> {
   const safePage = Math.max(1, page);
-  const slug = slugify(genreId);
+  const cleanId = genreId
+    .replace(/\s*\(\s*\d+\s*\)/g, "")
+    .replace(/\s*anime$/i, "")
+    .replace(/-anime$/i, "")
+    .trim();
+  const slug = slugify(cleanId);
+
   return cached(`genre:${slug}:${safePage}`, 15 * MIN, async () => {
-    const { results, attempted } = await fromSources<SourcePage>("genre", (s) =>
-      s.getByGenre?.(slug, safePage),
-    );
-    return mergePages(requireResults(results, attempted, `genre ${slug}`), safePage);
+    let merged: ListResult = { items: [], page: safePage, hasNext: false };
+    try {
+      const { results } = await fromSources<SourcePage>("genre", (s) =>
+        s.getByGenre?.(slug, safePage),
+      );
+      if (results.length > 0 && results.some((r) => r.value.items.length > 0)) {
+        merged = mergePages(results, safePage);
+      }
+    } catch {
+      // Fallback
+    }
+
+    if (merged.items.length === 0) {
+      const searchKeyword = cleanId.replace(/-/g, " ").trim();
+      const fallback = await search(searchKeyword, safePage);
+      if (fallback.items.length > 0) {
+        return fallback;
+      }
+    }
+
+    return merged;
   });
 }
 
@@ -326,8 +658,13 @@ export async function getByGenre(
 
 export async function getSchedule(_provider = "otakudesu"): Promise<ScheduleMap> {
   return cached("schedule", 30 * MIN, async () => {
-    const { results, attempted } = await fromSources("schedule", (s) => s.getSchedule?.());
-    requireResults(results, attempted, "jadwal rilis");
+    let results: SourceResult<Record<string, SourceItem[]>>[] = [];
+    try {
+      const outcome = await fromSources("schedule", (s) => s.getSchedule?.());
+      results = outcome.results;
+    } catch {
+      // fallback will handle
+    }
 
     const map: ScheduleMap = {};
     for (const day of SCHEDULE_DAYS) {
@@ -342,6 +679,42 @@ export async function getSchedule(_provider = "otakudesu"): Promise<ScheduleMap>
         status: item.status ?? "Ongoing",
       }));
     }
+
+    // Check if any day has items
+    const totalCount = Object.values(map).reduce((acc, list) => acc + list.length, 0);
+
+    // If schedule sources failed or returned 0 items, construct a fallback schedule from ongoing anime
+    if (totalCount === 0) {
+      try {
+        const [latestRes, popRes] = await Promise.all([
+          getLatest(1).catch(() => ({ items: [] })),
+          getPopular(1).catch(() => ({ items: [] })),
+        ]);
+        const ongoing = [...latestRes.items, ...popRes.items];
+        const seen = new Set<string>();
+        const uniqueOngoing = ongoing.filter((item) => {
+          if (!item.id || seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
+
+        if (uniqueOngoing.length > 0) {
+          uniqueOngoing.forEach((item, index) => {
+            const targetDay = SCHEDULE_DAYS[index % SCHEDULE_DAYS.length] ?? "Senin";
+            map[targetDay] = map[targetDay] || [];
+            map[targetDay].push({
+              ...item,
+              releaseDay: targetDay,
+              day: targetDay,
+              status: "Ongoing",
+            });
+          });
+        }
+      } catch {
+        // keep map as is
+      }
+    }
+
     return map;
   });
 }
@@ -403,8 +776,8 @@ export async function getDetail(id: string, _provider = "otakudesu"): Promise<An
     const result: AnimeDetail = {
       id: canonicalId,
       title: detail.title,
-      poster: detail.poster,
-      cover: detail.cover,
+      poster: formatSafePoster(detail.poster, detail.title),
+      cover: formatSafePoster(detail.cover || detail.poster, detail.title),
       score: detail.score,
       status: detail.status,
       type: detail.type ?? "TV",
@@ -457,10 +830,21 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
   }
 }
 
+function qualityWeight(q: string): number {
+  if (q.includes("1080")) return 1080;
+  if (q.includes("720")) return 720;
+  if (q.includes("480")) return 480;
+  if (q.includes("360")) return 360;
+  if (/auto/i.test(q)) return 500;
+  return 100;
+}
+
 function groupServers(stream: SourceStream): QualityServerGroup[] {
   const groups = new Map<string, QualityServerGroup>();
   for (const server of stream.servers) {
-    const quality = server.quality || "Auto";
+    let quality = server.quality || "Auto";
+    if (quality === "1080p") quality = "1080p FHD";
+    else if (quality === "720p") quality = "720p HD";
     let group = groups.get(quality);
     if (!group) {
       group = { quality, serverList: [] };
@@ -468,7 +852,91 @@ function groupServers(stream: SourceStream): QualityServerGroup[] {
     }
     group.serverList.push({ title: server.name, serverId: encodeServerRef(server.ref) });
   }
-  return [...groups.values()];
+  return [...groups.values()].sort((a, b) => qualityWeight(b.quality) - qualityWeight(a.quality));
+}
+
+async function findSubIndoAlternativeServers(
+  rawTitle: string,
+  episodeNumber: number,
+  fallbackSlug?: string,
+): Promise<SourceServer[]> {
+  try {
+    const cleanTitle = rawTitle
+      .replace(/^watch\s+/i, "")
+      .replace(/\s+(?:episode|eps)\s+\d+.*$/i, "")
+      .replace(/\s+online.*$/i, "")
+      .trim();
+    const fallbackTitle = fallbackSlug
+      ? fallbackSlug
+          .replace(/^aw_(?:\d+-)?/, "")
+          .replace(/-/g, " ")
+          .trim()
+      : "";
+    const animeTitle = cleanTitle || fallbackTitle;
+    if (!animeTitle) return [];
+
+    const aliasData = await resolveAnimeAliases(animeTitle);
+    const searchTerms = [
+      aliasData?.romaji?.replace(/[△▲★☆]/g, " ").trim(),
+      aliasData?.romaji
+        ?.replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
+        .replace(/[△▲★☆]/g, " ")
+        .trim(),
+      animeTitle
+        .replace(/\b(?:season|musim|s)\s*\d+\b/gi, "")
+        .replace(/[△▲★☆]/g, " ")
+        .trim(),
+      animeTitle,
+    ].filter(Boolean) as string[];
+
+    for (const term of searchTerms) {
+      if (term.length < 3) continue;
+      const res = await withTimeout(animein.search(term, 1), 3500, "animein.subIndoCheck");
+      if (res && res.items.length > 0) {
+        // Find best matching anime
+        const candidate =
+          res.items.find((item) => {
+            const t = item.title.toLowerCase();
+            const wantedSeason = parseSearchQuery(animeTitle).season;
+            if (wantedSeason) return titleSeason(item.title) === wantedSeason;
+            return (titleSeason(item.title) ?? 1) === 1 && !t.includes("movie");
+          }) || res.items[0];
+
+        if (candidate) {
+          const cleanSlug = candidate.id.replace(/^ai_/, "");
+          const detail = await withTimeout(
+            animein.getDetail(cleanSlug),
+            3500,
+            "animein.subIndoDetail",
+          );
+          const targetEp = detail.episodes.find((e) => e.number === episodeNumber);
+          if (targetEp) {
+            const epSlug = targetEp.id.replace(/^ai_ep_/, "");
+            const epStream = await withTimeout(
+              animein.getStream(epSlug),
+              3500,
+              "animein.subIndoStream",
+            );
+            if (epStream && epStream.servers.length > 0) {
+              return epStream.servers.map((s) => ({
+                name: `${s.name}`,
+                quality:
+                  s.quality === "1080p"
+                    ? "1080p FHD"
+                    : s.quality === "720p"
+                      ? "720p HD"
+                      : s.quality,
+                ref: s.ref,
+              }));
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
 }
 
 export async function getStream(episodeId: string, _provider = "otakudesu"): Promise<StreamResult> {
@@ -478,11 +946,38 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
   }
 
   const stream = await cached(`stream:${episodeId}`, 3 * MIN, () =>
-    withTimeout(getSource(parsed.source).getStream(parsed.slug), DETAIL_TIMEOUT_MS, `${parsed.source}.stream`),
+    withTimeout(
+      getSource(parsed.source).getStream(parsed.slug),
+      DETAIL_TIMEOUT_MS,
+      `${parsed.source}.stream`,
+    ),
   );
 
-  const first = stream.servers[0];
-  const embedUrl = first && first.ref.kind === "url" ? first.ref.url : null;
+  // If the stream is from Aniwatch (English subs), search for Sub Indo servers from AnimeIn
+  if (parsed.source === "aniwatch") {
+    try {
+      const epNumMatch = parsed.slug.match(/-(\d+)-/) ?? parsed.slug.match(/-(\d+)$/);
+      const epNumber = epNumMatch ? parseInt(epNumMatch[1], 10) : 1;
+      const subIndoServers = await findSubIndoAlternativeServers(
+        stream.title,
+        epNumber,
+        stream.animeId,
+      );
+      if (subIndoServers.length > 0) {
+        stream.servers.unshift(...subIndoServers);
+      }
+    } catch {
+      // ignore cross-source sub indo lookup error
+    }
+  }
+
+  // Sort servers so highest resolution (1080p FHD > 720p HD > 480p > Auto > 360p) is preferred
+  const sortedServers = [...stream.servers].sort(
+    (a, b) => qualityWeight(b.quality || "Auto") - qualityWeight(a.quality || "Auto"),
+  );
+  const preferredServer = sortedServers[0] || stream.servers[0];
+  const embedUrl =
+    preferredServer && preferredServer.ref.kind === "url" ? preferredServer.ref.url : null;
   const directUrl = embedUrl ? await extractDirectStreamUrl(embedUrl) : null;
 
   return {
@@ -512,6 +1007,9 @@ export async function resolveServer(
 
     let rawUrl = "";
     if (ref.kind === "url") {
+      if (ref.url.startsWith("/api/")) {
+        return { url: ref.url };
+      }
       rawUrl = assertPublicHttpUrl(ref.url).toString();
     } else if (ref.kind === "samehadaku") {
       rawUrl = await resolveSamehadakuPlayer(ref);

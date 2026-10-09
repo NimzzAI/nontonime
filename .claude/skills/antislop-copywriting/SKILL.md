@@ -3,6 +3,7 @@ name: antislop-copywriting
 description: "Copy and text skill for antislop. Use when writing or editing prose: headlines, tone, CTAs, and anti-AI-writing patterns. Load with the core."
 allowed-tools: Read Write Edit Glob Grep
 ---
+
 # antislop-copywriting
 
 > Anti Slop: Rules for AI Coding Agents. Copy & Text skill
@@ -22,7 +23,7 @@ allowed-tools: Read Write Edit Glob Grep
 
 ### Empty AI Vocabulary
 
-- **The pattern:** verbs and abstract nouns stacked to sound impressive without saying anything: *unlock, elevate, empower, delve, showcase, testament, landscape (abstract), journey, robust, game-changer, next-level, seamless, cutting-edge, revolutionary*.
+- **The pattern:** verbs and abstract nouns stacked to sound impressive without saying anything: _unlock, elevate, empower, delve, showcase, testament, landscape (abstract), journey, robust, game-changer, next-level, seamless, cutting-edge, revolutionary_.
 - **Why it reads as AI:** these words appear far more often in machine-written text. They signal intent to impress, not intent to inform, and they are the fastest way to mark a page as AI-generated.
 - **Before:**
   > Unlock the power of seamless collaboration to elevate your team's journey to the next level.
@@ -231,9 +232,9 @@ allowed-tools: Read Write Edit Glob Grep
 
 ### Em Dashes
 
-- **The pattern:** the em dash character (`—`) used as an aside or connector: *"institutions — not the people — continue"*.
+- **The pattern:** the em dash character (`—`) used as an aside or connector: _"institutions — not the people — continue"_.
 - **Why it reads as AI:** it is one of the most reliable AI tells, and the core bans it outright.
-- **Rule:** R-02 forbids the em dash in any text. Replace each one, in rough order of preference: a period (start a new sentence), a comma (a tight aside), a colon (introduce an explanation), parentheses (a true aside), or restructure the sentence. Also catch spaced em dashes (` — `) and double hyphens (` -- `) used the same way.
+- **Rule:** R-02 forbids the em dash in any text. Replace each one, in rough order of preference: a period (start a new sentence), a comma (a tight aside), a colon (introduce an explanation), parentheses (a true aside), or restructure the sentence. Also catch spaced em dashes (`—`) and double hyphens (`--`) used the same way.
 - **Before:**
   > The policy — announced without warning — affects thousands of workers.
 - **After:**
@@ -318,7 +319,7 @@ A clean human writer can hit several patterns above without any AI involvement. 
 - **Perfect grammar and consistent style.** Many writers are professionals or have been edited. Polish does not equal AI.
 - **Mixed casual and formal registers.** This often signals a real person, not a chatbot.
 - **"Bland" or "robotic" prose.** AI prose has specific tells. Generic dryness without those tells is just dry writing.
-- **Formal vocabulary.** AI overuses *specific* words (see Empty AI Vocabulary), not all fancy words. Do not flatten a precise word just because it sounds brainy.
+- **Formal vocabulary.** AI overuses _specific_ words (see Empty AI Vocabulary), not all fancy words. Do not flatten a precise word just because it sounds brainy.
 - **Common transition words in isolation.** One "however" or "additionally" is not a tell. They count only when piled up.
 - **Curly quotes alone.** macOS, Word, and most CMSes auto-curl by default. Curly quotes count only when stacked with other tells.
 - **Em dashes alone.** Editors and journalists use them. An em dash is evidence only inside a cluster.
