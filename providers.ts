@@ -381,7 +381,13 @@ export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
           : `${input.provider || ""} ${input.host || ""} ${input.url || ""} ${input.playUrl || ""}`;
       return /nimegami/i.test(str);
     },
-    resolveEmbedUrl: (rawUrl) => rawUrl,
+    resolveEmbedUrl: (rawUrl) => {
+      if (!rawUrl) return "";
+      if (rawUrl.includes("vsys-srv.berkasdrive.com") || rawUrl.includes("berkasdrive.com")) {
+        return `/api/stream-proxy?url=${encodeURIComponent(rawUrl)}`;
+      }
+      return rawUrl;
+    },
   },
 
   berkasdrive: {
@@ -399,7 +405,13 @@ export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
           : `${input.provider || ""} ${input.host || ""} ${input.url || ""} ${input.playUrl || ""}`;
       return /berkasdrive/i.test(str);
     },
-    resolveEmbedUrl: (rawUrl) => rawUrl,
+    resolveEmbedUrl: (rawUrl) => {
+      if (!rawUrl) return "";
+      if (rawUrl.includes("vsys-srv.berkasdrive.com") || rawUrl.includes("berkasdrive.com")) {
+        return `/api/stream-proxy?url=${encodeURIComponent(rawUrl)}`;
+      }
+      return rawUrl;
+    },
   },
 
   desudrive: {

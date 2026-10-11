@@ -77,7 +77,7 @@ function BatchPage() {
 
         {/* Formats and Qualities */}
         <div className="space-y-6">
-          {batchData.downloadUrl.formats.map((fmt, idx) => (
+          {(batchData.downloadUrl?.formats || []).map((fmt, idx) => (
             <div
               key={fmt.title || idx}
               className="rounded-2xl border border-border/80 bg-card p-5 space-y-4 shadow-sm"
@@ -87,7 +87,7 @@ function BatchPage() {
               </h2>
 
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                {fmt.qualities.map((q) => (
+                {(fmt?.qualities || []).map((q) => (
                   <div
                     key={q.title}
                     className="rounded-xl border border-border/70 bg-background/70 p-3.5 space-y-2.5"
@@ -102,16 +102,16 @@ function BatchPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
-                      {q.urls.map((link) => (
+                      {(q?.urls || []).map((link) => (
                         <a
-                          key={link.title + link.url}
+                          key={(link.title || "") + (link.url || "")}
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="press-soft inline-flex items-center gap-1 rounded-lg border border-border/80 bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent hover:border-primary/50"
                         >
                           <Download className="h-3 w-3 text-primary" />
-                          {link.title}
+                          {link.title || "Unduh"}
                         </a>
                       ))}
                     </div>

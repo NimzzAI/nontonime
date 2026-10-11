@@ -222,6 +222,11 @@ export async function handleStreamProxyRequest(request: Request): Promise<Respon
   // Set appropriate Referer header
   if (parsedTarget.hostname.includes("odcloud") || parsedTarget.hostname.includes("desustream")) {
     upstreamHeaders["Referer"] = "https://otakudesu.cloud/";
+  } else if (
+    parsedTarget.hostname.includes("berkasdrive.com") ||
+    parsedTarget.hostname.includes("nimegami")
+  ) {
+    upstreamHeaders["Referer"] = "https://nimegami.id/";
   } else {
     upstreamHeaders["Referer"] = `${parsedTarget.protocol}//${parsedTarget.host}/`;
   }
@@ -256,8 +261,31 @@ export async function handleStreamProxyRequest(request: Request): Promise<Respon
 
     const contentType = upstreamRes.headers.get("content-type") || "";
 
-    // If upstream unexpectedly returned HTML, it's likely an error/embed page, not video
+    // If upstream unexpectedly returned HTML, it's likely an error or embed page.
+    // Try to auto-bypass by parsing HTML to find the direct stream video URL!
     if (contentType.includes("text/html") && !isDirectMediaExtension(parsedTarget.pathname)) {
+      try {
+        const htmlText = await upstreamRes.text();
+        const dataSrcMatch =
+          htmlText.match(/data-(?:src|video|url)=["']([^"']+)["']/i) ||
+          htmlText.match(/videoURL\s*=\s*["']([^"']+)["']/i) ||
+          htmlText.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i) ||
+          htmlText.match(/(https?:\/\/[^"'\s<>]+\.(?:mp4|m3u8|webm))/i);
+
+        if (dataSrcMatch?.[1]) {
+          const directMediaUrl = dataSrcMatch[1];
+          const origin = reqUrl.origin || "http://localhost:3000";
+          const proxiedUrl = `${origin}/api/stream-proxy?url=${encodeURIComponent(directMediaUrl)}`;
+          const redirectedReq = new Request(proxiedUrl, {
+            method: request.method,
+            headers: request.headers,
+          });
+          return handleStreamProxyRequest(redirectedReq);
+        }
+      } catch (bypassErr) {
+        console.warn("Stream proxy auto-bypass failed:", bypassErr);
+      }
+
       return new Response(
         JSON.stringify({
           error: "NOT_A_MEDIA_STREAM",

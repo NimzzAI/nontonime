@@ -105,7 +105,14 @@ export function parseNumber(value: unknown): number | null {
 }
 
 export function isDirectMediaUrl(url: string): boolean {
-  return /\.(m3u8|mp4|webm|mkv)(\?|$)/i.test(url);
+  if (!url) return false;
+  if (url.includes("/hal/streaming/")) return false;
+  try {
+    const parsed = new URL(url);
+    return /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(parsed.pathname);
+  } catch {
+    return /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(url);
+  }
 }
 
 export function episodeNumberFrom(text: string | null | undefined, fallback: number): number {

@@ -34,10 +34,10 @@ A catalog merged from six scrapers, no third-party API, and a player that switch
 12. [Deploying to Vercel](#-deploying-to-vercel)
 13. [Adding a New Source](#-adding-a-new-source)
 14. [Troubleshooting](#-troubleshooting)
-14. [Streaming Notes](#-streaming-notes)
-15. [Known Limitations](#-known-limitations)
-16. [npm Scripts](#-npm-scripts)
-17. [Disclaimer and Credits](#-disclaimer-and-credits)
+15. [Streaming Notes](#-streaming-notes)
+16. [Known Limitations](#-known-limitations)
+17. [npm Scripts](#-npm-scripts)
+18. [Disclaimer and Credits](#-disclaimer-and-credits)
 
 ---
 
@@ -122,7 +122,7 @@ Each source is one file in `src/lib/sources/` implementing the `AnimeSource` int
 | Aniwatch      | `aniwatch`      | latest, popular                           |   no   |   no    |  yes   |  yes  |    no    |  yes   |  yes   |    no    |
 | Stucknime     | `stucknime`     | latest                                    |   no   |   no    |  yes   |  yes  |    no    |  yes   |  yes   |    no    |
 | Samehadaku    | `samehadaku`    | latest, popular, movies                   |   no   |   no    |  yes   |  no   |    no    |  yes   |  yes   |   yes    |
-| Nimegami      | `nimegami`      | latest, popular, movies                   |  yes   |  yes    |  yes   |  yes  |    no    |  yes   |  yes   |   yes    |
+| Nimegami      | `nimegami`      | latest, popular, movies                   |  yes   |   yes   |  yes   |  yes  |    no    |  yes   |  yes   |   yes    |
 | Kusonime      | none            | download batch search only                |   no   |   no    |  yes   |  no   |    no    |   no   |   no   |   yes    |
 
 Notes:
@@ -144,24 +144,24 @@ When anime details and episode links are parsed through `getAnimeDetail` or the 
 
 ### Supported Streaming Platforms
 
-| Provider Key (`key`)   | Platform Name          | Base URL (`baseUrl`)          | Category | Active Status| Recognized Domains                                   |
-| :--------------------- | :--------------------- | :---------------------------- | :------: | :----------: | :--------------------------------------------------- |
-| `streamwish`           | **Streamwish**         | `https://streamwish.to`       |  Stream  |    Active    | `streamwish.to`, `streamwish.top`, `wishfast.top`    |
-| `filelions`            | **FileLions**          | `https://filelions.to`        |  Stream  |    Active    | `filelions.to`, `filelions.online`, `lionplayer.com` |
-| `vidhide`              | **VidHide**            | `https://vidhidepro.com`      |  Stream  |    Active    | `vidhidepro.com`, `vidhide.com`, `callistanise.com`  |
-| `doodstream`           | **Doodstream**         | `https://doodstream.com`      |  Stream  |    Active    | `doodstream.com`, `dood.to`, `dood.ws`, `ds2play.com`|
-| `mp4upload`            | **MP4Upload**          | `https://www.mp4upload.com`   |  Hybrid  |    Active    | `mp4upload.com`                                      |
-| `megaplay`             | **MegaPlay**           | `https://megaplay.buzz`       |  Stream  |    Active    | `megaplay.buzz` (Native HLS / Direct Sub & Dub)      |
-| `vidnest`              | **VidNest**            | `https://vidnest.fun`         |  Stream  |    Active    | `vidnest.fun`                                        |
-| `tryembed`             | **TryEmbed**           | `https://tryembed.us.cc`      |  Stream  |    Active    | `tryembed.us.cc`, `tryembed.com`                     |
-| `blogger`              | **Blogger / UserVideo**| `https://www.blogger.com`     |  Stream  |    Active    | `blogger.com`, `uservideo.xyz`, `storages.animein`   |
-| `gdrive`               | **Google Drive**       | `https://drive.google.com`    |  Hybrid  |    Active    | `drive.google.com`, `docs.google.com`                |
-| `pixeldrain`           | **Pixeldrain**         | `https://pixeldrain.com`      |  Hybrid  |    Active    | `pixeldrain.com`                                     |
-| `acefile`              | **Acefile**            | `https://acefile.co`          |  Hybrid  |    Active    | `acefile.co`                                         |
-| `krakenfiles`          | **Krakenfiles**        | `https://krakenfiles.com`     | Download |    Active    | `krakenfiles.com`                                    |
-| `mediafire`            | **MediaFire**          | `https://www.mediafire.com`   | Download |    Active    | `mediafire.com`                                      |
-| `turbovid`             | **TurboVid**           | `https://turbovid.eu`         |  Stream  |    Active    | `turbovid.eu`, `turbovid.me`                         |
-| `nimegami`             | **Nimegami Stream**    | `https://nimegami.id`         |  Hybrid  |    Active    | `nimegami.id`                                        |
+| Provider Key (`key`) | Platform Name           | Base URL (`baseUrl`)        | Category | Active Status | Recognized Domains                                    |
+| :------------------- | :---------------------- | :-------------------------- | :------: | :-----------: | :---------------------------------------------------- |
+| `streamwish`         | **Streamwish**          | `https://streamwish.to`     |  Stream  |    Active     | `streamwish.to`, `streamwish.top`, `wishfast.top`     |
+| `filelions`          | **FileLions**           | `https://filelions.to`      |  Stream  |    Active     | `filelions.to`, `filelions.online`, `lionplayer.com`  |
+| `vidhide`            | **VidHide**             | `https://vidhidepro.com`    |  Stream  |    Active     | `vidhidepro.com`, `vidhide.com`, `callistanise.com`   |
+| `doodstream`         | **Doodstream**          | `https://doodstream.com`    |  Stream  |    Active     | `doodstream.com`, `dood.to`, `dood.ws`, `ds2play.com` |
+| `mp4upload`          | **MP4Upload**           | `https://www.mp4upload.com` |  Hybrid  |    Active     | `mp4upload.com`                                       |
+| `megaplay`           | **MegaPlay**            | `https://megaplay.buzz`     |  Stream  |    Active     | `megaplay.buzz` (Native HLS / Direct Sub & Dub)       |
+| `vidnest`            | **VidNest**             | `https://vidnest.fun`       |  Stream  |    Active     | `vidnest.fun`                                         |
+| `tryembed`           | **TryEmbed**            | `https://tryembed.us.cc`    |  Stream  |    Active     | `tryembed.us.cc`, `tryembed.com`                      |
+| `blogger`            | **Blogger / UserVideo** | `https://www.blogger.com`   |  Stream  |    Active     | `blogger.com`, `uservideo.xyz`, `storages.animein`    |
+| `gdrive`             | **Google Drive**        | `https://drive.google.com`  |  Hybrid  |    Active     | `drive.google.com`, `docs.google.com`                 |
+| `pixeldrain`         | **Pixeldrain**          | `https://pixeldrain.com`    |  Hybrid  |    Active     | `pixeldrain.com`                                      |
+| `acefile`            | **Acefile**             | `https://acefile.co`        |  Hybrid  |    Active     | `acefile.co`                                          |
+| `krakenfiles`        | **Krakenfiles**         | `https://krakenfiles.com`   | Download |    Active     | `krakenfiles.com`                                     |
+| `mediafire`          | **MediaFire**           | `https://www.mediafire.com` | Download |    Active     | `mediafire.com`                                       |
+| `turbovid`           | **TurboVid**            | `https://turbovid.eu`       |  Stream  |    Active     | `turbovid.eu`, `turbovid.me`                          |
+| `nimegami`           | **Nimegami Stream**     | `https://nimegami.id`       |  Hybrid  |    Active     | `nimegami.id`                                         |
 
 ### Active Verification & Association in `getAnimeDetail`
 
@@ -181,6 +181,7 @@ const activeLinks = associatedLinks.filter((link) => isProviderActive(link));
 ```
 
 Associated link objects are enriched with:
+
 - `providerKey`: Canonical key string (e.g. `streamwish`, `filelions`).
 - `providerName`: Official display name (e.g. `Streamwish`, `FileLions`).
 - `providerBaseUrl`: Platform root URL.
@@ -245,7 +246,7 @@ registerProvider({
 import { setProviderActive } from "./providers";
 
 setProviderActive("streamwish", false); // disable temporarily
-setProviderActive("streamwish", true);  // re-enable
+setProviderActive("streamwish", true); // re-enable
 ```
 
 ---

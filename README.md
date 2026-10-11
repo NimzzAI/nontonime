@@ -167,30 +167,30 @@ Hal yang perlu diketahui dari tabel itu:
 
 ## // Supported Providers
 
-Aplikasi kini dilengkapi sistem manajemen penyedia streaming terpusat di `providers.ts` (dan `src/lib/sources/providers.ts`). Sistem ini memetakan kunci penyedia streaming (*streaming provider keys*), URL basis (*base URL*), domain resmi, status aktif (*active verification check*), dan logika penanganan embed/stream langsung.
+Aplikasi kini dilengkapi sistem manajemen penyedia streaming terpusat di `providers.ts` (dan `src/lib/sources/providers.ts`). Sistem ini memetakan kunci penyedia streaming (_streaming provider keys_), URL basis (_base URL_), domain resmi, status aktif (_active verification check_), dan logika penanganan embed/stream langsung.
 
 Saat data anime dimuat melalui `getAnimeDetail` atau parser RSC flight `extractAnimeDetail`, setiap tautan dari objek `links` yang di-scrape otomatis dipetakan ke penyedia terdaftar dan diperiksa apakah penyedia tersebut berstatus aktif (`isActive`). Tautan dari penyedia yang tidak aktif tidak akan diikutsertakan ke dalam antrean pemutar video.
 
 ### Daftar Penyedia Streaming yang Didukung (Supported Streaming Platforms)
 
-| Kunci Penyedia (`key`) | Nama Platform          | URL Basis (`baseUrl`)         | Kategori | Status Aktif | Domain yang Didukung / Dikenali                      |
-| :--------------------- | :--------------------- | :---------------------------- | :------: | :----------: | :--------------------------------------------------- |
-| `streamwish`           | **Streamwish**         | `https://streamwish.to`       |  Stream  |    Aktif     | `streamwish.to`, `streamwish.top`, `wishfast.top`    |
-| `filelions`            | **FileLions**          | `https://filelions.to`        |  Stream  |    Aktif     | `filelions.to`, `filelions.online`, `lionplayer.com` |
-| `vidhide`              | **VidHide**            | `https://vidhidepro.com`      |  Stream  |    Aktif     | `vidhidepro.com`, `vidhide.com`, `callistanise.com`  |
-| `doodstream`           | **Doodstream**         | `https://doodstream.com`      |  Stream  |    Aktif     | `doodstream.com`, `dood.to`, `dood.ws`, `ds2play.com`|
-| `mp4upload`            | **MP4Upload**          | `https://www.mp4upload.com`   |  Hybrid  |    Aktif     | `mp4upload.com`                                      |
-| `megaplay`             | **MegaPlay**           | `https://megaplay.buzz`       |  Stream  |    Aktif     | `megaplay.buzz` (Native HLS / Direct Sub & Dub)      |
-| `vidnest`              | **VidNest**            | `https://vidnest.fun`         |  Stream  |    Aktif     | `vidnest.fun`                                        |
-| `tryembed`             | **TryEmbed**           | `https://tryembed.us.cc`      |  Stream  |    Aktif     | `tryembed.us.cc`, `tryembed.com`                     |
-| `blogger`              | **Blogger / UserVideo**| `https://www.blogger.com`     |  Stream  |    Aktif     | `blogger.com`, `uservideo.xyz`, `storages.animein`   |
-| `gdrive`               | **Google Drive**       | `https://drive.google.com`    |  Hybrid  |    Aktif     | `drive.google.com`, `docs.google.com`                |
-| `pixeldrain`           | **Pixeldrain**         | `https://pixeldrain.com`      |  Hybrid  |    Aktif     | `pixeldrain.com`                                     |
-| `acefile`              | **Acefile**            | `https://acefile.co`          |  Hybrid  |    Aktif     | `acefile.co`                                         |
-| `krakenfiles`          | **Krakenfiles**        | `https://krakenfiles.com`     | Unduhan  |    Aktif     | `krakenfiles.com`                                    |
-| `mediafire`            | **MediaFire**          | `https://www.mediafire.com`   | Unduhan  |    Aktif     | `mediafire.com`                                      |
-| `turbovid`             | **TurboVid**           | `https://turbovid.eu`         |  Stream  |    Aktif     | `turbovid.eu`, `turbovid.me`                         |
-| `nimegami`             | **Nimegami Stream**    | `https://nimegami.id`         |  Hybrid  |    Aktif     | `nimegami.id`                                        |
+| Kunci Penyedia (`key`) | Nama Platform           | URL Basis (`baseUrl`)       | Kategori | Status Aktif | Domain yang Didukung / Dikenali                       |
+| :--------------------- | :---------------------- | :-------------------------- | :------: | :----------: | :---------------------------------------------------- |
+| `streamwish`           | **Streamwish**          | `https://streamwish.to`     |  Stream  |    Aktif     | `streamwish.to`, `streamwish.top`, `wishfast.top`     |
+| `filelions`            | **FileLions**           | `https://filelions.to`      |  Stream  |    Aktif     | `filelions.to`, `filelions.online`, `lionplayer.com`  |
+| `vidhide`              | **VidHide**             | `https://vidhidepro.com`    |  Stream  |    Aktif     | `vidhidepro.com`, `vidhide.com`, `callistanise.com`   |
+| `doodstream`           | **Doodstream**          | `https://doodstream.com`    |  Stream  |    Aktif     | `doodstream.com`, `dood.to`, `dood.ws`, `ds2play.com` |
+| `mp4upload`            | **MP4Upload**           | `https://www.mp4upload.com` |  Hybrid  |    Aktif     | `mp4upload.com`                                       |
+| `megaplay`             | **MegaPlay**            | `https://megaplay.buzz`     |  Stream  |    Aktif     | `megaplay.buzz` (Native HLS / Direct Sub & Dub)       |
+| `vidnest`              | **VidNest**             | `https://vidnest.fun`       |  Stream  |    Aktif     | `vidnest.fun`                                         |
+| `tryembed`             | **TryEmbed**            | `https://tryembed.us.cc`    |  Stream  |    Aktif     | `tryembed.us.cc`, `tryembed.com`                      |
+| `blogger`              | **Blogger / UserVideo** | `https://www.blogger.com`   |  Stream  |    Aktif     | `blogger.com`, `uservideo.xyz`, `storages.animein`    |
+| `gdrive`               | **Google Drive**        | `https://drive.google.com`  |  Hybrid  |    Aktif     | `drive.google.com`, `docs.google.com`                 |
+| `pixeldrain`           | **Pixeldrain**          | `https://pixeldrain.com`    |  Hybrid  |    Aktif     | `pixeldrain.com`                                      |
+| `acefile`              | **Acefile**             | `https://acefile.co`        |  Hybrid  |    Aktif     | `acefile.co`                                          |
+| `krakenfiles`          | **Krakenfiles**         | `https://krakenfiles.com`   | Unduhan  |    Aktif     | `krakenfiles.com`                                     |
+| `mediafire`            | **MediaFire**           | `https://www.mediafire.com` | Unduhan  |    Aktif     | `mediafire.com`                                       |
+| `turbovid`             | **TurboVid**            | `https://turbovid.eu`       |  Stream  |    Aktif     | `turbovid.eu`, `turbovid.me`                          |
+| `nimegami`             | **Nimegami Stream**     | `https://nimegami.id`       |  Hybrid  |    Aktif     | `nimegami.id`                                         |
 
 ### Pemeriksaan Status Aktif & Asosiasi pada `getAnimeDetail`
 
@@ -210,6 +210,7 @@ const activeLinks = associatedLinks.filter((link) => isProviderActive(link));
 ```
 
 Setiap objek tautan yang diasosiasikan diperkaya dengan:
+
 - `providerKey`: Kunci identitas penyedia (misal `streamwish`, `filelions`).
 - `providerName`: Nama tampilan resmi platform (misal `Streamwish`, `FileLions`).
 - `providerBaseUrl`: Alamat dasar platform.
@@ -220,7 +221,7 @@ Setiap objek tautan yang diasosiasikan diperkaya dengan:
 
 ### Panduan Menambah atau Memperluas Parser Penyedia Baru (How to Extend the Parser)
 
-Jika muncul penyedia streaming baru (*hoster* atau *video embed provider* baru), Anda dapat memperluas parser dengan dua cara:
+Jika muncul penyedia streaming baru (_hoster_ atau _video embed provider_ baru), Anda dapat memperluas parser dengan dua cara:
 
 #### Opsi A: Mendaftarkan Penyedia di `providers.ts`
 
@@ -241,9 +242,10 @@ export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
     priority: 8,
     // Fungsi pencocokan cerdas berdasarkan teks penyedia atau URL
     match: (input) => {
-      const str = typeof input === "string" 
-        ? input 
-        : `${input.provider || ""} ${input.host || ""} ${input.url || ""} ${input.playUrl || ""}`;
+      const str =
+        typeof input === "string"
+          ? input
+          : `${input.provider || ""} ${input.host || ""} ${input.url || ""} ${input.playUrl || ""}`;
       return /providerbaru|embed\.providerbaru/i.test(str);
     },
     // Fungsi opsional untuk menormalisasi URL halaman biasa ke URL embed player
@@ -282,7 +284,7 @@ registerProvider({
 
 #### Opsi C: Menonaktifkan Penyedia Tertentu
 
-Jika salah satu penyedia sedang bermasalah (*broken/down*), Anda dapat menonaktifkannya tanpa menghapus kodenya:
+Jika salah satu penyedia sedang bermasalah (_broken/down_), Anda dapat menonaktifkannya tanpa menghapus kodenya:
 
 ```ts
 import { setProviderActive } from "./providers";

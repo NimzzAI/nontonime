@@ -242,7 +242,7 @@ export function AnimeDetailPage() {
               <NextEpisodeCountdown title={anime.title} />
 
               {/* Genre Pills */}
-              {anime.genres && anime.genres.length > 0 ? (
+              {Array.isArray(anime.genres) && anime.genres.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {anime.genres.map((g) => (
                     <Link
@@ -524,13 +524,13 @@ export function AnimeDetailPage() {
           ) : null}
 
           {/* Recommended Anime Widget */}
-          {anime.recommended && anime.recommended.length > 0 ? (
+          {Array.isArray(anime.recommended) && anime.recommended.length > 0 ? (
             <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xs">
               <h3 className="font-display text-sm font-bold text-foreground border-b border-border/60 pb-2">
                 Rekomendasi Terkait
               </h3>
               <div className="grid grid-cols-2 gap-2.5">
-                {anime.recommended.slice(0, 4).map((rec) => (
+                {(anime.recommended || []).slice(0, 4).map((rec) => (
                   <AnimeCard key={rec.id} anime={rec} />
                 ))}
               </div>

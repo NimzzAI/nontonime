@@ -690,10 +690,12 @@ function WatchPage() {
 
                   {/* Quality Filter Pills */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {qualityGroups.map((q) => {
+                    {(qualityGroups || []).map((q) => {
                       const isFhd = q.quality.includes("1080");
                       const isHd = q.quality.includes("720");
-                      const hasSubIndo = q.serverList.some((s) => s.title.includes("[SUB INDO]"));
+                      const hasSubIndo = (q.serverList || []).some((s) =>
+                        s.title.includes("[SUB INDO]"),
+                      );
                       return (
                         <button
                           key={q.quality}
@@ -948,7 +950,7 @@ function WatchPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {episodeData.downloads.map((dl) => (
+                {(episodeData.downloads || []).map((dl) => (
                   <div
                     key={dl.quality}
                     className="rounded-xl border border-border/70 bg-background/60 p-3 space-y-2.5"
@@ -974,16 +976,16 @@ function WatchPage() {
                         <span>Range Offline</span>
                       </button>
 
-                      {dl.urls.map((link) => (
+                      {(dl.urls || []).map((link) => (
                         <a
-                          key={link.title + link.url}
+                          key={(link.title || "") + (link.url || "")}
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="press-soft inline-flex items-center gap-1 rounded-lg border border-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-accent hover:border-primary/50"
                         >
                           <i className="fa-solid fa-cloud-arrow-down text-[10px] text-primary" />
-                          {link.title}
+                          {link.title || "Unduh"}
                         </a>
                       ))}
                     </div>

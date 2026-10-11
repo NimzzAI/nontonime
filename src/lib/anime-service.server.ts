@@ -842,15 +842,15 @@ export async function getDetail(id: string, _provider = "otakudesu"): Promise<An
       aired: detail.aired,
       studio: detail.studio,
       studios: detail.studio,
-      episodeCount: detail.episodes.length || null,
+      episodeCount: detail.episodes ? detail.episodes.length : null,
       batch,
-      episodes: detail.episodes.map((e) => ({
+      episodes: (detail.episodes || []).map((e) => ({
         id: e.id,
         number: e.number,
         title: e.title,
         releaseDate: e.date,
       })),
-      recommended: detail.recommended.map(toSummary),
+      recommended: (detail.recommended || []).map(toSummary),
     };
     return result;
   });
@@ -862,24 +862,57 @@ export async function getDetail(id: string, _provider = "otakudesu"): Promise<An
 
 export async function extractDirectStreamUrl(embedUrl: string): Promise<string | null> {
   if (!embedUrl) return null;
+  if (embedUrl.startsWith("/api/stream-proxy")) return embedUrl;
+  if (embedUrl.includes("direct-stor.berkasdrive.com")) {
+    return `/api/stream-proxy?url=${encodeURIComponent(embedUrl)}`;
+  }
   if (isDirectMediaUrl(embedUrl)) return embedUrl;
   try {
     const target = assertPublicHttpUrl(embedUrl);
+    const referer =
+      target.hostname.includes("berkasdrive.com") || target.hostname.includes("nimegami")
+        ? "https://nimegami.id/"
+        : `${target.origin}/`;
+
     const html = await fetchText(target.toString(), {
       source: "embed",
-      headers: { Referer: `${target.origin}/`, "User-Agent": BROWSER_UA },
-      timeoutMs: 3500,
+      headers: { Referer: referer, "User-Agent": BROWSER_UA },
+      timeoutMs: 4000,
     });
     const matchVar = html.match(/videoURL\s*=\s*["']([^"']+)["']/i);
-    if (matchVar?.[1]) return matchVar[1];
+    if (matchVar?.[1]) {
+      const u = matchVar[1];
+      return u.includes("berkasdrive.com") ? `/api/stream-proxy?url=${encodeURIComponent(u)}` : u;
+    }
     const matchDataSrc = html.match(/data-(?:src|video|url)=["']([^"']+)["']/i);
-    if (matchDataSrc?.[1]) return matchDataSrc[1];
+    if (matchDataSrc?.[1]) {
+      const u = matchDataSrc[1];
+      return u.includes("berkasdrive.com") || !u.includes("cors")
+        ? `/api/stream-proxy?url=${encodeURIComponent(u)}`
+        : u;
+    }
     const matchSrc = html.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
-    if (matchSrc?.[1]) return matchSrc[1];
+    if (matchSrc?.[1]) {
+      const u = matchSrc[1];
+      return u.includes("berkasdrive.com") ? `/api/stream-proxy?url=${encodeURIComponent(u)}` : u;
+    }
     const matchFile = html.match(/(?:file|source|src)\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
-    if (matchFile?.[1]) return matchFile[1];
+    if (matchFile?.[1]) {
+      const u = matchFile[1];
+      return u.includes("berkasdrive.com") ? `/api/stream-proxy?url=${encodeURIComponent(u)}` : u;
+    }
+    // If it's a vsys-srv embed page, route through stream-proxy
+    if (
+      target.hostname.includes("vsys-srv.berkasdrive.com") ||
+      target.hostname.includes("berkasdrive.com")
+    ) {
+      return `/api/stream-proxy?url=${encodeURIComponent(embedUrl)}`;
+    }
     return null;
   } catch {
+    if (embedUrl.includes("vsys-srv.berkasdrive.com") || embedUrl.includes("berkasdrive.com")) {
+      return `/api/stream-proxy?url=${encodeURIComponent(embedUrl)}`;
+    }
     return null;
   }
 }
@@ -1201,9 +1234,13 @@ async function findCrossSourceAlternativeServers(
 }
 
 export async function getStream(episodeId: string, _provider = "otakudesu"): Promise<StreamResult> {
-  const parsed = parseId(episodeId);
+  let parsed = parseId(episodeId);
   if (!parsed || parsed.kind !== "episode") {
-    throw new Error("ID episode lama tidak dikenali, buka lagi lewat halaman anime");
+    if (parsed) {
+      parsed = { ...parsed, kind: "episode" };
+    } else {
+      parsed = { source: "nimegami", slug: episodeId, kind: "episode" };
+    }
   }
 
   let stream: SourceStream | null = null;

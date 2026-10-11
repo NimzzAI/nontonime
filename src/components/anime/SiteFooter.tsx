@@ -9,8 +9,13 @@ export function SiteFooter() {
           {/* Brand Col */}
           <div className="space-y-3 sm:col-span-2">
             <Link to="/" className="inline-flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
-                <Play className="h-4 w-4 fill-current ml-0.5" />
+              <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center overflow-hidden rounded-xl border border-primary/30 bg-primary/10 shadow-xs ring-1 ring-primary/20">
+                <img
+                  src="/images/logo.jpg"
+                  alt="Nontonime Logo"
+                  className="h-full w-full object-cover object-top"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <span className="font-display text-lg font-bold tracking-tight text-foreground">
                 nonton<span className="text-primary font-bold">ime</span>

@@ -213,8 +213,13 @@ export function SiteHeader() {
               id="site-logo"
               className="group flex items-center gap-2.5 font-display text-lg font-bold tracking-tight text-foreground transition-opacity hover:opacity-90"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs transition-transform group-hover:scale-105">
-                <Play className="h-4 w-4 fill-current ml-0.5" />
+              <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center overflow-hidden rounded-xl border border-primary/30 bg-primary/10 shadow-xs transition-transform group-hover:scale-105 ring-1 ring-primary/20">
+                <img
+                  src="/images/logo.jpg"
+                  alt="Nontonime Logo"
+                  className="h-full w-full object-cover object-top"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <span className="flex items-center tracking-tight text-base font-bold sm:text-lg">
                 nonton<span className="text-primary font-bold">ime</span>

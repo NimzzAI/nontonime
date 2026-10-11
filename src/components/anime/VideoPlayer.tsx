@@ -49,7 +49,17 @@ export interface FailedServerLog {
 
 function isDirectSource(url: string): boolean {
   if (!url) return false;
-  return /\.(m3u8|mp4|webm|mkv)(\?|$)/i.test(url) || url.startsWith("/api/stream-proxy");
+  if (url.startsWith("/api/stream-proxy")) return true;
+  if (url.includes("/hal/streaming/")) return false;
+  try {
+    const parsed = new URL(
+      url,
+      typeof window !== "undefined" ? window.location.href : "https://localhost",
+    );
+    return /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(parsed.pathname);
+  } catch {
+    return /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(url);
+  }
 }
 
 function isMegaSource(url: string): boolean {
@@ -64,6 +74,7 @@ function getProxiedStreamUrl(originalUrl: string): string {
 
 function formatIframeAutoplayUrl(url: string, shouldAutoplay: boolean): string {
   if (!shouldAutoplay || !url) return url;
+  if (url.startsWith("/api/stream-proxy")) return url;
   try {
     const parsed = new URL(url);
     if (!parsed.searchParams.has("autoplay") && !parsed.searchParams.has("autoPlay")) {
