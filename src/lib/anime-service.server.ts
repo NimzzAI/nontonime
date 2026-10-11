@@ -872,6 +872,8 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
     });
     const matchVar = html.match(/videoURL\s*=\s*["']([^"']+)["']/i);
     if (matchVar?.[1]) return matchVar[1];
+    const matchDataSrc = html.match(/data-(?:src|video|url)=["']([^"']+)["']/i);
+    if (matchDataSrc?.[1]) return matchDataSrc[1];
     const matchSrc = html.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
     if (matchSrc?.[1]) return matchSrc[1];
     const matchFile = html.match(/(?:file|source|src)\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);

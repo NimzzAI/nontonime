@@ -24,15 +24,16 @@ A catalog merged from six scrapers, no third-party API, and a player that switch
 2. [Features](#-features)
 3. [Social and Community Features](#-social-and-community-features)
 4. [Data Sources](#-data-sources)
-5. [Search](#-search)
-6. [Backend Architecture](#-backend-architecture)
-7. [Directory Structure](#-directory-structure)
-8. [Running Locally](#-running-locally)
-9. [Environment Variables](#-environment-variables)
-10. [Firebase and Supabase Setup](#-firebase-and-supabase-setup)
-11. [Deploying to Vercel](#-deploying-to-vercel)
-12. [Adding a New Source](#-adding-a-new-source)
-13. [Troubleshooting](#-troubleshooting)
+5. [Supported Providers](#-supported-providers)
+6. [Search](#-search)
+7. [Backend Architecture](#-backend-architecture)
+8. [Directory Structure](#-directory-structure)
+9. [Running Locally](#-running-locally)
+10. [Environment Variables](#-environment-variables)
+11. [Firebase and Supabase Setup](#-firebase-and-supabase-setup)
+12. [Deploying to Vercel](#-deploying-to-vercel)
+13. [Adding a New Source](#-adding-a-new-source)
+14. [Troubleshooting](#-troubleshooting)
 14. [Streaming Notes](#-streaming-notes)
 15. [Known Limitations](#-known-limitations)
 16. [npm Scripts](#-npm-scripts)
@@ -121,6 +122,7 @@ Each source is one file in `src/lib/sources/` implementing the `AnimeSource` int
 | Aniwatch      | `aniwatch`      | latest, popular                           |   no   |   no    |  yes   |  yes  |    no    |  yes   |  yes   |    no    |
 | Stucknime     | `stucknime`     | latest                                    |   no   |   no    |  yes   |  yes  |    no    |  yes   |  yes   |    no    |
 | Samehadaku    | `samehadaku`    | latest, popular, movies                   |   no   |   no    |  yes   |  no   |    no    |  yes   |  yes   |   yes    |
+| Nimegami      | `nimegami`      | latest, popular, movies                   |  yes   |  yes    |  yes   |  yes  |    no    |  yes   |  yes   |   yes    |
 | Kusonime      | none            | download batch search only                |   no   |   no    |  yes   |  no   |    no    |   no   |   no   |   yes    |
 
 Notes:
@@ -131,6 +133,120 @@ Notes:
 - **Kusonime** is not a streaming source. It finds download batches by anime title and shows them as a batch button on the detail page.
 - One anime belongs to one source. If the same title exists in two, the source earlier in `registry.server.ts` wins.
 - The extras (characters, countdown, news, top search) come from `sources/extras.server.ts`, ported from hianime-api. They match by exact title, hide themselves on failure, and stay disabled until `EXTRAS_URL` is set.
+
+---
+
+## // Supported Providers
+
+The application provides a unified streaming provider management registry located in `providers.ts` (and `src/lib/sources/providers.ts`). This module maps streaming provider keys, base URLs, domain regex matchers, active status verification (`isActive`), and URL resolution logic.
+
+When anime details and episode links are parsed through `getAnimeDetail` or the RSC flight scraper `extractAnimeDetail`, each entry in the scraped `links` object is associated with its registered streaming provider and checked to verify whether the provider is active (`isProviderActive`). Inactive or dead providers are automatically excluded from the final player stream list.
+
+### Supported Streaming Platforms
+
+| Provider Key (`key`)   | Platform Name          | Base URL (`baseUrl`)          | Category | Active Status| Recognized Domains                                   |
+| :--------------------- | :--------------------- | :---------------------------- | :------: | :----------: | :--------------------------------------------------- |
+| `streamwish`           | **Streamwish**         | `https://streamwish.to`       |  Stream  |    Active    | `streamwish.to`, `streamwish.top`, `wishfast.top`    |
+| `filelions`            | **FileLions**          | `https://filelions.to`        |  Stream  |    Active    | `filelions.to`, `filelions.online`, `lionplayer.com` |
+| `vidhide`              | **VidHide**            | `https://vidhidepro.com`      |  Stream  |    Active    | `vidhidepro.com`, `vidhide.com`, `callistanise.com`  |
+| `doodstream`           | **Doodstream**         | `https://doodstream.com`      |  Stream  |    Active    | `doodstream.com`, `dood.to`, `dood.ws`, `ds2play.com`|
+| `mp4upload`            | **MP4Upload**          | `https://www.mp4upload.com`   |  Hybrid  |    Active    | `mp4upload.com`                                      |
+| `megaplay`             | **MegaPlay**           | `https://megaplay.buzz`       |  Stream  |    Active    | `megaplay.buzz` (Native HLS / Direct Sub & Dub)      |
+| `vidnest`              | **VidNest**            | `https://vidnest.fun`         |  Stream  |    Active    | `vidnest.fun`                                        |
+| `tryembed`             | **TryEmbed**           | `https://tryembed.us.cc`      |  Stream  |    Active    | `tryembed.us.cc`, `tryembed.com`                     |
+| `blogger`              | **Blogger / UserVideo**| `https://www.blogger.com`     |  Stream  |    Active    | `blogger.com`, `uservideo.xyz`, `storages.animein`   |
+| `gdrive`               | **Google Drive**       | `https://drive.google.com`    |  Hybrid  |    Active    | `drive.google.com`, `docs.google.com`                |
+| `pixeldrain`           | **Pixeldrain**         | `https://pixeldrain.com`      |  Hybrid  |    Active    | `pixeldrain.com`                                     |
+| `acefile`              | **Acefile**            | `https://acefile.co`          |  Hybrid  |    Active    | `acefile.co`                                         |
+| `krakenfiles`          | **Krakenfiles**        | `https://krakenfiles.com`     | Download |    Active    | `krakenfiles.com`                                    |
+| `mediafire`            | **MediaFire**          | `https://www.mediafire.com`   | Download |    Active    | `mediafire.com`                                      |
+| `turbovid`             | **TurboVid**           | `https://turbovid.eu`         |  Stream  |    Active    | `turbovid.eu`, `turbovid.me`                         |
+| `nimegami`             | **Nimegami Stream**    | `https://nimegami.id`         |  Hybrid  |    Active    | `nimegami.id`                                        |
+
+### Active Verification & Association in `getAnimeDetail`
+
+During episode extraction:
+
+```ts
+import { associateProvider, isProviderActive } from "./providers";
+
+// Inside getAnimeDetail / extractAnimeDetail:
+const rawLinks = watchPanel?.links || [];
+
+// 1. Associate each scraped link with its configured provider
+const associatedLinks = rawLinks.map((link) => associateProvider(link));
+
+// 2. Filter out inactive providers
+const activeLinks = associatedLinks.filter((link) => isProviderActive(link));
+```
+
+Associated link objects are enriched with:
+- `providerKey`: Canonical key string (e.g. `streamwish`, `filelions`).
+- `providerName`: Official display name (e.g. `Streamwish`, `FileLions`).
+- `providerBaseUrl`: Platform root URL.
+- `isActive`: Boolean indicating active status.
+- `resolvedStreamUrl`: Cleaned embed URL ready for playback.
+
+---
+
+### How to Extend the Parser for New Providers
+
+When a new video hoster or embed provider emerges:
+
+#### Option A: Declare in `providers.ts`
+
+Add an entry to `STREAMING_PROVIDERS` in `providers.ts`:
+
+```ts
+export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
+  // ... existing providers ...
+
+  newprovider: {
+    key: "newprovider",
+    name: "New Provider",
+    baseUrl: "https://newprovider.com",
+    isActive: true,
+    category: "stream",
+    domains: ["newprovider.com", "embed.newprovider.io"],
+    priority: 8,
+    match: (input) => {
+      const str = typeof input === "string" ? input : `${input.provider || ""} ${input.url || ""}`;
+      return /newprovider/i.test(str);
+    },
+    resolveEmbedUrl: (rawUrl) => {
+      if (!rawUrl) return "";
+      const id = rawUrl.split("/").filter(Boolean).pop();
+      return id ? `https://newprovider.com/embed/${id}` : rawUrl;
+    },
+  },
+};
+```
+
+#### Option B: Register Dynamically at Runtime
+
+```ts
+import { registerProvider } from "./providers";
+
+registerProvider({
+  key: "streamtape",
+  name: "Streamtape",
+  baseUrl: "https://streamtape.com",
+  isActive: true,
+  category: "stream",
+  domains: ["streamtape.com"],
+  priority: 7,
+  match: (input) => /streamtape/i.test(typeof input === "string" ? input : input.url || ""),
+});
+```
+
+#### Option C: Disabling Providers
+
+```ts
+import { setProviderActive } from "./providers";
+
+setProviderActive("streamwish", false); // disable temporarily
+setProviderActive("streamwish", true);  // re-enable
+```
 
 ---
 

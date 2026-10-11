@@ -26,20 +26,21 @@ Katalog digabung dari enam sumber scraper, tanpa API pihak ketiga, dengan pemuta
 3. [Fitur](#-fitur)
 4. [Fitur Sosial dan Komunitas](#-fitur-sosial-dan-komunitas)
 5. [Sumber Data](#-sumber-data)
-6. [Pencarian](#-pencarian)
-7. [Arsitektur Backend](#-arsitektur-backend)
-8. [Struktur Direktori](#-struktur-direktori)
-9. [Menjalankan Lokal](#-menjalankan-lokal)
-10. [Variabel Lingkungan](#-variabel-lingkungan)
-11. [Setup Firebase dan Supabase](#-setup-firebase-dan-supabase)
-12. [Deploy ke Vercel](#-deploy-ke-vercel)
-13. [Menambah Sumber Baru](#-menambah-sumber-baru)
-14. [Migrasi dari Versi Sebelumnya](#-migrasi-dari-versi-sebelumnya)
-15. [Pemecahan Masalah](#-pemecahan-masalah)
-16. [Catatan Streaming](#-catatan-streaming)
-17. [Batasan yang Diketahui](#-batasan-yang-diketahui)
-18. [Perintah npm](#-perintah-npm)
-19. [Disclaimer dan Kredit](#-disclaimer-dan-kredit)
+6. [Supported Providers](#-supported-providers)
+7. [Pencarian](#-pencarian)
+8. [Arsitektur Backend](#-arsitektur-backend)
+9. [Struktur Direktori](#-struktur-direktori)
+10. [Menjalankan Lokal](#-menjalankan-lokal)
+11. [Variabel Lingkungan](#-variabel-lingkungan)
+12. [Setup Firebase dan Supabase](#-setup-firebase-dan-supabase)
+13. [Deploy ke Vercel](#-deploy-ke-vercel)
+14. [Menambah Sumber Baru](#-menambah-sumber-baru)
+15. [Migrasi dari Versi Sebelumnya](#-migrasi-dari-versi-sebelumnya)
+16. [Pemecahan Masalah](#-pemecahan-masalah)
+17. [Catatan Streaming](#-catatan-streaming)
+18. [Batasan yang Diketahui](#-batasan-yang-diketahui)
+19. [Perintah npm](#-perintah-npm)
+20. [Disclaimer dan Kredit](#-disclaimer-dan-kredit)
 
 ---
 
@@ -151,6 +152,7 @@ Setiap sumber adalah satu file di `src/lib/sources/` yang mengimplementasikan an
 | Aniwatch      | `aniwatch`      | terbaru, populer                               |  tidak  |  tidak  |  ya  |  ya   | tidak  |   ya   |   ya   |  tidak  |
 | Stucknime     | `stucknime`     | terbaru                                        |  tidak  |  tidak  |  ya  |  ya   | tidak  |   ya   |   ya   |  tidak  |
 | Samehadaku    | `samehadaku`    | terbaru, populer, film                         |  tidak  |  tidak  |  ya  | tidak | tidak  |   ya   |   ya   |   ya    |
+| Nimegami      | `nimegami`      | terbaru, populer, film                         |   ya    |   ya    |  ya  |  ya   | tidak  |   ya   |   ya   |   ya    |
 | Kusonime      | tidak ada       | khusus mencari batch unduhan                   |  tidak  |  tidak  |  ya  | tidak | tidak  | tidak  | tidak  |   ya    |
 
 Hal yang perlu diketahui dari tabel itu:
@@ -160,6 +162,137 @@ Hal yang perlu diketahui dari tabel itu:
 - Halaman **Jadwal** hanya terisi dari AnimeIn dan NontonAnimeID. Scraper Samehadaku asli membagi anime ke hari secara berurutan, bukan menurut jadwal tayang sebenarnya, jadi bagian itu tidak dipindahkan.
 - **Kusonime** bukan sumber streaming. Dipakai untuk mencari batch unduhan berdasarkan judul anime, hasilnya muncul sebagai tombol batch di halaman detail kalau ada yang cocok.
 - Satu anime tetap milik satu sumber. Kalau judul yang sama ada di dua sumber, yang tampil adalah sumber dengan urutan lebih awal di `registry.server.ts`.
+
+---
+
+## // Supported Providers
+
+Aplikasi kini dilengkapi sistem manajemen penyedia streaming terpusat di `providers.ts` (dan `src/lib/sources/providers.ts`). Sistem ini memetakan kunci penyedia streaming (*streaming provider keys*), URL basis (*base URL*), domain resmi, status aktif (*active verification check*), dan logika penanganan embed/stream langsung.
+
+Saat data anime dimuat melalui `getAnimeDetail` atau parser RSC flight `extractAnimeDetail`, setiap tautan dari objek `links` yang di-scrape otomatis dipetakan ke penyedia terdaftar dan diperiksa apakah penyedia tersebut berstatus aktif (`isActive`). Tautan dari penyedia yang tidak aktif tidak akan diikutsertakan ke dalam antrean pemutar video.
+
+### Daftar Penyedia Streaming yang Didukung (Supported Streaming Platforms)
+
+| Kunci Penyedia (`key`) | Nama Platform          | URL Basis (`baseUrl`)         | Kategori | Status Aktif | Domain yang Didukung / Dikenali                      |
+| :--------------------- | :--------------------- | :---------------------------- | :------: | :----------: | :--------------------------------------------------- |
+| `streamwish`           | **Streamwish**         | `https://streamwish.to`       |  Stream  |    Aktif     | `streamwish.to`, `streamwish.top`, `wishfast.top`    |
+| `filelions`            | **FileLions**          | `https://filelions.to`        |  Stream  |    Aktif     | `filelions.to`, `filelions.online`, `lionplayer.com` |
+| `vidhide`              | **VidHide**            | `https://vidhidepro.com`      |  Stream  |    Aktif     | `vidhidepro.com`, `vidhide.com`, `callistanise.com`  |
+| `doodstream`           | **Doodstream**         | `https://doodstream.com`      |  Stream  |    Aktif     | `doodstream.com`, `dood.to`, `dood.ws`, `ds2play.com`|
+| `mp4upload`            | **MP4Upload**          | `https://www.mp4upload.com`   |  Hybrid  |    Aktif     | `mp4upload.com`                                      |
+| `megaplay`             | **MegaPlay**           | `https://megaplay.buzz`       |  Stream  |    Aktif     | `megaplay.buzz` (Native HLS / Direct Sub & Dub)      |
+| `vidnest`              | **VidNest**            | `https://vidnest.fun`         |  Stream  |    Aktif     | `vidnest.fun`                                        |
+| `tryembed`             | **TryEmbed**           | `https://tryembed.us.cc`      |  Stream  |    Aktif     | `tryembed.us.cc`, `tryembed.com`                     |
+| `blogger`              | **Blogger / UserVideo**| `https://www.blogger.com`     |  Stream  |    Aktif     | `blogger.com`, `uservideo.xyz`, `storages.animein`   |
+| `gdrive`               | **Google Drive**       | `https://drive.google.com`    |  Hybrid  |    Aktif     | `drive.google.com`, `docs.google.com`                |
+| `pixeldrain`           | **Pixeldrain**         | `https://pixeldrain.com`      |  Hybrid  |    Aktif     | `pixeldrain.com`                                     |
+| `acefile`              | **Acefile**            | `https://acefile.co`          |  Hybrid  |    Aktif     | `acefile.co`                                         |
+| `krakenfiles`          | **Krakenfiles**        | `https://krakenfiles.com`     | Unduhan  |    Aktif     | `krakenfiles.com`                                    |
+| `mediafire`            | **MediaFire**          | `https://www.mediafire.com`   | Unduhan  |    Aktif     | `mediafire.com`                                      |
+| `turbovid`             | **TurboVid**           | `https://turbovid.eu`         |  Stream  |    Aktif     | `turbovid.eu`, `turbovid.me`                         |
+| `nimegami`             | **Nimegami Stream**    | `https://nimegami.id`         |  Hybrid  |    Aktif     | `nimegami.id`                                        |
+
+### Pemeriksaan Status Aktif & Asosiasi pada `getAnimeDetail`
+
+Setiap kali data detail dan tautan episode diambil:
+
+```ts
+import { associateProvider, isProviderActive } from "./providers";
+
+// Di dalam parser detail anime (getAnimeDetail / extractAnimeDetail):
+const rawLinks = watchPanel?.links || [];
+
+// 1. Asosiasikan setiap link hasil scrape dengan penyedia terdaftar di providers.ts
+const associatedLinks = rawLinks.map((link) => associateProvider(link));
+
+// 2. Jalankan pemeriksaan aktif (active check verification)
+const activeLinks = associatedLinks.filter((link) => isProviderActive(link));
+```
+
+Setiap objek tautan yang diasosiasikan diperkaya dengan:
+- `providerKey`: Kunci identitas penyedia (misal `streamwish`, `filelions`).
+- `providerName`: Nama tampilan resmi platform (misal `Streamwish`, `FileLions`).
+- `providerBaseUrl`: Alamat dasar platform.
+- `isActive`: Nilai boolean yang memverifikasi apakah penyedia sedang aktif.
+- `resolvedStreamUrl`: URL streaming yang telah diformat siap putar (misal mengubah link preview menjadi iframe embed yang valid).
+
+---
+
+### Panduan Menambah atau Memperluas Parser Penyedia Baru (How to Extend the Parser)
+
+Jika muncul penyedia streaming baru (*hoster* atau *video embed provider* baru), Anda dapat memperluas parser dengan dua cara:
+
+#### Opsi A: Mendaftarkan Penyedia di `providers.ts`
+
+Tambahkan entri baru ke objek `STREAMING_PROVIDERS` di file `providers.ts`:
+
+```ts
+// providers.ts
+export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
+  // ... penyedia yang sudah ada ...
+
+  namaproviderbaru: {
+    key: "namaproviderbaru",
+    name: "Nama Provider Baru",
+    baseUrl: "https://providerbaru.com",
+    isActive: true, // Ubah ke false jika sedang maintenance atau diblokir
+    category: "stream", // "stream" | "download" | "hybrid"
+    domains: ["providerbaru.com", "providerbaru.net", "embed.providerbaru.io"],
+    priority: 8,
+    // Fungsi pencocokan cerdas berdasarkan teks penyedia atau URL
+    match: (input) => {
+      const str = typeof input === "string" 
+        ? input 
+        : `${input.provider || ""} ${input.host || ""} ${input.url || ""} ${input.playUrl || ""}`;
+      return /providerbaru|embed\.providerbaru/i.test(str);
+    },
+    // Fungsi opsional untuk menormalisasi URL halaman biasa ke URL embed player
+    resolveEmbedUrl: (rawUrl) => {
+      if (!rawUrl) return "";
+      if (rawUrl.includes("/embed/")) return rawUrl;
+      const fileId = rawUrl.split("/").filter(Boolean).pop();
+      return fileId ? `https://providerbaru.com/embed/${fileId}` : rawUrl;
+    },
+  },
+};
+```
+
+#### Opsi B: Mendaftarkan Penyedia Secara Dinamis Saat Runtime
+
+Anda juga dapat memanggil fungsi `registerProvider` dari modul mana saja:
+
+```ts
+import { registerProvider } from "./providers";
+
+registerProvider({
+  key: "streamtape",
+  name: "Streamtape",
+  baseUrl: "https://streamtape.com",
+  isActive: true,
+  category: "stream",
+  domains: ["streamtape.com", "streamtape.to"],
+  priority: 7,
+  match: (input) => {
+    const str = typeof input === "string" ? input : `${input.provider || ""} ${input.url || ""}`;
+    return /streamtape/i.test(str);
+  },
+  resolveEmbedUrl: (rawUrl) => rawUrl.replace("/v/", "/e/"),
+});
+```
+
+#### Opsi C: Menonaktifkan Penyedia Tertentu
+
+Jika salah satu penyedia sedang bermasalah (*broken/down*), Anda dapat menonaktifkannya tanpa menghapus kodenya:
+
+```ts
+import { setProviderActive } from "./providers";
+
+// Nonaktifkan sementara
+setProviderActive("streamwish", false);
+
+// Aktifkan kembali
+setProviderActive("streamwish", true);
+```
 
 ---
 

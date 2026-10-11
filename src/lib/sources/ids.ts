@@ -12,6 +12,7 @@ export const SOURCE_PREFIX: Record<SourceId, string> = {
   aniwatch: "aw",
   stucknime: "stk",
   samehadaku: "sh",
+  nimegami: "ng",
 };
 
 const PREFIX_TO_SOURCE: Record<string, SourceId> = {
@@ -21,6 +22,7 @@ const PREFIX_TO_SOURCE: Record<string, SourceId> = {
   aw: "aniwatch",
   stk: "stucknime",
   sh: "samehadaku",
+  ng: "nimegami",
 };
 
 export function toAnimeId(source: SourceId, slug: string): string {
@@ -51,9 +53,20 @@ export function parseId(id: string): ParsedId | null {
     const slug = cleanInput.split("/anime/")[1]?.split(/[/?#]/)[0];
     if (slug) return { source: "aniwatch", slug, kind: "anime" };
   }
+  // 3. Direct Nimegami URL (e.g. https://nimegami.id/yuru-camp-sub-indo/)
+  if (cleanInput.includes("nimegami.id/")) {
+    const cleanSlug = cleanInput
+      .replace(/^https?:\/\/[^/]+\//i, "")
+      .split(/[?#]/)[0]
+      .replace(/^\/|\/$/g, "");
+    if (cleanSlug && !cleanSlug.startsWith("api") && !cleanSlug.startsWith("category")) {
+      const isEp = /-(?:ep|episode)-\d+/i.test(cleanSlug);
+      return { source: "nimegami", slug: cleanSlug, kind: isEp ? "episode" : "anime" };
+    }
+  }
 
-  // 3. Standard prefixed ID (ai_*, aw_ep_*, sh_*, etc.)
-  const match = cleanInput.match(/^(ai|na|gm|aw|stk|sh)_(ep_)?(.+)$/);
+  // 4. Standard prefixed ID (ai_*, aw_ep_*, sh_*, ng_*, etc.)
+  const match = cleanInput.match(/^(ai|na|gm|aw|stk|sh|ng)_(ep_)?(.+)$/);
   if (match) {
     const source = PREFIX_TO_SOURCE[match[1] ?? ""];
     const slug = match[3];
@@ -93,8 +106,8 @@ export function extractTitleAndEpisodeFromSlug(slug: string): ExtractedSlugInfo 
   let s = decodeURIComponent(slug).trim();
   // Strip URL prefixes
   s = s.replace(/^https?:\/\/[^/]+\/(?:episode|anime|watch)\//i, "");
-  // Strip source prefixes e.g. aw_ep_, ai_, sh_ep_
-  s = s.replace(/^(?:ai|na|gm|aw|stk|sh|ks)_(?:ep_)?/i, "");
+  // Strip source prefixes e.g. aw_ep_, ai_, sh_ep_, ng_
+  s = s.replace(/^(?:ai|na|gm|aw|stk|sh|ks|ng)_(?:ep_)?/i, "");
 
   let hash: string | null = null;
   // Match trailing hash (4 to 10 alphanumeric characters, e.g. -msaexfb, -c5d95, -d8229)
