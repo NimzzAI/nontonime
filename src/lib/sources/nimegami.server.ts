@@ -556,7 +556,11 @@ export const nimegami: AnimeSource = {
     }
 
     const downloads: DownloadQualityGroup[] = Array.from(downloadGroups.entries()).map(
-      ([quality, serverList]) => ({ quality, serverList }),
+      ([quality, urls]) => ({
+        quality,
+        size: null,
+        urls,
+      }),
     );
 
     const totalEpisodes = raw.episodes.length || 1;

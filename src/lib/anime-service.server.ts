@@ -1301,7 +1301,11 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
     hasNextEpisode: Boolean(stream.nextEpisodeId),
     nextEpisodeId: stream.nextEpisodeId,
     servers: { qualities: groupServers(stream) },
-    downloads: stream.downloads,
+    downloads: (stream.downloads || []).map((dl) => ({
+      quality: dl.quality,
+      size: dl.size || null,
+      urls: dl.urls || (dl as unknown as { serverList: typeof dl.urls }).serverList || [],
+    })),
   };
 }
 
