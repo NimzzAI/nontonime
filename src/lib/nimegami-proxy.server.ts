@@ -223,7 +223,7 @@ export async function handleNimegamiStreamProxy(request: Request): Promise<Respo
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         ...getCorsHeaders(request),
-        "X-Frame-Options": "ALLOWALL",
+        "Content-Security-Policy": "frame-ancestors *",
         "Cache-Control": "public, max-age=1800",
       },
     });

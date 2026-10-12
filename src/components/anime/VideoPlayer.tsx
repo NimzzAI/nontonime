@@ -23,6 +23,9 @@ import {
   X,
   CheckCircle2,
   Subtitles,
+  Download,
+  Copy,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StreamDiagnosticOverlay, type DiagnosticData } from "./StreamDiagnosticOverlay";
@@ -51,7 +54,14 @@ function isDirectSource(url: string): boolean {
   if (!url) return false;
   if (url.startsWith("/api/nimegami-proxy")) return true;
   if (url.startsWith("/api/stream-proxy")) return true;
-  if (url.includes("/hal/streaming/")) return false;
+  // BerkasDrive / Nimegami video streams route directly through the CORS bypass proxy
+  if (
+    url.includes("berkasdrive.com") ||
+    url.includes("nimegami") ||
+    url.includes("/hal/streaming/")
+  ) {
+    return true;
+  }
   try {
     const parsed = new URL(
       url,
@@ -68,6 +78,19 @@ function isMegaSource(url: string): boolean {
   return /mega\.(nz|io)\/(embed|file)\//i.test(url);
 }
 
+function isExternalStorageHost(url: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("1024terabox.com") ||
+    lower.includes("terabox.com") ||
+    lower.includes("usersdrive.com") ||
+    lower.includes("drive.google.com") ||
+    lower.includes("acefile.co") ||
+    lower.includes("hxfile.co")
+  );
+}
+
 function getProxiedStreamUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
   if (
@@ -76,7 +99,11 @@ function getProxiedStreamUrl(originalUrl: string): string {
   ) {
     return originalUrl;
   }
-  if (originalUrl.includes("berkasdrive.com") || originalUrl.includes("nimegami")) {
+  if (
+    originalUrl.includes("berkasdrive.com") ||
+    originalUrl.includes("nimegami") ||
+    originalUrl.includes("/hal/streaming/")
+  ) {
     return `/api/nimegami-proxy?url=${encodeURIComponent(originalUrl)}`;
   }
   return `/api/stream-proxy?url=${encodeURIComponent(originalUrl)}`;
@@ -86,7 +113,11 @@ function formatIframeAutoplayUrl(url: string, shouldAutoplay: boolean): string {
   if (!url) return url;
   if (url.startsWith("/api/nimegami-proxy") || url.startsWith("/api/stream-proxy")) return url;
   // Route Nimegami / BerkasDrive embed iframes through nimegami-proxy embed mode so they never get refused connection
-  if (url.includes("berkasdrive.com") || url.includes("nimegami.id")) {
+  if (
+    url.includes("berkasdrive.com") ||
+    url.includes("nimegami.id") ||
+    url.includes("/hal/streaming/")
+  ) {
     return `/api/nimegami-proxy?url=${encodeURIComponent(url)}&format=embed`;
   }
   if (!shouldAutoplay) return url;
@@ -706,6 +737,7 @@ export function VideoPlayer({
 
   const isDirect = src ? isDirectSource(src) : false;
   const isMega = src ? isMegaSource(src) : false;
+  const isExternalStorage = src ? isExternalStorageHost(src) : false;
   const iframeSrc = src ? formatIframeAutoplayUrl(src, autoPlay) : "";
 
   // Helper: Find next unfailed server in the available server list
@@ -912,6 +944,76 @@ export function VideoPlayer({
               referrerPolicy="origin"
               onError={() => triggerAutomatedFailover("Server MEGA menolak memuat iframe")}
             />
+          </div>
+        ) : isExternalStorage ? (
+          /* External Cloud Storage Host Player Card (TeraBox / UsersDrive) */
+          <div className="relative h-full w-full flex flex-col items-center justify-center p-6 text-center bg-radial from-slate-900/95 to-black text-white select-none">
+            <div className="max-w-md w-full space-y-4 rounded-2xl border border-white/15 bg-black/80 p-5 sm:p-6 backdrop-blur-xl shadow-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-400">
+                <Server className="h-3.5 w-3.5" />
+                <span>Server Cloud Storage Eksternal</span>
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                  {activeServerTitle || "TeraBox / UsersDrive"}
+                </h3>
+                <p className="text-xs text-white/70 leading-relaxed">
+                  Penyedia streaming meng-host file ini di cloud storage eksternal (TeraBox /
+                  UsersDrive). Anda dapat langsung membuka pemutar atau mengunduh video dengan
+                  lancar:
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-90 transition-all cursor-pointer"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                  <span>Buka & Putar di Server</span>
+                  <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                </a>
+
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="inline-flex h-10 w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-semibold text-white hover:bg-white/15 transition-all cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Unduh File</span>
+                </a>
+              </div>
+
+              {servers && servers.length > 1 && onSelectServer ? (
+                <div className="pt-2 border-t border-white/10">
+                  <p className="text-[11px] text-white/50 mb-2">
+                    Tersedia {servers.length} server alternatif untuk anime ini:
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {servers.slice(0, 4).map((s) => (
+                      <button
+                        key={s.serverId}
+                        type="button"
+                        onClick={() => onSelectServer(s.serverId)}
+                        className={cn(
+                          "rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer",
+                          s.serverId === activeServerId
+                            ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                            : "bg-white/10 text-white/80 hover:bg-white/20",
+                        )}
+                      >
+                        {s.title.replace(/^\[SUB INDO\]\s*/i, "")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           /* Standard Embed Player */

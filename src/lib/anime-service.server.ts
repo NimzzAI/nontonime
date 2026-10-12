@@ -867,6 +867,14 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
   if (embedUrl.includes("direct-stor.berkasdrive.com")) {
     return `/api/nimegami-proxy?url=${encodeURIComponent(embedUrl)}`;
   }
+  if (
+    embedUrl.includes("1024terabox.com") ||
+    embedUrl.includes("terabox.com") ||
+    embedUrl.includes("usersdrive.com") ||
+    embedUrl.includes("acefile.co")
+  ) {
+    return null;
+  }
   if (isDirectMediaUrl(embedUrl)) return embedUrl;
   try {
     const target = assertPublicHttpUrl(embedUrl);
@@ -881,24 +889,24 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
       timeoutMs: 4000,
     });
     const matchVar = html.match(/videoURL\s*=\s*["']([^"']+)["']/i);
-    if (matchVar?.[1]) {
+    if (matchVar?.[1] && isDirectMediaUrl(matchVar[1])) {
       const u = matchVar[1];
       return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
     }
     const matchDataSrc = html.match(/data-(?:src|video|url)=["']([^"']+)["']/i);
-    if (matchDataSrc?.[1]) {
+    if (matchDataSrc?.[1] && isDirectMediaUrl(matchDataSrc[1])) {
       const u = matchDataSrc[1];
       return u.includes("berkasdrive.com") || !u.includes("cors")
         ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}`
         : u;
     }
     const matchSrc = html.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
-    if (matchSrc?.[1]) {
+    if (matchSrc?.[1] && isDirectMediaUrl(matchSrc[1])) {
       const u = matchSrc[1];
       return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
     }
     const matchFile = html.match(/(?:file|source|src)\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
-    if (matchFile?.[1]) {
+    if (matchFile?.[1] && isDirectMediaUrl(matchFile[1])) {
       const u = matchFile[1];
       return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
     }
@@ -974,7 +982,24 @@ function isServerSubIndo(server: SourceServer, streamId?: string): boolean {
 function serverPreferenceWeight(server: SourceServer, streamId?: string): number {
   const isSubIndo = isServerSubIndo(server, streamId);
   const subBonus = isSubIndo ? 10000 : 0;
-  return subBonus + qualityWeight(server.quality || "Auto");
+  let bonus = 0;
+  if (server.ref.kind === "url") {
+    const url = server.ref.url.toLowerCase();
+    if (
+      url.includes("nimegami-proxy") ||
+      url.includes("berkasdrive") ||
+      url.includes("/hal/streaming/")
+    ) {
+      bonus += 5000;
+    }
+    if (url.includes("storages.animein.net")) {
+      bonus -= 20000;
+    }
+    if (url.includes("1024terabox.com") || url.includes("usersdrive.com")) {
+      bonus -= 3000;
+    }
+  }
+  return subBonus + qualityWeight(server.quality || "Auto") + bonus;
 }
 
 function groupServers(stream: SourceStream): QualityServerGroup[] {
@@ -1107,6 +1132,9 @@ async function findCrossSourceAlternativeServers(
               );
               if (epStream && epStream.servers.length > 0) {
                 for (const s of epStream.servers) {
+                  if (s.ref.kind === "url" && s.ref.url.includes("storages.animein.net")) {
+                    continue;
+                  }
                   addServer({
                     name: `[SUB INDO] ${s.name}`,
                     quality:

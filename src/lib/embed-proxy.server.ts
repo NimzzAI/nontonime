@@ -93,7 +93,7 @@ export async function handleEmbedProxyRequest(request: Request): Promise<Respons
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "Access-Control-Allow-Origin": "*",
-          "X-Frame-Options": "ALLOWALL",
+          "Content-Security-Policy": "frame-ancestors *",
           "Cache-Control": "public, max-age=1800",
         },
       });
@@ -153,7 +153,7 @@ export async function handleEmbedProxyRequest(request: Request): Promise<Respons
           headers: {
             "Content-Type": "text/html; charset=utf-8",
             "Access-Control-Allow-Origin": "*",
-            "X-Frame-Options": "ALLOWALL",
+            "Content-Security-Policy": "frame-ancestors *",
             "Cache-Control": "public, max-age=1800",
           },
         });
@@ -205,7 +205,7 @@ export async function handleEmbedProxyRequest(request: Request): Promise<Respons
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Access-Control-Allow-Origin": "*",
-        "X-Frame-Options": "ALLOWALL",
+        "Content-Security-Policy": "frame-ancestors *",
         "Cache-Control": "public, max-age=1800",
       },
     });

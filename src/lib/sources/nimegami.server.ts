@@ -383,7 +383,7 @@ export const nimegami: AnimeSource = {
     return { items, hasNext: false };
   },
 
-  async search(keyword: string, page: number): Promise<SourcePage> {
+  async search(keyword: string, page: number = 1): Promise<SourcePage> {
     const cleanKeyword = cleanText(keyword);
     if (!cleanKeyword) return { items: [], hasNext: false };
 
@@ -402,7 +402,8 @@ export const nimegami: AnimeSource = {
 
       const suggestions = data.suggestions || [];
       const pageSize = 15;
-      const startIndex = (page - 1) * pageSize;
+      const validPage = Number.isFinite(page) && page > 0 ? page : 1;
+      const startIndex = (validPage - 1) * pageSize;
       const paged = suggestions.slice(startIndex, startIndex + pageSize);
 
       const items: SourceItem[] = paged.map((item) =>

@@ -13,6 +13,8 @@ import { useAuth, signOutUser } from "@/lib/firebase";
 import { readGamification, type UserGamification } from "@/lib/gamification";
 import { useNotificationBadge } from "@/lib/social-notifications";
 import { isGuestUser } from "@/lib/firebase";
+import { addRecentSearch } from "@/lib/recent-searches";
+import { RecentSearchesBar } from "./RecentSearchesBar";
 import {
   MessageCircle,
   Newspaper,
@@ -186,11 +188,23 @@ export function SiteHeader() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchTerm.trim()) return;
+    const clean = searchTerm.trim();
+    if (!clean) return;
+    addRecentSearch(clean);
     setShowSearchDropdown(false);
     navigate({
       to: "/cari",
-      search: { q: searchTerm.trim(), page: 1 },
+      search: { q: clean, page: 1 },
+    });
+  };
+
+  const handleSelectRecentSearch = (query: string) => {
+    setSearchTerm(query);
+    addRecentSearch(query);
+    setShowSearchDropdown(false);
+    navigate({
+      to: "/cari",
+      search: { q: query, page: 1 },
     });
   };
 
@@ -403,6 +417,14 @@ export function SiteHeader() {
                   >
                     Lihat Semua Hasil Pencarian
                   </button>
+                </div>
+              ) : showSearchDropdown && !debouncedTerm ? (
+                <div className="absolute right-0 top-11 z-50 w-84 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-xl">
+                  <RecentSearchesBar
+                    variant="list"
+                    maxItems={6}
+                    onSelectQuery={handleSelectRecentSearch}
+                  />
                 </div>
               ) : null}
             </div>
