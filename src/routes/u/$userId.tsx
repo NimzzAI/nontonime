@@ -44,7 +44,9 @@ function PublicProfilePage() {
   if (!profile) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <h1 className="font-display text-xl font-black text-foreground">Pengguna tidak ditemukan</h1>
+        <h1 className="font-display text-xl font-black text-foreground">
+          Pengguna tidak ditemukan
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Profil ini belum dibuat atau sudah dihapus.
         </p>
@@ -89,7 +91,12 @@ function PublicProfilePage() {
 
         <div className="relative px-5 pb-6">
           <div className="-mt-12 flex flex-wrap items-end justify-between gap-3">
-            <AvatarFrame src={profile.avatarUrl} name={profile.displayName} borderId={border} size={96} />
+            <AvatarFrame
+              src={profile.avatarUrl}
+              name={profile.displayName}
+              borderId={border}
+              size={96}
+            />
             {isSelf ? (
               <Link
                 to="/profil"

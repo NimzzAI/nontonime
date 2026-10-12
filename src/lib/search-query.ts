@@ -28,8 +28,24 @@ export function stripSymbols(value: string): string {
 }
 
 export function parseSearchQuery(raw: string): ParsedQuery {
-  let s = ` ${raw} `
-    .replace(/\bsub(?:title)?\s*(?:indo(?:nesia)?|id)\b/gi, " ")
+  let cleaned = raw.trim();
+
+  // If input looks like a slug or URL (contains hyphens and words)
+  if (cleaned.includes("-") || cleaned.includes("_") || cleaned.includes("/")) {
+    cleaned = cleaned
+      .replace(/^https?:\/\/[^/]+\/(?:episode|anime|watch)\//i, "")
+      .replace(/^(?:ai|na|gm|aw|stk|sh|ks)_(?:ep_)?/i, "")
+      .replace(/-[a-z0-9]{4,10}$/i, "") // trailing hash
+      .replace(/-(?:episode|eps?)-?\d+/i, "") // episode part
+      .replace(/-[a-z0-9]{4,10}$/i, "") // second trailing hash if any
+      .replace(/[-_]+/g, " ");
+  }
+
+  let s = ` ${cleaned} `
+    .replace(
+      /\b(?:sub(?:title)?\s*(?:indo(?:nesia)?|id|eng(?:lish)?|en)|(?:eng(?:lish)?|indo)\s*sub)\b/gi,
+      " ",
+    )
     .replace(/\b(?:episode|eps?)\s*\d+\b/gi, " ")
     .replace(/\b(?:nonton|streaming|download|unduh|batch|lengkap|bluray|bd)\b/gi, " ")
     .replace(/^\s*anime\s+/i, " ");
@@ -47,11 +63,14 @@ export function parseSearchQuery(raw: string): ParsedQuery {
   };
   const num = (m: RegExpMatchArray) => Number(m[1]);
 
-  (take(/\b(\d{1,2})(?:st|nd|rd|th)\s*season\b/i, num) ||
+  void (
+    take(/\b(\d{1,2})(?:st|nd|rd|th)\s*season\b/i, num) ||
     take(/\b(?:season|musim|sezon)\s*(\d{1,2})\b/i, num) ||
     take(/\bseason\s*(ii|iii|iv|v|vi)\b/i, (m) => ROMAN[(m[1] ?? "").toLowerCase()] ?? null) ||
-    take(/\bs(\d{1,2})\b/i, num)) ||
-    (s.split(" ").length >= 2 && take(/\s(\d{1,2})$/, (m) => (Number(m[1]) >= 2 && Number(m[1]) <= 12 ? Number(m[1]) : null)));
+    take(/\bs(\d{1,2})\b/i, num) ||
+    (s.split(" ").length >= 2 &&
+      take(/\s(\d{1,2})$/, (m) => (Number(m[1]) >= 2 && Number(m[1]) <= 12 ? Number(m[1]) : null)))
+  );
 
   return { raw, base: s || squash(raw), season };
 }
@@ -142,6 +161,9 @@ export function looksRelated(query: string, candidates: (string | null | undefin
     if (!n) return false;
     if (n.includes(q) || q.includes(n)) return true;
     if (tokenCoverage(q, n) >= 0.6) return true;
-    return levenshtein(q, n, Math.max(2, Math.floor(q.length * 0.3))) <= Math.max(2, Math.floor(q.length * 0.3));
+    return (
+      levenshtein(q, n, Math.max(2, Math.floor(q.length * 0.3))) <=
+      Math.max(2, Math.floor(q.length * 0.3))
+    );
   });
 }

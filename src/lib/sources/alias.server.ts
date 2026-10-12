@@ -1,4 +1,10 @@
-import { looksRelated, levenshtein, normalizeLoose, parseSearchQuery, stripSymbols } from "../search-query";
+import {
+  looksRelated,
+  levenshtein,
+  normalizeLoose,
+  parseSearchQuery,
+  stripSymbols,
+} from "../search-query";
 
 export interface AnimeAliasData {
   romaji: string;
@@ -502,12 +508,7 @@ export async function getSearchQueryTerms(term: string): Promise<string[]> {
   if (!parsed.base) return [];
   const alias = await resolveAnimeAliases(parsed.base);
 
-  const names = [
-    parsed.base,
-    alias?.romaji,
-    alias?.english,
-    ...(alias?.synonyms ?? []).slice(0, 2),
-  ]
+  const names = [parsed.base, alias?.romaji, alias?.english, ...(alias?.synonyms ?? []).slice(0, 2)]
     .filter((n): n is string => Boolean(n))
     .map(stripSymbols)
     .filter((n) => n.length >= 2);

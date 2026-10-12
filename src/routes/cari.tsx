@@ -11,6 +11,8 @@ import { GenreFilterBar, ALL_GENRE_OPTIONS } from "@/components/anime/GenreFilte
 import { SearchFilterPanel } from "@/components/anime/SearchFilterPanel";
 import { cn } from "@/lib/utils";
 import { TopSearchChips } from "@/components/anime/TopSearchChips";
+import { addRecentSearch } from "@/lib/recent-searches";
+import { RecentSearchesBar } from "@/components/anime/RecentSearchesBar";
 
 export const Route = createFileRoute("/cari")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -90,27 +92,46 @@ function SearchPage() {
     const clean = term.trim();
     if (!clean && !genre) return;
 
-    // Detect if the user pasted a direct Aniwatch/source URL or ID
-    const parsed = parseId(clean);
-    if (parsed) {
-      if (parsed.kind === "episode") {
-        navigate({
-          to: "/watch/$episodeId",
-          params: { episodeId: toEpisodeId(parsed.source, parsed.slug) },
-        });
-        return;
+    // Detect if the user pasted a direct full URL or internal prefixed ID
+    const isExplicitUrlOrId =
+      clean.startsWith("http://") ||
+      clean.startsWith("https://") ||
+      clean.startsWith("/") ||
+      /^(?:ai|na|gm|aw|stk|sh|ks)_(?:ep_)?[a-z0-9_-]+/i.test(clean);
+
+    if (isExplicitUrlOrId) {
+      const parsed = parseId(clean);
+      if (parsed) {
+        if (parsed.kind === "episode") {
+          navigate({
+            to: "/watch/$episodeId",
+            params: { episodeId: toEpisodeId(parsed.source, parsed.slug) },
+          });
+          return;
+        }
+        if (parsed.kind === "anime") {
+          navigate({
+            to: "/anime/$animeId",
+            params: { animeId: toAnimeId(parsed.source, parsed.slug) },
+          });
+          return;
+        }
       }
-      if (parsed.kind === "anime") {
-        navigate({
-          to: "/anime/$animeId",
-          params: { animeId: toAnimeId(parsed.source, parsed.slug) },
-        });
-        return;
-      }
+    }
+
+    // Save valid search keyword to recent searches in localStorage
+    if (clean) {
+      addRecentSearch(clean);
     }
 
     // Default to status: 'all' when searching by keyword so finished seasons (e.g. Season 2) are not hidden
     navigate({ to: "/cari", search: { q: clean, page: 1, genre, status: "all" } });
+  };
+
+  const handleSelectRecentQuery = (recentTerm: string) => {
+    setTerm(recentTerm);
+    addRecentSearch(recentTerm);
+    navigate({ to: "/cari", search: { q: recentTerm, page: 1, genre: "", status: "all" } });
   };
 
   const handleSelectGenre = (genreId: string | null) => {
@@ -226,8 +247,11 @@ function SearchPage() {
         ) : null}
       </div>
 
+      {/* Quick Recent Searches Bar */}
+      <RecentSearchesBar onSelectQuery={handleSelectRecentQuery} />
+
       {!activeTerm && !activeGenre ? (
-        <div className="py-12 text-center text-sm text-muted-foreground space-y-2">
+        <div className="py-12 text-center text-sm text-muted-foreground space-y-3">
           <Film className="h-10 w-10 mx-auto text-muted-foreground/40" />
           <p className="font-medium text-foreground">Mulai Cari atau Pilih Kategori Genre</p>
           <p className="text-xs max-w-sm mx-auto">

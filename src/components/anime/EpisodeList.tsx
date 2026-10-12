@@ -5,22 +5,23 @@ import { Play, Eye } from "lucide-react";
 import { EpisodeDownloadButton } from "./EpisodeDownloadButton";
 
 export function EpisodeList({
-  episodes,
+  episodes = [],
   animeId,
   activeEpisodeId,
 }: {
-  episodes: EpisodeSummary[];
+  episodes?: EpisodeSummary[];
   animeId: string;
   activeEpisodeId?: string;
 }) {
-  if (episodes.length === 0) {
+  const safeEpisodes = Array.isArray(episodes) ? episodes : [];
+  if (safeEpisodes.length === 0) {
     return <p className="text-sm text-muted-foreground">Belum ada episode tersedia.</p>;
   }
 
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      {[...episodes]
-        .sort((a, b) => b.number - a.number)
+      {[...safeEpisodes]
+        .sort((a, b) => (b.number ?? 0) - (a.number ?? 0))
         .map((episode) => {
           const isActive = episode.id === activeEpisodeId;
           return (

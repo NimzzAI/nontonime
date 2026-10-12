@@ -81,13 +81,14 @@ export async function resolvesToPrivateAddress(hostname: string): Promise<boolea
   }
 }
 
-/** Header CORS hanya untuk asal yang sama dengan situs sendiri. Pemutar memakai URL relatif, jadi tidak butuh `*`. */
-export function corsOrigin(request: Request): Record<string, string> {
-  const origin = request.headers.get("origin");
-  if (origin && origin === new URL(request.url).origin) {
-    return { "Access-Control-Allow-Origin": origin, Vary: "Origin" };
-  }
-  return {};
+/** Header CORS lengkap untuk pemutar media Video.js, HTML5 video, dan cross-origin iframe */
+export function corsOrigin(request?: Request): Record<string, string> {
+  const origin = request?.headers.get("origin");
+  return {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Credentials": "true",
+    Vary: "Origin",
+  };
 }
 
 function isAllowedPort(port: string): boolean {
@@ -104,11 +105,22 @@ export function isMegaUrl(url: string): boolean {
   return /mega\.(nz|io)\/(embed|file)\//i.test(url);
 }
 
+function parseRefererParam(raw: string | null): URL | null {
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Handles GET /api/stream-proxy?url=...
+ * Handles GET /api/stream-proxy?url=...&ref=...
  */
 export async function handleStreamProxyRequest(request: Request): Promise<Response> {
   const reqUrl = new URL(request.url);
+  const customReferer = parseRefererParam(reqUrl.searchParams.get("ref"));
 
   // Handle CORS preflight
   if (request.method === "OPTIONS") {
@@ -219,9 +231,24 @@ export async function handleStreamProxyRequest(request: Request): Promise<Respon
     upstreamHeaders["Range"] = clientRange;
   }
 
-  // Set appropriate Referer header
-  if (parsedTarget.hostname.includes("odcloud") || parsedTarget.hostname.includes("desustream")) {
+  // Set appropriate Referer and Origin headers to satisfy target server security checks
+  if (customReferer) {
+    upstreamHeaders["Referer"] = customReferer.href;
+  } else if (
+    parsedTarget.hostname.includes("odcloud") ||
+    parsedTarget.hostname.includes("desustream")
+  ) {
     upstreamHeaders["Referer"] = "https://otakudesu.cloud/";
+  } else if (
+    parsedTarget.hostname.includes("berkasdrive.com") ||
+    parsedTarget.hostname.includes("direct-stor") ||
+    parsedTarget.hostname.includes("vsys-srv")
+  ) {
+    upstreamHeaders["Referer"] = "https://vsys-srv.berkasdrive.com/";
+    upstreamHeaders["Origin"] = "https://vsys-srv.berkasdrive.com";
+  } else if (parsedTarget.hostname.includes("nimegami")) {
+    upstreamHeaders["Referer"] = "https://nimegami.id/";
+    upstreamHeaders["Origin"] = "https://nimegami.id";
   } else {
     upstreamHeaders["Referer"] = `${parsedTarget.protocol}//${parsedTarget.host}/`;
   }
@@ -256,8 +283,32 @@ export async function handleStreamProxyRequest(request: Request): Promise<Respon
 
     const contentType = upstreamRes.headers.get("content-type") || "";
 
-    // If upstream unexpectedly returned HTML, it's likely an error/embed page, not video
+    // If upstream unexpectedly returned HTML, it's likely an error or embed page.
+    // Try to auto-bypass by parsing HTML to find the direct stream video URL!
     if (contentType.includes("text/html") && !isDirectMediaExtension(parsedTarget.pathname)) {
+      try {
+        const htmlText = await upstreamRes.text();
+        const dataSrcMatch =
+          htmlText.match(/data-(?:src|video|url)=["']([^"']+)["']/i) ||
+          htmlText.match(/videoURL\s*=\s*["']([^"']+)["']/i) ||
+          htmlText.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i) ||
+          htmlText.match(/(https?:\/\/[^"'\s<>]+\.(?:mp4|m3u8|webm))/i);
+
+        if (dataSrcMatch?.[1]) {
+          const directMediaUrl = dataSrcMatch[1];
+          const origin = reqUrl.origin || "http://localhost:3000";
+          const refSuffix = customReferer ? `&ref=${encodeURIComponent(customReferer.href)}` : "";
+          const proxiedUrl = `${origin}/api/stream-proxy?url=${encodeURIComponent(directMediaUrl)}${refSuffix}`;
+          const redirectedReq = new Request(proxiedUrl, {
+            method: request.method,
+            headers: request.headers,
+          });
+          return handleStreamProxyRequest(redirectedReq);
+        }
+      } catch (bypassErr) {
+        console.warn("Stream proxy auto-bypass failed:", bypassErr);
+      }
+
       return new Response(
         JSON.stringify({
           error: "NOT_A_MEDIA_STREAM",

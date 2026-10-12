@@ -188,7 +188,11 @@ function Composer({
             disabled={submitting || !text.trim()}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-[11px] font-bold text-primary-foreground disabled:opacity-50 cursor-pointer"
           >
-            {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+            {submitting ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Send className="h-3 w-3" />
+            )}
             Kirim
           </button>
         </div>
@@ -261,7 +265,12 @@ function CommentCard({
 
         <div className={cn("flex gap-3 p-3 sm:p-3.5", showBanner && "-mt-7 relative")}>
           <Link to="/u/$userId" params={{ userId: comment.userId }} className="shrink-0">
-            <AvatarFrame src={idn.avatar} name={idn.name} borderId={idn.border} size={isReply ? 34 : 46} />
+            <AvatarFrame
+              src={idn.avatar}
+              name={idn.name}
+              borderId={idn.border}
+              size={isReply ? 34 : 46}
+            />
           </Link>
 
           <div className="min-w-0 flex-1 space-y-1.5">
@@ -433,7 +442,10 @@ export function EpisodeComments({
 
   const isOwnerViewer =
     signedIn && user && !isGuestUser(user)
-      ? resolveRole((user as { email?: string | null }).email, (user as { emailVerified?: boolean }).emailVerified) === "owner"
+      ? resolveRole(
+          (user as { email?: string | null }).email,
+          (user as { emailVerified?: boolean }).emailVerified,
+        ) === "owner"
       : false;
 
   const post = async (
@@ -481,7 +493,8 @@ export function EpisodeComments({
       username:
         profile?.username ||
         (user.displayName ? user.displayName.toLowerCase().replace(/[^a-z0-9_]/g, "") : "wibu"),
-      avatarUrl: myPublic?.avatarUrl || profile?.avatarUrl || profile?.photoURL || user.photoURL || "",
+      avatarUrl:
+        myPublic?.avatarUrl || profile?.avatarUrl || profile?.photoURL || user.photoURL || "",
       userLevel: gamification.level || 1,
       userRankTitle: gamification.rankTitle || "Penonton Pemula",
       userClan: profile?.clan || "",
@@ -506,7 +519,10 @@ export function EpisodeComments({
         sanitizeForFirestore(newComment),
       );
       lastPostAt.current = Date.now();
-      addExp(parent ? 5 : 15, parent ? "Membalas Komentar (+5 XP) 💬" : "Menulis Komentar Episode (+15 XP) 💬");
+      addExp(
+        parent ? 5 : 15,
+        parent ? "Membalas Komentar (+5 XP) 💬" : "Menulis Komentar Episode (+15 XP) 💬",
+      );
 
       if (parent && parent.userId !== user.uid) {
         void pushSocialNotification(parent.userId, {
@@ -572,12 +588,19 @@ export function EpisodeComments({
   const openProfileHint = () => router.navigate({ to: "/profil" });
 
   return (
-    <section className={cn("space-y-4 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-5", className)}>
+    <section
+      className={cn(
+        "space-y-4 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-5",
+        className,
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 font-display text-sm font-bold text-foreground sm:text-base">
           <MessageSquare className="h-4 w-4 text-primary" />
           Diskusi Episode
-          <span className="text-xs font-semibold text-muted-foreground">({comments.filter((c) => !c.deleted).length})</span>
+          <span className="text-xs font-semibold text-muted-foreground">
+            ({comments.filter((c) => !c.deleted).length})
+          </span>
         </h3>
       </div>
 

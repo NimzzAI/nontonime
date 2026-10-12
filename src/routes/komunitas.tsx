@@ -35,7 +35,10 @@ export const Route = createFileRoute("/komunitas")({
   head: () => ({
     meta: [
       { title: "Komunitas : Nontonime" },
-      { name: "description", content: "Cari pengguna, berteman, mengikuti, dan ngobrol di Nontonime." },
+      {
+        name: "description",
+        content: "Cari pengguna, berteman, mengikuti, dan ngobrol di Nontonime.",
+      },
     ],
   }),
   component: CommunityPage,
@@ -92,10 +95,8 @@ function SearchTab() {
           <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
         )}
       </div>
-      {results.map((p) => (
-        <UserRow key={p.uid} uid={p.uid} />
-      ))}
-      {searched && results.length === 0 && !busy && (
+      {Array.isArray(results) && results.map((p) => <UserRow key={p.uid} uid={p.uid} />)}
+      {searched && (!results || results.length === 0) && !busy && (
         <EmptyBox text="Tidak ada pengguna dengan username itu." />
       )}
       {!searched && <EmptyBox text="Ketik minimal 2 huruf username untuk mencari pengguna." />}
@@ -104,10 +105,11 @@ function SearchTab() {
 }
 
 function IdList({ ids, empty }: { ids: string[]; empty: string }) {
-  if (ids.length === 0) return <EmptyBox text={empty} />;
+  const safeIds = Array.isArray(ids) ? ids : [];
+  if (safeIds.length === 0) return <EmptyBox text={empty} />;
   return (
     <div className="space-y-2.5">
-      {ids.map((uid) => (
+      {safeIds.map((uid) => (
         <UserRow
           key={uid}
           uid={uid}
@@ -133,7 +135,8 @@ function RequestsTab() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   if (!actor) return null;
-  if (requests.length === 0) return <EmptyBox text="Belum ada permintaan pertemanan masuk." />;
+  const safeRequests = Array.isArray(requests) ? requests : [];
+  if (safeRequests.length === 0) return <EmptyBox text="Belum ada permintaan pertemanan masuk." />;
 
   const run = async (id: string, task: () => Promise<void>) => {
     setBusyId(id);
@@ -148,7 +151,7 @@ function RequestsTab() {
 
   return (
     <div className="space-y-2.5">
-      {requests.map((r) => (
+      {safeRequests.map((r) => (
         <UserRow
           key={r.id}
           uid={r.fromId}
@@ -238,7 +241,10 @@ function CommunityPage() {
       ) : tab === "cari" ? (
         <SearchTab />
       ) : tab === "teman" ? (
-        <IdList ids={friends} empty="Belum ada teman. Cari pengguna lalu kirim permintaan pertemanan." />
+        <IdList
+          ids={friends}
+          empty="Belum ada teman. Cari pengguna lalu kirim permintaan pertemanan."
+        />
       ) : tab === "permintaan" ? (
         <RequestsTab />
       ) : tab === "mengikuti" ? (

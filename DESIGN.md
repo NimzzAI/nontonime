@@ -1,36 +1,36 @@
-# Nontonime Design System (Modern Streaming)
+# Nontonime Design System (Cinema Noir Streaming)
 
 ## Identity & Character
 
 - **Product**: Nontonime (Streaming Anime Subtitle Indonesia)
-- **Aesthetic**: Modern Streaming (Cinematic, Immersive, Media-First)
-- **Mood**: Sleek, focused, unobtrusive interface that elevates anime visuals and makes watching effortless.
+- **Aesthetic**: Cinema Noir & Minimalist Dark Streaming (Cinematic, Editorial, Media-First)
+- **Mood**: Sleek obsidian canvas (`#080808`), refined monochrome surfaces (`#121212`), hairline accents (`rgba(255,255,255,0.10)`), with deliberate crimson accents for play triggers.
 
 ## Three Dials
 
-- **ENERGY**: 2 (Balanced: confident streaming UI, strong visual focus, no generic marketing hype)
-- **RHYTHM**: 2 (Structured shelves, hero feature presentation, curated trending rails, clear discovery)
-- **MOTION**: 2 (Natural transitions: smooth carousel slides, subtle hover depth, fluid modals, no distracting bounce)
+- **ENERGY**: 2 (Balanced: confident streaming UI, strong visual focus, zero marketing fluff)
+- **RHYTHM**: 2 (Structured shelves, editorial hero presentation, curated rails, clear typography)
+- **MOTION**: 2 (Smooth 180ms ease interactions, buffer loader animation, no distracting bounces)
 
 ## Color Palette
 
-- **Primary Accent**: Crimson Coral (`oklch(0.60 0.22 25)` / `#E11D48`) used deliberately for playback triggers, active tabs, and primary actions.
-- **Dark Mode Background**: Obsidian Noir (`oklch(0.11 0.015 265)` / `#0B0D14`) with elevated cards (`oklch(0.15 0.018 265)`).
-- **Light Mode Background**: Cloud White (`oklch(0.985 0.003 260)`) with crisp white cards (`#FFFFFF`) and clear borders.
-- **Status Accents**:
-  - Ongoing / Active: Emerald (`oklch(0.65 0.18 150)`)
-  - Completed / Tamat: Slate Blue (`oklch(0.60 0.16 240)`)
-  - Rating Star: Warm Amber (`oklch(0.78 0.18 80)`)
+- **Canvas**: `#080808` (Deep Obsidian Canvas)
+- **Surface**: `#121212` (Card and frame background)
+- **Surface Hover**: `#1b1b1b`
+- **Surface Raised**: `#242424` (Elevated modals and dropdowns)
+- **Line & Line Strong**: `rgba(255, 255, 255, 0.10)` & `rgba(255, 255, 255, 0.20)`
+- **Inks**: `#f3f3f3` (Primary), `#a7a7a7` (Dim), `#686868` (Faint)
+- **Accent**: `#dedede` (Silver accent), `#ffffff` (Strong), `#e11d48` (Play & Active triggers)
 
 ## Typography & Hierarchy
 
-- **Display / Headings**: Bold, condensed tracking, high legibility for Japanese and Indonesian titles.
-- **Body & Captions**: Crisp sans-serif with strong WCAG AA contrast (minimum 4.5:1 ratio).
-- **No Em Dashes**: Clean punctuation using colons, commas, or structured bullet separators (`·`).
+- **Display**: `Playfair Display` (Editorial titles, hero showcases, section headings)
+- **Body & Sans**: `Plus Jakarta Sans` (UI text, metadata, descriptions)
+- **Data & Microcopy**: `IBM Plex Mono` (`.noir-kicker`, episode counts, timestamps, technical indicators)
 
 ## Component Guidelines
 
-- **Poster Cards**: 2:3 aspect ratio, subtle vignette gradient, clean metadata (episode, type, score), smooth hover zoom.
-- **Hero Showcase**: Full-width cinematic banner with high-contrast readable text over atmospheric gradient masks.
-- **Navigation**: Clean header with instant search, fast category links, quick filters, and mobile bottom bar.
-- **Accessibility**: Visible keyboard focus rings (`ring-2 ring-primary/40`), minimum 44px touch targets on mobile.
+- **Poster Cards**: 2:3 aspect ratio, subtle vignette gradient, clean unboxed metadata, `.noir-interactive` micro-lift.
+- **Hero Showcase**: Full-width cinematic banner with `.hero-slide` and `.noir-frame` depth.
+- **Section Titles**: `.noir-section-title` with subtle silver accent underline and `.noir-kicker`.
+- **Watch Player Shell**: `.watch-player-shell` with `.buffer-loader` indicator and `.accent-range` scrubber.

@@ -89,7 +89,7 @@ export function OfflinePlayerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
       <div
         className={cn(
-          "relative flex flex-col w-full rounded-2xl border border-white/20 bg-card shadow-2xl overflow-hidden text-foreground transition-all duration-300",
+          "relative flex flex-col w-full rounded-2xl border border-border/80 dark:border-white/20 bg-card shadow-2xl overflow-hidden text-foreground transition-all duration-300",
           isTheater ? "max-w-6xl" : "max-w-4xl",
         )}
       >

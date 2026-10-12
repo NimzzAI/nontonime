@@ -3,22 +3,23 @@ import { isDownloadableUrl } from "@/lib/utils";
 import type { StreamServer } from "@/lib/anime-types";
 
 export function ServerList({
-  servers,
+  servers = [],
   episodeId,
   animeId,
 }: {
-  servers: StreamServer[];
+  servers?: StreamServer[];
   episodeId: string;
   animeId: string;
 }) {
-  if (servers.length === 0) {
+  const safeServers = Array.isArray(servers) ? servers : [];
+  if (safeServers.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">Belum ada server tersedia untuk episode ini.</p>
     );
   }
 
   const groups = new Map<string, StreamServer[]>();
-  for (const server of servers) {
+  for (const server of safeServers) {
     const list = groups.get(server.quality) ?? [];
     list.push(server);
     groups.set(server.quality, list);

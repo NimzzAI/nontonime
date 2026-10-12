@@ -1,6 +1,8 @@
 import { animein } from "./animein.server";
 import { aniwatch } from "./aniwatch.server";
 import { gomunime } from "./gomunime.server";
+import { nimegami } from "./nimegami.server";
+import { nontonanime } from "./nontonanime.server";
 import { nontonanimeid } from "./nontonanimeid.server";
 import { samehadaku } from "./samehadaku.server";
 import { stucknime } from "./stucknime.server";
@@ -9,20 +11,24 @@ import type { AnimeSource, SourceId } from "./types";
 // Urutan di sini menentukan prioritas saat judul yang sama muncul dari beberapa sumber
 const ALL_SOURCES: Record<SourceId, AnimeSource> = {
   animein,
+  samehadaku,
+  nimegami,
   nontonanimeid,
+  nontonanime,
   gomunime,
   aniwatch,
   stucknime,
-  samehadaku,
 };
 
 export const DEFAULT_SOURCE_IDS: SourceId[] = [
   "animein",
-  "nontonanimeid",
-  "gomunime",
-  "aniwatch",
-  "stucknime",
   "samehadaku",
+  "nimegami",
+  "aniwatch",
+  "gomunime",
+  "stucknime",
+  "nontonanimeid",
+  "nontonanime",
 ];
 
 export function enabledSourceIds(): SourceId[] {

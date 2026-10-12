@@ -41,9 +41,9 @@ function GenrePage() {
       {isPending ? <GridSkeleton count={15} /> : null}
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
 
-      {data ? (
+      {Array.isArray(data) && data.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {data.map((genre) => (
+          {(data || []).map((genre) => (
             <Link
               key={genre.id}
               to="/genre/$genreId"

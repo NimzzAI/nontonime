@@ -124,11 +124,12 @@ function HomePage() {
       <WelcomeModal />
 
       {/* Stream Curation & Broadcast Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-card/90 px-4 py-2.5 shadow-xs">
-        <div className="flex items-center gap-3">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-semibold text-foreground">
-            Tayang Hari Ini ({todayDay}) : Update Episode Sub Indo Otomatis
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 dark:border-white/10 bg-card/90 dark:bg-surface/80 px-4 py-2.5 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <span className="noir-kicker text-muted-foreground">BROADCAST</span>
+          <span className="text-muted-foreground/30">·</span>
+          <span className="text-xs font-medium text-foreground">
+            Tayang Hari Ini ({todayDay}) : Episode Sub Indo Diperbarui Otomatis
           </span>
         </div>
 
@@ -136,14 +137,14 @@ function HomePage() {
           <button
             type="button"
             onClick={() => setFilterOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-secondary/60 px-3 py-1 text-xs font-medium text-foreground hover:bg-secondary hover:text-primary transition-colors cursor-pointer"
+            className="noir-button-secondary inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium cursor-pointer"
           >
             <span>Filter Anime</span>
           </button>
           <button
             type="button"
             onClick={() => window.dispatchEvent(new Event("open-welcome-modal"))}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1 text-xs font-semibold transition-colors cursor-pointer"
           >
             <span>Panduan & Info</span>
           </button>
@@ -152,7 +153,7 @@ function HomePage() {
 
       {/* Hero Section Loading / Carousel */}
       {isPending ? (
-        <div className="aspect-[16/9] w-full animate-pulse rounded-2xl sm:rounded-3xl bg-muted/60 sm:aspect-[21/9]" />
+        <div className="aspect-[16/9] w-full animate-pulse rounded-2xl bg-muted sm:aspect-[21/9] border border-border/80 dark:border-white/10" />
       ) : null}
 
       {error ? <ErrorState error={error} onRetry={() => refetch()} /> : null}
@@ -167,26 +168,26 @@ function HomePage() {
       ) : null}
 
       {/* Interactive Surprise Anime Roulette Banner */}
-      <section className="relative overflow-hidden rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm">
+      <section className="relative overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 noir-frame p-5 sm:p-6 shadow-md">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary border border-primary/20">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
               <Dices className="h-5 w-5" />
             </span>
             <div>
+              <div className="noir-kicker mb-1">ROULETTE REKOMENDASI</div>
               <h3 className="font-display text-sm sm:text-base font-bold text-foreground">
                 Bingung Mau Nonton Apa Hari Ini?
               </h3>
               <p className="text-xs text-muted-foreground leading-snug">
-                Putar roda roulette takdir anime dan temukan serial menarik berikutnya secara
-                instan.
+                Putar roda takdir anime dan temukan serial menarik berikutnya secara instan.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setGachaOpen(true)}
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 active:scale-95 cursor-pointer w-full sm:w-auto"
+            className="noir-button inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-xs font-bold text-primary-foreground shadow-md transition-all cursor-pointer w-full sm:w-auto"
           >
             <Dices className="h-4 w-4" />
             <span>Putar Anime Acak</span>

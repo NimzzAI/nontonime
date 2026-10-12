@@ -241,53 +241,53 @@ export function NotificationsModal({
             <SocialNotificationsPanel onNavigate={() => onOpenChange(false)} />
           </div>
         ) : (
-        <div className="p-5 sm:p-6 space-y-3 max-h-[50vh] overflow-y-auto">
-          <AnnouncementsPanel />
-          <h4 className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-            Log Pembaruan Situs Nontonime
-          </h4>
+          <div className="p-5 sm:p-6 space-y-3 max-h-[50vh] overflow-y-auto">
+            <AnnouncementsPanel />
+            <h4 className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+              Log Pembaruan Situs Nontonime
+            </h4>
 
-          <div className="space-y-2.5">
-            {RECENT_SITE_UPDATES.map((item) => {
-              const isUnread = !readIds.includes(item.id);
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => markUpdateAsRead(item.id)}
-                  className={cn(
-                    "rounded-2xl border p-3.5 transition-all cursor-pointer relative",
-                    isUnread
-                      ? "border-primary/50 bg-primary/5 shadow-xs"
-                      : "border-border/60 bg-card/60 hover:bg-card",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background border border-border/80">
-                        {getTagIcon(item.tag)}
+            <div className="space-y-2.5">
+              {RECENT_SITE_UPDATES.map((item) => {
+                const isUnread = !readIds.includes(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => markUpdateAsRead(item.id)}
+                    className={cn(
+                      "rounded-2xl border p-3.5 transition-all cursor-pointer relative",
+                      isUnread
+                        ? "border-primary/50 bg-primary/5 shadow-xs"
+                        : "border-border/60 bg-card/60 hover:bg-card",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background border border-border/80">
+                          {getTagIcon(item.tag)}
+                        </div>
+                        <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-black text-foreground">
+                          {item.version}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{item.date}</span>
                       </div>
-                      <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-black text-foreground">
-                        {item.version}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">{item.date}</span>
+
+                      {isUnread && (
+                        <span className="h-2 w-2 rounded-full bg-primary ring-4 ring-primary/20" />
+                      )}
                     </div>
 
-                    {isUnread && (
-                      <span className="h-2 w-2 rounded-full bg-primary ring-4 ring-primary/20" />
-                    )}
+                    <h5 className="font-display text-xs font-bold text-foreground mt-2">
+                      {item.title}
+                    </h5>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                      {item.description}
+                    </p>
                   </div>
-
-                  <h5 className="font-display text-xs font-bold text-foreground mt-2">
-                    {item.title}
-                  </h5>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                    {item.description}
-                  </p>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
         )}
       </DialogContent>
     </Dialog>

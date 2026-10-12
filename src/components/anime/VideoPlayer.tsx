@@ -22,9 +22,14 @@ import {
   ArrowRight,
   X,
   CheckCircle2,
+  Subtitles,
+  Download,
+  Copy,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StreamDiagnosticOverlay, type DiagnosticData } from "./StreamDiagnosticOverlay";
+import { SubtitleModal } from "./SubtitleModal";
 
 export interface NextEpisodeMeta {
   id: string;
@@ -47,7 +52,25 @@ export interface FailedServerLog {
 
 function isDirectSource(url: string): boolean {
   if (!url) return false;
-  return /\.(m3u8|mp4|webm|mkv)(\?|$)/i.test(url) || url.startsWith("/api/stream-proxy");
+  if (url.startsWith("/api/nimegami-proxy")) return true;
+  if (url.startsWith("/api/stream-proxy")) return true;
+  // BerkasDrive / Nimegami video streams route directly through the CORS bypass proxy
+  if (
+    url.includes("berkasdrive.com") ||
+    url.includes("nimegami") ||
+    url.includes("/hal/streaming/")
+  ) {
+    return true;
+  }
+  try {
+    const parsed = new URL(
+      url,
+      typeof window !== "undefined" ? window.location.href : "https://localhost",
+    );
+    return /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(parsed.pathname);
+  } catch {
+    return /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(url);
+  }
 }
 
 function isMegaSource(url: string): boolean {
@@ -55,13 +78,49 @@ function isMegaSource(url: string): boolean {
   return /mega\.(nz|io)\/(embed|file)\//i.test(url);
 }
 
+function isExternalStorageHost(url: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("1024terabox.com") ||
+    lower.includes("terabox.com") ||
+    lower.includes("usersdrive.com") ||
+    lower.includes("drive.google.com") ||
+    lower.includes("acefile.co") ||
+    lower.includes("hxfile.co")
+  );
+}
+
 function getProxiedStreamUrl(originalUrl: string): string {
-  if (!originalUrl || originalUrl.startsWith("/api/stream-proxy")) return originalUrl;
+  if (!originalUrl) return originalUrl;
+  if (
+    originalUrl.startsWith("/api/nimegami-proxy") ||
+    originalUrl.startsWith("/api/stream-proxy")
+  ) {
+    return originalUrl;
+  }
+  if (
+    originalUrl.includes("berkasdrive.com") ||
+    originalUrl.includes("nimegami") ||
+    originalUrl.includes("/hal/streaming/")
+  ) {
+    return `/api/nimegami-proxy?url=${encodeURIComponent(originalUrl)}`;
+  }
   return `/api/stream-proxy?url=${encodeURIComponent(originalUrl)}`;
 }
 
 function formatIframeAutoplayUrl(url: string, shouldAutoplay: boolean): string {
-  if (!shouldAutoplay || !url) return url;
+  if (!url) return url;
+  if (url.startsWith("/api/nimegami-proxy") || url.startsWith("/api/stream-proxy")) return url;
+  // Route Nimegami / BerkasDrive embed iframes through nimegami-proxy embed mode so they never get refused connection
+  if (
+    url.includes("berkasdrive.com") ||
+    url.includes("nimegami.id") ||
+    url.includes("/hal/streaming/")
+  ) {
+    return `/api/nimegami-proxy?url=${encodeURIComponent(url)}&format=embed`;
+  }
+  if (!shouldAutoplay) return url;
   try {
     const parsed = new URL(url);
     if (!parsed.searchParams.has("autoplay") && !parsed.searchParams.has("autoPlay")) {
@@ -91,6 +150,8 @@ function NativePlayer({
   onErrorDetected,
   useProxy,
   onToggleProxy,
+  customSubtitleUrl,
+  subtitleFontSize = "base",
 }: {
   src: string;
   onEnded?: () => void;
@@ -112,6 +173,8 @@ function NativePlayer({
   onErrorDetected?: (errorMsg: string) => void;
   useProxy: boolean;
   onToggleProxy: () => void;
+  customSubtitleUrl?: string | null;
+  subtitleFontSize?: "sm" | "base" | "lg";
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<Player | null>(null);
@@ -185,6 +248,29 @@ function NativePlayer({
         if (queryEl) {
           techVideo = queryEl;
           techVideo.addEventListener("ended", fireEnded);
+        }
+      }
+
+      if (customSubtitleUrl) {
+        try {
+          player.addRemoteTextTrack(
+            {
+              kind: "subtitles",
+              label: "Indonesia (Kustom)",
+              srclang: "id",
+              src: customSubtitleUrl,
+              default: true,
+            },
+            false,
+          );
+          const tracks = player.textTracks();
+          for (let i = 0; i < tracks.length; i++) {
+            if (tracks[i].label === "Indonesia (Kustom)") {
+              tracks[i].mode = "showing";
+            }
+          }
+        } catch (e) {
+          console.warn("Gagal menambahkan track subtitle:", e);
         }
       }
     });
@@ -348,7 +434,41 @@ function NativePlayer({
     onMetricsUpdate,
     onErrorDetected,
     onToggleProxy,
+    customSubtitleUrl,
   ]);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    try {
+      const tracks = player.remoteTextTracks();
+      for (let i = tracks.length - 1; i >= 0; i--) {
+        if (tracks[i].label === "Indonesia (Kustom)") {
+          player.removeRemoteTextTrack(tracks[i]);
+        }
+      }
+      if (customSubtitleUrl) {
+        player.addRemoteTextTrack(
+          {
+            kind: "subtitles",
+            label: "Indonesia (Kustom)",
+            srclang: "id",
+            src: customSubtitleUrl,
+            default: true,
+          },
+          false,
+        );
+        const allTracks = player.textTracks();
+        for (let i = 0; i < allTracks.length; i++) {
+          if (allTracks[i].label === "Indonesia (Kustom)") {
+            allTracks[i].mode = "showing";
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [customSubtitleUrl]);
 
   const handleUnmute = () => {
     if (playerRef.current) {
@@ -502,6 +622,47 @@ export function VideoPlayer({
   const [adShieldActive, setAdShieldActive] = useState(true);
   const [proxyEnabled, setProxyEnabled] = useState(false);
   const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
+  const [isSubtitleModalOpen, setIsSubtitleModalOpen] = useState(false);
+  const [customSubtitleUrl, setCustomSubtitleUrl] = useState<string | null>(null);
+  const [customSubtitleName, setCustomSubtitleName] = useState<string | null>(null);
+  const [subtitleFontSize, setSubtitleFontSize] = useState<"sm" | "base" | "lg">("base");
+  const [subtitleOffset, setSubtitleOffset] = useState<number>(0);
+
+  const handleUploadSubtitle = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      if (!content) return;
+      let vttContent = content;
+      if (file.name.toLowerCase().endsWith(".srt")) {
+        vttContent = "WEBVTT\n\n" + content.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+      }
+      const blob = new Blob([vttContent], { type: "text/vtt" });
+      const url = URL.createObjectURL(blob);
+      setCustomSubtitleUrl(url);
+      setCustomSubtitleName(file.name);
+    };
+    reader.readAsText(file);
+  }, []);
+
+  const handleRemoveSubtitle = useCallback(() => {
+    if (customSubtitleUrl) {
+      URL.revokeObjectURL(customSubtitleUrl);
+    }
+    setCustomSubtitleUrl(null);
+    setCustomSubtitleName(null);
+  }, [customSubtitleUrl]);
+
+  const isCurrentServerSubIndo = useMemo(() => {
+    if (!activeServerTitle) return true;
+    if (activeServerTitle.includes("[SUB INDO]")) return true;
+    if (activeServerTitle.includes("[SUB ENG]") || activeServerTitle.includes("Dub")) return false;
+    return true;
+  }, [activeServerTitle]);
+
+  const subIndoServer = useMemo(() => {
+    return servers.find((s) => s.title.includes("[SUB INDO]"));
+  }, [servers]);
 
   // Automated Failover State
   const [autoFailoverState, setAutoFailoverState] = useState<{
@@ -576,6 +737,7 @@ export function VideoPlayer({
 
   const isDirect = src ? isDirectSource(src) : false;
   const isMega = src ? isMegaSource(src) : false;
+  const isExternalStorage = src ? isExternalStorageHost(src) : false;
   const iframeSrc = src ? formatIframeAutoplayUrl(src, autoPlay) : "";
 
   // Helper: Find next unfailed server in the available server list
@@ -708,21 +870,27 @@ export function VideoPlayer({
 
   return (
     <div className="space-y-2">
-      <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border/80 bg-black shadow-2xl">
+      <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl watch-player-shell">
         {/* Loading Screen */}
         {isLoading || isResolvingServer || !src ? (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground bg-black/90 p-4 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="font-medium text-xs sm:text-sm text-white">
-              {isResolvingServer
-                ? "Menghubungkan ke server terpilih..."
-                : isLoading
-                  ? "Menyiapkan stream video..."
-                  : "Memilih server terbaik..."}
-            </span>
-            <p className="text-[11px] text-muted-foreground max-w-xs">
-              Mempersiapkan jalur streaming dan verifikasi failover otomatis...
-            </p>
+          <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-sm text-ink-dim bg-black/95 p-4 text-center">
+            <div className="buffer-loader" aria-label="Memuat stream">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <span key={i} />
+              ))}
+            </div>
+            <div className="space-y-1">
+              <span className="font-medium text-xs sm:text-sm text-ink">
+                {isResolvingServer
+                  ? "Menghubungkan ke server terpilih..."
+                  : isLoading
+                    ? "Menyiapkan stream video..."
+                    : "Memilih server terbaik..."}
+              </span>
+              <p className="text-[11px] text-ink-faint max-w-xs">
+                Mempersiapkan jalur streaming dan verifikasi failover otomatis...
+              </p>
+            </div>
           </div>
         ) : isDirect ? (
           /* Native Player (HTML5 / Video.js) */
@@ -740,6 +908,8 @@ export function VideoPlayer({
             onErrorDetected={(reason) => triggerAutomatedFailover(reason)}
             useProxy={proxyEnabled}
             onToggleProxy={() => setProxyEnabled((prev) => !prev)}
+            customSubtitleUrl={customSubtitleUrl}
+            subtitleFontSize={subtitleFontSize}
           />
         ) : isMega ? (
           /* MEGA Encrypted Player with Client-side Decryption */
@@ -774,6 +944,76 @@ export function VideoPlayer({
               referrerPolicy="origin"
               onError={() => triggerAutomatedFailover("Server MEGA menolak memuat iframe")}
             />
+          </div>
+        ) : isExternalStorage ? (
+          /* External Cloud Storage Host Player Card (TeraBox / UsersDrive) */
+          <div className="relative h-full w-full flex flex-col items-center justify-center p-6 text-center bg-radial from-slate-900/95 to-black text-white select-none">
+            <div className="max-w-md w-full space-y-4 rounded-2xl border border-white/15 bg-black/80 p-5 sm:p-6 backdrop-blur-xl shadow-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-400">
+                <Server className="h-3.5 w-3.5" />
+                <span>Server Cloud Storage Eksternal</span>
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                  {activeServerTitle || "TeraBox / UsersDrive"}
+                </h3>
+                <p className="text-xs text-white/70 leading-relaxed">
+                  Penyedia streaming meng-host file ini di cloud storage eksternal (TeraBox /
+                  UsersDrive). Anda dapat langsung membuka pemutar atau mengunduh video dengan
+                  lancar:
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-90 transition-all cursor-pointer"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                  <span>Buka & Putar di Server</span>
+                  <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                </a>
+
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="inline-flex h-10 w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-semibold text-white hover:bg-white/15 transition-all cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Unduh File</span>
+                </a>
+              </div>
+
+              {servers && servers.length > 1 && onSelectServer ? (
+                <div className="pt-2 border-t border-white/10">
+                  <p className="text-[11px] text-white/50 mb-2">
+                    Tersedia {servers.length} server alternatif untuk anime ini:
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {servers.slice(0, 4).map((s) => (
+                      <button
+                        key={s.serverId}
+                        type="button"
+                        onClick={() => onSelectServer(s.serverId)}
+                        className={cn(
+                          "rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer",
+                          s.serverId === activeServerId
+                            ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                            : "bg-white/10 text-white/80 hover:bg-white/20",
+                        )}
+                      >
+                        {s.title.replace(/^\[SUB INDO\]\s*/i, "")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           /* Standard Embed Player */
@@ -973,11 +1213,11 @@ export function VideoPlayer({
 
       {/* Control & Indicator Toolbar Beneath Player */}
       {src ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-ink-dim">
           <div className="flex flex-wrap items-center gap-3">
             {/* Status Dot & Stream Mode */}
-            <span className="flex items-center gap-1.5 font-medium text-emerald-500">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="flex items-center gap-1.5 font-mono text-[11px] font-medium text-ink-dim">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               {isDirect
                 ? proxyEnabled
                   ? "Proxy Lokal (HTTP Range RFC 7233)"
@@ -1057,6 +1297,40 @@ export function VideoPlayer({
                 )}
               </button>
             )}
+
+            {/* Subtitle / Takarir Button */}
+            <button
+              type="button"
+              onClick={() => setIsSubtitleModalOpen(true)}
+              title="Buka status dan pengaturan Subtitle Indonesia / Takarir"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
+                isCurrentServerSubIndo
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30",
+              )}
+            >
+              <Subtitles className="h-3 w-3" />
+              <span>
+                {customSubtitleName
+                  ? "Sub Kustom Aktif"
+                  : isCurrentServerSubIndo
+                    ? "Sub Indo Aktif"
+                    : "Sub Eng (Atur Sub)"}
+              </span>
+            </button>
+
+            {/* Quick Switch to Sub Indo if current server is English and Sub Indo is available */}
+            {!isCurrentServerSubIndo && subIndoServer && onSelectServer && (
+              <button
+                type="button"
+                onClick={() => onSelectServer(subIndoServer.serverId)}
+                className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-[11px] font-bold hover:bg-emerald-500/30 transition-colors cursor-pointer animate-pulse"
+                title="Beralih langsung ke server Subtitle Indonesia"
+              >
+                <span>Ganti ke Sub Indo</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -1103,6 +1377,25 @@ export function VideoPlayer({
           </div>
         </div>
       ) : null}
+
+      {/* SUBTITLE SETTINGS MODAL */}
+      <SubtitleModal
+        isOpen={isSubtitleModalOpen}
+        onClose={() => setIsSubtitleModalOpen(false)}
+        isSubIndo={isCurrentServerSubIndo}
+        activeServerTitle={activeServerTitle}
+        customSubtitleName={customSubtitleName}
+        onUploadSubtitle={handleUploadSubtitle}
+        onRemoveSubtitle={handleRemoveSubtitle}
+        subtitleFontSize={subtitleFontSize}
+        onChangeFontSize={setSubtitleFontSize}
+        subtitleOffset={subtitleOffset}
+        onChangeOffset={setSubtitleOffset}
+        onSwitchToSubIndoServer={
+          subIndoServer && onSelectServer ? () => onSelectServer(subIndoServer.serverId) : undefined
+        }
+        hasSubIndoServerAvailable={Boolean(subIndoServer)}
+      />
     </div>
   );
 }

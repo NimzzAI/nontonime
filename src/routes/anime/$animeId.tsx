@@ -88,20 +88,22 @@ export function AnimeDetailPage() {
   }, [anime?.episodes]);
 
   const sortedEpisodes = useMemo(() => {
-    return [...episodes].sort((a, b) => a.number - b.number);
+    return [...(episodes || [])].sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
   }, [episodes]);
 
   const filteredEpisodes = useMemo(() => {
     if (!episodeSearch.trim()) return sortedEpisodes;
     const q = episodeSearch.toLowerCase().trim();
     return sortedEpisodes.filter(
-      (ep) => String(ep.number).includes(q) || ep.title.toLowerCase().includes(q),
+      (ep) => String(ep.number ?? "").includes(q) || (ep.title || "").toLowerCase().includes(q),
     );
   }, [sortedEpisodes, episodeSearch]);
 
   const firstEpisode = sortedEpisodes[0] ?? null;
   const continueEpisode = historyItem
-    ? episodes.find((ep) => ep.id === historyItem.episodeId)
+    ? Array.isArray(episodes)
+      ? episodes.find((ep) => ep.id === historyItem.episodeId)
+      : undefined
     : undefined;
 
   const targetEpisode = continueEpisode ?? firstEpisode;
@@ -144,7 +146,7 @@ export function AnimeDetailPage() {
         <div className="relative z-10 p-6 sm:p-8 md:p-10">
           <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
             {/* Poster Card */}
-            <div className="relative shrink-0 w-44 sm:w-52 lg:w-60 overflow-hidden rounded-2xl border-2 border-white/10 shadow-2xl bg-muted mx-auto md:mx-0">
+            <div className="relative shrink-0 w-44 sm:w-52 lg:w-60 overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 shadow-2xl bg-muted mx-auto md:mx-0">
               {!imgError && imgSrc ? (
                 <img
                   src={imgSrc}
@@ -242,7 +244,7 @@ export function AnimeDetailPage() {
               <NextEpisodeCountdown title={anime.title} />
 
               {/* Genre Pills */}
-              {anime.genres && anime.genres.length > 0 ? (
+              {Array.isArray(anime.genres) && anime.genres.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {anime.genres.map((g) => (
                     <Link
@@ -524,13 +526,13 @@ export function AnimeDetailPage() {
           ) : null}
 
           {/* Recommended Anime Widget */}
-          {anime.recommended && anime.recommended.length > 0 ? (
+          {Array.isArray(anime.recommended) && anime.recommended.length > 0 ? (
             <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xs">
               <h3 className="font-display text-sm font-bold text-foreground border-b border-border/60 pb-2">
                 Rekomendasi Terkait
               </h3>
               <div className="grid grid-cols-2 gap-2.5">
-                {anime.recommended.slice(0, 4).map((rec) => (
+                {(anime.recommended || []).slice(0, 4).map((rec) => (
                   <AnimeCard key={rec.id} anime={rec} />
                 ))}
               </div>

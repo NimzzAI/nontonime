@@ -48,7 +48,8 @@ export function SocialNotificationsPanel({ onNavigate }: { onNavigate: () => voi
   if (!uid) {
     return (
       <p className="rounded-2xl border border-dashed border-border/80 p-6 text-center text-xs text-muted-foreground">
-        Masuk dengan akun untuk menerima notifikasi balasan, pengikut baru, permintaan teman, dan pesan.
+        Masuk dengan akun untuk menerima notifikasi balasan, pengikut baru, permintaan teman, dan
+        pesan.
       </p>
     );
   }
@@ -84,15 +85,21 @@ export function SocialNotificationsPanel({ onNavigate }: { onNavigate: () => voi
             onClick={() => open(n)}
             className={cn(
               "flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition-colors cursor-pointer",
-              n.read ? "border-border/60 bg-card/60 hover:bg-card" : "border-primary/50 bg-primary/5",
+              n.read
+                ? "border-border/60 bg-card/60 hover:bg-card"
+                : "border-primary/50 bg-primary/5",
             )}
           >
             <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-background text-primary ring-1 ring-border/80">
               <Icon className="h-4 w-4" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-xs font-semibold leading-snug text-foreground">{n.text}</span>
-              <span className="mt-0.5 block text-[10px] text-muted-foreground">{timeAgo(n.createdAt)}</span>
+              <span className="block text-xs font-semibold leading-snug text-foreground">
+                {n.text}
+              </span>
+              <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                {timeAgo(n.createdAt)}
+              </span>
             </span>
             {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
           </button>
@@ -108,11 +115,11 @@ export function AnnouncementsPanel() {
   const { items, readIds } = useAnnouncements();
   const isOwner = Boolean(
     user &&
-      !isGuestUser(user) &&
-      isOwnerEmail(
-        (user as { email?: string | null }).email,
-        (user as { emailVerified?: boolean }).emailVerified,
-      ),
+    !isGuestUser(user) &&
+    isOwnerEmail(
+      (user as { email?: string | null }).email,
+      (user as { emailVerified?: boolean }).emailVerified,
+    ),
   );
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -139,7 +146,10 @@ export function AnnouncementsPanel() {
   return (
     <div className="space-y-3">
       {isOwner && (
-        <form onSubmit={publish} className="space-y-2 rounded-2xl border border-amber-400/40 bg-amber-400/5 p-3">
+        <form
+          onSubmit={publish}
+          className="space-y-2 rounded-2xl border border-amber-400/40 bg-amber-400/5 p-3"
+        >
           <p className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-amber-500">
             <Megaphone className="h-3.5 w-3.5" />
             Kirim pengumuman (owner)

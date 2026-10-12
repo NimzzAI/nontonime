@@ -1,169 +1,77 @@
-<div align="center">
-
-<img src="public/og-image.jpg" alt="nontonime" width="100%" />
-
 # nontonime
 
-**Situs streaming dan pelacak anime subtitle Indonesia**
+Aplikasi web untuk menonton dan mengelola koleksi anime subtitle Indonesia. Katalognya digabung dari delapan situs sumber lewat scraper yang berjalan di server aplikasi ini sendiri, tanpa API pihak ketiga dan tanpa backend terpisah.
 
-Katalog digabung dari enam sumber scraper, tanpa API pihak ketiga, dengan pemutar yang bisa pindah server sendiri saat stream gagal.
+Demo: https://nontonime.vercel.app/ - Dokumentasi bahasa Inggris: [README.en.md](README.en.md)
 
-[![Demo](https://img.shields.io/badge/demo-nontonime.vercel.app-6366f1?style=for-the-badge&logo=vercel&logoColor=white)](https://nontonime.vercel.app/)
-[![Deploy](https://img.shields.io/github/deployments/NimzzAI/nontonime/production?style=for-the-badge&label=vercel&logo=vercel)](https://nontonime.vercel.app/)
-[![Repo](https://img.shields.io/badge/github-NimzzAI%2Fnontonime-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/NimzzAI/nontonime)
-[![License](https://img.shields.io/github/license/NimzzAI/nontonime?style=flat-square)](./LICENSE)
+Stack: TanStack Start (React 19, SSR), TanStack Router, TanStack Query, Tailwind CSS v4, Vite, Nitro. Deploy target: Vercel.
 
-</div>
+## Fitur
 
-> 🌐 **Bahasa / Language:** Indonesia (halaman ini) · [English](README.en.md)
+- Beranda, daftar terbaru, populer, genre, jadwal, dan pencarian yang digabung dari beberapa sumber. Judul kembar hanya tampil sekali.
+- Pencarian lintas sumber dengan pembersihan kata kunci (`sub indo`, `nonton`, `episode N`) dan pengenalan nomor season.
+- Pemutar multi server yang mendukung MP4, HLS, dan embed. Server dikelompokkan per kualitas dan pemutar pindah ke server berikutnya saat stream gagal atau macet lebih dari 10 detik.
+- Proxy stream dengan dukungan HTTP Range, jadi seeking tidak menunggu berkas selesai diunduh.
+- Pengunduh offline per segmen 2 MB ke IndexedDB, bisa dijeda dan dilanjutkan.
+- Watchlist, riwayat tontonan dengan posisi putar, ekspor dan impor JSON.
+- Level, EXP, dan badge dari riwayat tontonan.
+- PWA dengan navigasi bawah, safe-area, dan notifikasi push opsional.
+- Fitur sosial di atas Firebase dan Supabase: komentar berbalas, profil publik, follow, teman, klan, chat, dan notifikasi.
 
----
+## Sumber data
 
-## Daftar Isi
+Setiap sumber adalah satu file di `src/lib/sources/` yang mengimplementasikan antarmuka `AnimeSource`. Tidak semua sumber punya semua fitur. Halaman hanya diisi dari sumber yang mendukungnya.
 
-1. [Ringkasan](#-ringkasan)
-2. [Yang Berubah di Versi Ini](#-yang-berubah-di-versi-ini)
-3. [Fitur](#-fitur)
-4. [Fitur Sosial dan Komunitas](#-fitur-sosial-dan-komunitas)
-5. [Sumber Data](#-sumber-data)
-6. [Pencarian](#-pencarian)
-7. [Arsitektur Backend](#-arsitektur-backend)
-8. [Struktur Direktori](#-struktur-direktori)
-9. [Menjalankan Lokal](#-menjalankan-lokal)
-10. [Variabel Lingkungan](#-variabel-lingkungan)
-11. [Setup Firebase dan Supabase](#-setup-firebase-dan-supabase)
-12. [Deploy ke Vercel](#-deploy-ke-vercel)
-13. [Menambah Sumber Baru](#-menambah-sumber-baru)
-14. [Migrasi dari Versi Sebelumnya](#-migrasi-dari-versi-sebelumnya)
-15. [Pemecahan Masalah](#-pemecahan-masalah)
-16. [Catatan Streaming](#-catatan-streaming)
-17. [Batasan yang Diketahui](#-batasan-yang-diketahui)
-18. [Perintah npm](#-perintah-npm)
-19. [Disclaimer dan Kredit](#-disclaimer-dan-kredit)
+| Sumber        | ID              | Awalan | Beranda                                        | Terbaru dan populer | Cari | Genre | Jadwal | Unduhan |
+| :------------ | :-------------- | :----: | :--------------------------------------------- | :-----------------: | :--: | :---: | :----: | :-----: |
+| AnimeIn       | `animein`       |  `ai`  | slider, hari ini, hot, populer, baru, menunggu |     bertingkat      |  ya  |  ya   |   ya   |  tidak  |
+| NontonAnimeID | `nontonanimeid` |  `na`  | terbaru, populer, film                         |     bertingkat      |  ya  |  ya   |   ya   |   ya    |
+| NontonAnime   | `nontonanime`   |  `nn`  | tidak ada                                      |      tidak ada      |  ya  | tidak | tidak  |   ya    |
+| Gomunime      | `gomunime`      |  `gm`  | terbaru, populer                               |      halaman 1      |  ya  |  ya   | tidak  |  tidak  |
+| Aniwatch      | `aniwatch`      |  `aw`  | terbaru, populer                               |      halaman 1      |  ya  |  ya   | tidak  |  tidak  |
+| Stucknime     | `stucknime`     | `stk`  | terbaru                                        |      halaman 1      |  ya  |  ya   | tidak  |  tidak  |
+| Samehadaku    | `samehadaku`    |  `sh`  | terbaru, populer, film                         |      halaman 1      |  ya  | tidak | tidak  |   ya    |
+| Nimegami      | `nimegami`      |  `ng`  | slider, hari ini, populer, terbaru             |     bertingkat      |  ya  |  ya   | tidak  |   ya    |
+| Kusonime      | -               |  `ks`  | -                                              |          -          |  -   |   -   |   -    |   ya    |
 
----
+Keterangan:
 
-## // Ringkasan
+- "Bertingkat" berarti sumber punya daftar dengan halaman kedua dan seterusnya. "Halaman 1" berarti sumber hanya ikut lewat data berandanya pada halaman pertama.
+- NontonAnime tidak punya beranda, daftar terbaru, genre, atau jadwal di sini. Sumber ini muncul lewat pencarian, lalu halaman detail dan episodenya dibuka seperti sumber lain.
+- Kusonime bukan sumber streaming. Dipakai untuk mencari batch unduhan berdasarkan judul, hasilnya jadi tombol batch di halaman detail bila ada yang cocok.
+- Halaman Jadwal hanya terisi dari AnimeIn dan NontonAnimeID.
+- Kalau judul yang sama ada di beberapa sumber, yang tampil adalah sumber dengan urutan lebih awal di `DEFAULT_SOURCE_IDS` (`registry.server.ts`).
 
-nontonime adalah aplikasi web untuk menonton dan mengelola koleksi anime subtitle Indonesia. Dibangun di atas TanStack Start (React 19 dengan SSR), TanStack Router, TanStack Query, dan Tailwind CSS v4.
+## Proxy dan bypass
 
-Data anime, jadwal rilis, genre, dan server streaming diambil langsung dari situs sumber lewat scraper yang berjalan di server aplikasi ini sendiri. Tidak ada lagi ketergantungan pada Sanka Vollerei API. Hasil dari semua sumber digabung menjadi satu katalog, lalu disajikan ke halaman yang sama seperti sebelumnya.
+Banyak situs sumber dan hoster video memeriksa `Referer`, memasang frame-buster, atau tidak mengirim header CORS. Semua itu ditangani di server lewat empat endpoint, jadi pemutar di browser cukup memakai alamat dari aplikasi sendiri.
 
----
+| Endpoint              | Fungsi                                                                                                                                                                                                     |
+| :-------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/stream-proxy`   | Meneruskan media dengan header `Range`, tanpa menampung berkas di memori. Parameter `ref` (opsional) menentukan `Referer` ke upstream. Kalau upstream mengembalikan HTML, alamat video dicari di dalamnya. |
+| `/api/embed-proxy`    | Mengambil halaman embed, menyisipkan `<base>`, membuang skrip frame-buster, dan menimpa `document.referrer` dengan nilai `ref`. Untuk BerkasDrive dan Aniwatch memakai pemutar bersih.                     |
+| `/api/nimegami-proxy` | Proxy khusus Nimegami dan BerkasDrive, termasuk pemeriksa stream.                                                                                                                                          |
+| `/api/stream-check`   | Probe ringan (HEAD atau Range) untuk menentukan jenis dan kesehatan sebuah URL. Dipakai panel diagnostik pemutar.                                                                                          |
 
-## // Yang Berubah di Versi Ini
+Selain itu ada `/api/image-proxy` untuk poster dan `/api/ping` untuk pemeriksaan hidup.
 
-| Sebelumnya                                           | Sekarang                                                                 |
-| :--------------------------------------------------- | :----------------------------------------------------------------------- |
-| Semua data dari satu API (Sanka Vollerei, Otakudesu) | Enam sumber scraper, digabung di `src/lib/anime-service.server.ts`       |
-| `src/lib/animein.server.ts` sebagai lapisan API      | Dihapus, diganti folder `src/lib/sources/` dan `anime-service.server.ts` |
-| Env `SANKA_API_BASE` dan `SANKA_API_FALLBACK`        | Dihapus, tidak ada env pengganti                                         |
-| ID anime berupa slug Otakudesu                       | ID berawalan sumber, misalnya `na_one-piece` atau `ai_1234`              |
-| Link batch dari Otakudesu                            | Batch dicari otomatis dari Kusonime lewat judul                          |
+Semua endpoint yang meneruskan URL dari browser menolak protokol selain `http` dan `https`, host `localhost`, IP privat, alamat metadata cloud, dan nama domain yang resolve ke IP privat. `stream-proxy` juga membatasi port.
 
-Yang tidak berubah: seluruh halaman, komponen, pemutar, watchlist, riwayat, unduhan offline, gamifikasi, dan PWA. Fungsi server di `anime.functions.ts` memakai nama dan bentuk data yang sama, jadi frontend tidak perlu diubah.
+### NontonAnime
 
-Logika scraper berasal dari backend hwaverseB (Bun dan Fastify). Kodenya ditulis ulang ke TypeScript dan dijalankan di dalam server nontonime sendiri, jadi tidak perlu menjalankan atau men-deploy backend terpisah.
+Halaman episode NontonAnime menanam seluruh data episode di variabel JavaScript `allEpisodes`. Setiap episode punya sampai tiga server (`video_url`, `video_url2`, `video_url3`) dan sampai enam tautan unduhan (`download_url_1` sampai `download_url_6`). URL server berupa halaman embed dengan parameter `link` berisi URL stream asli dalam base64.
 
----
+Provider `nontonanime.server.ts` memperlakukannya begini:
 
-## // Fitur
+1. `allEpisodes` dibaca dengan pemindai kurung yang memahami string, bukan regex, supaya data yang memuat `];` tidak terpotong.
+2. Parameter `link` didekode di server.
+3. Hasil dekode berupa media langsung (`m3u8`, `mp4`, `webm`, `mkv`, `mov`) dikirim lewat `/api/stream-proxy` dengan `ref` ke `https://nontonanime.id/`. Hasil dekode lain dikirim lewat `/api/embed-proxy`.
+4. Setiap server juga punya versi cadangan bernama "(Bypass Embed)" yang membuka URL embed aslinya lewat `/api/embed-proxy`.
+5. URL yang menunjuk ke host privat dibuang sebelum server dibentuk.
 
-| Kategori       | Fitur                         | Penjelasan                                                                                                              |
-| :------------- | :---------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
-| **Katalog**    | Multi sumber                  | Beranda, terbaru, populer, pencarian, genre, dan jadwal digabung dari beberapa situs, judul kembar hanya tampil sekali. |
-| **Katalog**    | Pencarian lintas sumber       | Satu kata kunci dikirim ke semua sumber sekaligus, hasilnya diurutkan menurut kecocokan judul.                          |
-| **Streaming**  | Pemutar multi server          | Mendukung file langsung (MP4 atau HLS) dan embed, server dikelompokkan per kualitas.                                    |
-| **Streaming**  | Auto failover dan auto retry  | Stream yang gagal, macet lebih dari 10 detik, atau upstream mati dialihkan ke server berikutnya.                        |
-| **Streaming**  | Autoplay episode berikutnya   | Hitung mundur yang bisa dibatalkan sebelum pindah ke episode selanjutnya.                                               |
-| **Streaming**  | Proxy dengan Range request    | Endpoint `/api/stream-proxy` meneruskan header `Range` (RFC 7233), jadi seeking tidak menunggu berkas selesai diunduh.  |
-| **Streaming**  | Panel diagnostik              | Menampilkan URL sumber, Content-Type upstream, status 206, ping, dan durasi buffer.                                     |
-| **Pencarian**  | Spotlight (`Ctrl+K` atau `/`) | Modal pencarian dengan navigasi keyboard dan debounce.                                                                  |
-| **Offline**    | Pengunduh per segmen          | Video diunduh per blok 2 MB ke IndexedDB, bisa dijeda dan dilanjutkan.                                                  |
-| **Offline**    | Pemutar offline               | Episode yang sudah tersimpan diputar dari browser tanpa koneksi, atau diekspor sebagai MP4.                             |
-| **Koleksi**    | Watchlist dan riwayat         | Status Rencana, Sedang Ditonton, Selesai, posisi terakhir tersimpan, ekspor dan impor JSON.                             |
-| **Gamifikasi** | Level dan badge               | EXP dan badge dari riwayat tontonan.                                                                                    |
-| **Mobile**     | PWA dan navigasi bawah        | Bisa dipasang, mendukung safe-area, dan punya notifikasi push opsional.                                                 |
-| **Tambahan**   | Karakter dan pengisi suara    | Di halaman detail anime, diadaptasi dari proyek hianime-api.                                                            |
-| **Tambahan**   | Hitung mundur episode baru    | Penghitung waktu tayang episode berikutnya di halaman detail, diadaptasi dari hianime-api.                              |
-| **Tambahan**   | Berita anime dan Top Search   | Halaman `/berita` dan chip kata kunci populer di halaman cari, diadaptasi dari hianime-api.                             |
-| **Sosial**     | Komunitas ala media sosial    | Balas komentar, teman, pengikut, klan, profil publik, chat, dan notifikasi. Lihat bagian berikutnya.                    |
+Server langsung ditaruh di depan server bypass, jadi pemutar mencobanya lebih dulu.
 
----
-
-## // Fitur Sosial dan Komunitas
-
-Nontonime sekarang berfungsi seperti media sosial kecil di atas Firebase (akun, Firestore) dan Supabase (gambar profil).
-
-| Fitur                   | Cara kerja                                                                                                                                                                |
-| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Owner otomatis**      | Akun Google dengan email `nimzz8444@gmail.com` (harus terverifikasi) otomatis jadi **Owner**: lencana, level tampilan 999, border Royal, dan hak moderasi komentar.       |
-| **Komentar + balasan**  | Balasan satu tingkat (`parentId`), notifikasi ke yang dibalas, like, spoiler, hapus. Komentar induk yang punya balasan dikosongkan, bukan dihapus.                         |
-| **Banner dan avatar**   | Diunggah dari halaman Profil, dikompres di browser, disimpan di Supabase Storage lewat server. Banner tampil di profil dan di atas komentar.                              |
-| **Efek border**         | Tujuh gaya border (neon, sakura, senja, aurora, emas, dan Royal khusus owner). Border dibuka lewat level, dipakai pada avatar dan kartu komentar.                          |
-| **Nama klan**           | Tag dan nama klan tampil di komentar, profil publik, dan hasil pencarian pengguna.                                                                                        |
-| **Profil publik**       | `/u/<uid>`: banner, avatar, level, klan, bio, jumlah pengikut, mengikuti, dan teman.                                                                                      |
-| **Follow dan teman**    | Ikuti pengguna, kirim dan terima permintaan pertemanan di `/komunitas`.                                                                                                    |
-| **Chat**                | Pesan langsung antar pengguna di `/chat`, realtime lewat Firestore.                                                                                                        |
-| **Notifikasi**          | Lonceng di header: balasan, pengikut baru, permintaan teman, pesan, dan pengumuman update situs. Owner bisa menulis pengumuman dari panel notifikasi.                      |
-
-Struktur data di Firestore:
-
-| Koleksi                              | Isi                                                                         | Siapa yang boleh                                   |
-| :----------------------------------- | :-------------------------------------------------------------------------- | :------------------------------------------------- |
-| `users/{uid}`                        | Data pribadi (termasuk email), watchlist, riwayat.                          | Hanya pemiliknya.                                  |
-| `profiles/{uid}`                     | Salinan aman untuk publik: nama, avatar, banner, border, level, klan, role. | Baca semua orang, tulis pemiliknya.                |
-| `follows/{a}_{b}`                    | Relasi follow.                                                              | Baca semua orang, buat dan hapus oleh pengikut.    |
-| `friendRequests/{a}_{b}`             | Permintaan teman.                                                           | Dua pihak yang terlibat.                           |
-| `friendships/{a}_{b}`                | Pertemanan (id = uid terurut).                                              | Dibuat penerima, hanya bila permintaannya ada.     |
-| `chats/{a}_{b}/messages/{id}`        | Pesan chat.                                                                 | Dua peserta.                                       |
-| `users/{uid}/notifications/{id}`     | Kotak masuk notifikasi.                                                     | Pemilik membaca, orang lain hanya menambah.        |
-| `announcements/{id}`                 | Pengumuman update situs.                                                    | Baca semua orang, tulis hanya owner.               |
-| `clans/{id}` dan `.../members/{uid}` | Klan dan anggotanya.                                                        | Pemimpin mengelola, anggota bergabung dan keluar.  |
-| `episodes/{id}/comments/{id}`        | Komentar dan balasan.                                                       | Penulis, owner (moderasi), dan like oleh siapa pun.|
-
-> Notifikasi berjalan realtime lewat Firestore dan notifikasi sistem browser selama situs atau PWA masih terbuka (termasuk tab di latar belakang). Push saat browser benar-benar tertutup butuh Firebase Cloud Messaging dengan service account, dan belum disertakan.
-
----
-
-## // Pencarian
-
-Pencarian dibersihkan sebelum dikirim ke situs sumber (`src/lib/search-query.ts`):
-
-- Kata pengganggu seperti `sub indo`, `nonton`, `streaming`, `batch`, dan `episode N` dibuang. Sebelumnya kata-kata ini ikut dikirim apa adanya, sehingga `yuru camp sub indo season 2` tidak menemukan apa pun di situs WordPress yang mencari semua kata.
-- Nomor season dikenali dari `season 2`, `s2`, `2nd season`, `musim 2`, `season ii`, atau angka di akhir (`yuru camp 2`). Season **tidak** dikirim sebagai filter ke situs, tapi dipakai untuk mengurutkan: judul dengan season yang cocok naik, season lain turun.
-- Semua sumber mencari judul inti, lalu halaman pertama mencoba juga nama lain (Romaji, Inggris, sinonim, dan `<nama> Season N`).
-- Kamus alias lokal toleran salah ketik (misalnya `tokinawa` menjadi Tonikaku Kawaii/Tonikawa). Hasil AniList hanya dipakai bila judulnya benar-benar mirip dengan yang diketik.
-
-> Otakudesu **bukan** salah satu sumber di versi ini. Parameter `provider` bernilai `"otakudesu"` yang masih terlihat di kode hanya sisa API lama dan tidak dipakai.
-
----
-
-## // Sumber Data
-
-Setiap sumber adalah satu file di `src/lib/sources/` yang mengimplementasikan antarmuka `AnimeSource`. Tidak semua sumber punya semua fitur, jadi halaman tertentu hanya diisi dari sumber yang mendukungnya.
-
-| Sumber        | ID env          | Beranda                                        | Terbaru | Populer | Cari | Genre | Jadwal | Detail | Stream | Unduhan |
-| :------------ | :-------------- | :--------------------------------------------- | :-----: | :-----: | :--: | :---: | :----: | :----: | :----: | :-----: |
-| AnimeIn       | `animein`       | slider, hari ini, hot, populer, baru, menunggu |   ya    |   ya    |  ya  |  ya   |   ya   |   ya   |   ya   |  tidak  |
-| NontonAnimeID | `nontonanimeid` | terbaru, populer, film                         |   ya    |   ya    |  ya  |  ya   |   ya   |   ya   |   ya   |   ya    |
-| Gomunime      | `gomunime`      | terbaru, populer                               |  tidak  |  tidak  |  ya  |  ya   | tidak  |   ya   |   ya   |  tidak  |
-| Aniwatch      | `aniwatch`      | terbaru, populer                               |  tidak  |  tidak  |  ya  |  ya   | tidak  |   ya   |   ya   |  tidak  |
-| Stucknime     | `stucknime`     | terbaru                                        |  tidak  |  tidak  |  ya  |  ya   | tidak  |   ya   |   ya   |  tidak  |
-| Samehadaku    | `samehadaku`    | terbaru, populer, film                         |  tidak  |  tidak  |  ya  | tidak | tidak  |   ya   |   ya   |   ya    |
-| Kusonime      | tidak ada       | khusus mencari batch unduhan                   |  tidak  |  tidak  |  ya  | tidak | tidak  | tidak  | tidak  |   ya    |
-
-Hal yang perlu diketahui dari tabel itu:
-
-- **Beranda** diisi dari semua sumber. Setiap bagian (slider, hari ini, hot, populer, baru, menunggu) mengambil daftar yang tersedia dari tiap sumber, lalu menyelang-selingkan hasilnya. Sumber yang tidak punya bagian tertentu ikut lewat daftar terdekatnya, misalnya populer atau terbaru.
-- Halaman **Terbaru** dan **Populer** memuat semua sumber pada halaman pertama. Halaman kedua dan seterusnya hanya dari AnimeIn dan NontonAnimeID, karena hanya dua sumber itu yang punya daftar bertingkat. Sumber lain hanya punya satu halaman beranda.
-- Halaman **Jadwal** hanya terisi dari AnimeIn dan NontonAnimeID. Scraper Samehadaku asli membagi anime ke hari secara berurutan, bukan menurut jadwal tayang sebenarnya, jadi bagian itu tidak dipindahkan.
-- **Kusonime** bukan sumber streaming. Dipakai untuk mencari batch unduhan berdasarkan judul anime, hasilnya muncul sebagai tombol batch di halaman detail kalau ada yang cocok.
-- Satu anime tetap milik satu sumber. Kalau judul yang sama ada di dua sumber, yang tampil adalah sumber dengan urutan lebih awal di `registry.server.ts`.
-
----
-
-## // Arsitektur Backend
+## Arsitektur
 
 ### Alur request
 
@@ -176,38 +84,44 @@ Browser
        |-- semua sumber dipanggil bersamaan, yang gagal dilewati
        |     |-- animein.server.ts         (JSON API)
        |     |-- nontonanimeid.server.ts   (HTML, cheerio)
+       |     |-- nontonanime.server.ts     (JSON live-search, HTML, data episode di halaman)
        |     |-- gomunime.server.ts        (HTML, cheerio, dekripsi AES-GCM)
        |     |-- aniwatch.server.ts        (HTML, cheerio)
        |     |-- stucknime.server.ts       (HTML, cheerio)
        |     |-- samehadaku.server.ts      (HTML, cheerio, player lewat AJAX)
+       |     |-- nimegami.server.ts        (HTML, cheerio)
        |-- kusonime.server.ts              (pencarian batch)
-  -> Hasil dipetakan ke bentuk AnimeSummary, AnimeDetail, StreamResult (anime-types.ts)
+  -> Hasil dipetakan ke AnimeSummary, AnimeDetail, StreamResult (anime-types.ts)
 ```
 
 ### Modul
 
-| File                                 | Fungsi                                                                                                  |
-| :----------------------------------- | :------------------------------------------------------------------------------------------------------ |
-| `src/lib/anime-service.server.ts`    | Titik masuk backend. Menggabungkan sumber, memetakan data ke tipe frontend, mengatur cache dan timeout. |
-| `src/lib/sources/types.ts`           | Antarmuka `AnimeSource` dan tipe internal (`SourceItem`, `SourceDetail`, `SourceStream`).               |
-| `src/lib/sources/registry.server.ts` | Daftar sumber dan urutan prioritasnya.                                                                  |
-| `src/lib/sources/ids.ts`             | Pembuatan dan pembacaan ID berawalan sumber, normalisasi judul.                                         |
-| `src/lib/sources/http.server.ts`     | Wrapper `fetch` dengan timeout, User-Agent browser, dan error bernama sumber.                           |
-| `src/lib/sources/cache.server.ts`    | Cache dalam memori, penggabungan request kembar, `withTimeout`.                                         |
-| `src/lib/sources/token.server.ts`    | Pengodean referensi server menjadi token, serta pemeriksaan URL publik.                                 |
-| `src/lib/sources/*.server.ts`        | Satu file per sumber.                                                                                   |
+| File                                 | Fungsi                                                                                                                                |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/anime-service.server.ts`    | Titik masuk backend. Menggabungkan sumber, memetakan data ke tipe frontend, mengatur cache dan timeout.                               |
+| `src/lib/sources/types.ts`           | Antarmuka `AnimeSource` dan tipe internal (`SourceItem`, `SourceDetail`, `SourceStream`).                                             |
+| `src/lib/sources/registry.server.ts` | Daftar sumber dan urutan prioritasnya.                                                                                                |
+| `src/lib/sources/ids.ts`             | Pembuatan dan pembacaan ID berawalan sumber, normalisasi judul.                                                                       |
+| `src/lib/sources/http.server.ts`     | Wrapper `fetch` dengan timeout, User-Agent browser, dan error bernama sumber.                                                         |
+| `src/lib/sources/cache.server.ts`    | Cache dalam memori, penggabungan request kembar, `withTimeout`.                                                                       |
+| `src/lib/sources/token.server.ts`    | Pengodean referensi server menjadi token, serta pemeriksaan URL publik.                                                               |
+| `src/lib/sources/*.server.ts`        | Satu file per sumber.                                                                                                                 |
+| `src/lib/stream-proxy.server.ts`     | `/api/stream-proxy` dan `/api/stream-check`.                                                                                          |
+| `src/lib/embed-proxy.server.ts`      | `/api/embed-proxy`.                                                                                                                   |
+| `src/server.ts`                      | Entrypoint server dan pemetaan rute `/api/*`.                                                                                         |
+| `providers.ts`                       | Daftar hoster video yang dikenali (Streamwish, Mp4Upload, BerkasDrive, dan lainnya), dipakai scraper Nimegami untuk menyaring tautan. |
 
 ### Format ID
 
-ID membawa nama sumbernya, jadi server tahu harus bertanya ke mana tanpa menyimpan pemetaan apa pun.
+ID membawa nama sumbernya, jadi server tahu harus bertanya ke mana tanpa menyimpan pemetaan.
 
-| Jenis   | Format               | Contoh                        |
-| :------ | :------------------- | :---------------------------- |
-| Anime   | `<awalan>_<slug>`    | `na_one-piece`, `ai_1234`     |
-| Episode | `<awalan>_ep_<slug>` | `na_ep_one-piece-episode-1`   |
-| Batch   | `ks_<slug>`          | `ks_one-piece-batch-sub-indo` |
+| Jenis   | Format               | Contoh                         |
+| :------ | :------------------- | :----------------------------- |
+| Anime   | `<awalan>_<slug>`    | `na_one-piece`, `nn_yuru-camp` |
+| Episode | `<awalan>_ep_<slug>` | `nn_ep_yuru-camp-episode-3`    |
+| Batch   | `ks_<slug>`          | `ks_one-piece-batch-sub-indo`  |
 
-Awalan sumber: `ai` AnimeIn, `na` NontonAnimeID, `gm` Gomunime, `aw` Aniwatch, `stk` Stucknime, `sh` Samehadaku, `ks` Kusonime.
+Awalan: `ai` AnimeIn, `na` NontonAnimeID, `nn` NontonAnime, `gm` Gomunime, `aw` Aniwatch, `stk` Stucknime, `sh` Samehadaku, `ng` Nimegami, `ks` Kusonime.
 
 ### Cache
 
@@ -218,109 +132,73 @@ Cache berada di memori proses, maksimal 500 entri, entri tertua dibuang lebih du
 | Beranda, terbaru, pencarian | 5 menit     |
 | Populer                     | 10 menit    |
 | Detail anime, halaman genre | 15 menit    |
-| Jadwal rilis                | 30 menit    |
-| Batch unduhan               | 30 menit    |
+| Jadwal rilis, batch unduhan | 30 menit    |
 | Daftar genre                | 60 menit    |
 | Pencarian batch Kusonime    | 6 jam       |
 | Stream episode              | 3 menit     |
 
-Perilakunya:
-
-- **Request kembar digabung.** Kalau beberapa pengunjung meminta data yang sama bersamaan, hanya satu request yang dikirim ke situs sumber.
-- **Data lama dipakai saat sumber gagal.** Kalau pembaruan gagal dan masih ada salinan lama, salinan itu yang dikembalikan, bukan layar error. Kalau belum ada salinan, errornya diteruskan.
-- **Cache hidup selama proses hidup.** Di Vercel setiap instance fungsi punya cache sendiri, dan cache hilang saat instance berhenti.
+- Request kembar digabung. Beberapa pengunjung yang meminta data sama bersamaan hanya memicu satu request ke situs sumber.
+- Kalau pembaruan gagal dan masih ada salinan lama, salinan itu yang dikembalikan. Kalau belum ada salinan, error diteruskan.
+- Di Vercel setiap instance fungsi punya cache sendiri dan cache hilang saat instance berhenti.
 
 ### Penggabungan hasil
 
-- Semua sumber dipanggil bersamaan. Satu sumber yang gagal atau lebih dari 14 detik hanya dilewati dan dicatat di log server (`[sources] nama.aksi gagal`).
+- Semua sumber dipanggil bersamaan. Sumber yang gagal atau melewati 14 detik dilewati dan dicatat di log server sebagai `[sources] nama.aksi gagal`. Detail dan stream episode punya batas 25 detik.
 - Hasil tiap sumber diselang-seling, jadi satu sumber tidak menguasai daftar.
-- Sumber yang tidak punya daftar bertingkat tetap dipakai pada halaman pertama lewat data berandanya. Beranda tiap sumber disimpan sendiri selama 5 menit dan dipakai bersama oleh beranda, terbaru, dan populer.
-- Judul kembar dibuang setelah dinormalkan (huruf kecil, tanpa kata seperti "sub indo", "nonton", "streaming", "season", "musim", dan tanpa tanda baca).
-- Kalau semua sumber gagal, halaman daftar menampilkan error, sedangkan beranda mengembalikan bagian kosong supaya halamannya tetap terbuka.
+- Judul kembar dibuang setelah dinormalkan (huruf kecil, tanpa kata seperti "sub indo", "nonton", "streaming", "season", "musim", tanpa tanda baca).
 - Pencarian diurutkan dengan skor kecocokan judul: sama persis, diawali kata kunci, lalu jumlah kata yang cocok.
+- Kalau semua sumber gagal, halaman daftar menampilkan error, sedangkan beranda mengembalikan bagian kosong supaya halamannya tetap terbuka.
 
 ### Server streaming
 
-Daftar server dikelompokkan per kualitas. Setiap server dikirim ke browser sebagai token tertutup (`srv1.` diikuti data berkode base64url), bukan URL mentah. Token ini diurai lagi di server saat pengguna memilih server lewat `resolveServer`.
+Daftar server dikelompokkan per kualitas. Setiap server dikirim ke browser sebagai token tertutup (`srv1.` diikuti data base64url), bukan URL mentah. Token diurai di server saat pengguna memilih server lewat `resolveServer`.
 
-- Server berjenis URL langsung dibuka apa adanya. Kalau halaman embed berisi alamat `.m3u8` atau `.mp4`, server mencoba mengambilnya agar bisa diputar lewat pemutar sendiri.
-- NontonAnimeID menyimpan server cadangan di balik request AJAX berisi nonce. Token membawa data yang dibutuhkan, dan URL player baru diminta saat server itu dipilih.
-- Samehadaku menaruh sebagian player di balik request AJAX (`player_ajax`). Token membawa `post`, `nume`, dan `type` dari tombol player, dan URL iframe diminta saat server itu dipilih. Iframe yang sudah ada di halaman dipakai langsung.
-- Gomunime memakai player Putarin yang konfigurasinya terenkripsi AES-256-GCM. Server mengambil kuncinya dan membukanya, kalau gagal tersedia server embed biasa.
+- Server berjenis URL dibuka apa adanya. Kalau halaman embed berisi alamat `.m3u8` atau `.mp4`, server mencoba mengambilnya supaya diputar lewat pemutar sendiri.
+- NontonAnimeID menyimpan server cadangan di balik request AJAX berisi nonce. Token membawa data yang dibutuhkan dan URL player baru diminta saat server dipilih.
+- Samehadaku menaruh sebagian player di balik request AJAX (`player_ajax`). Token membawa `post`, `nume`, dan `type`.
+- Gomunime memakai player Putarin dengan konfigurasi terenkripsi AES-256-GCM. Kalau gagal dibuka, tersedia server embed biasa.
+- Server dengan awalan ID `ai_`, `sh_`, `gm_`, `na_`, `nn_`, dan server dari host tertentu diberi label `[SUB INDO]` dan diprioritaskan.
 
 ### Keamanan
 
-- Token server datang dari browser, jadi isinya tidak dipercaya. URL di dalamnya harus berprotokol `http` atau `https` dan host-nya tidak boleh `localhost`, IP privat, atau alamat metadata cloud.
+- Token server datang dari browser, jadi isinya tidak dipercaya. URL di dalamnya harus berprotokol `http` atau `https` dan host-nya bukan `localhost`, IP privat, atau alamat metadata cloud.
 - Endpoint AJAX NontonAnimeID wajib memakai host yang sama dengan situs sumbernya.
-- Proxy stream (`stream-proxy.server.ts`) menerapkan pemeriksaan host privat yang sama dan membatasi port.
-- Semua pemanggilan ke situs sumber terjadi di server. Tidak ada kunci atau URL sumber yang dikirim ke bundel klien.
+- Semua panggilan ke situs sumber terjadi di server. Tidak ada kunci atau URL sumber yang masuk ke bundel klien.
 
----
-
-## // Struktur Direktori
+## Struktur direktori
 
 ```text
 nontonime/
-├── public/                         # Aset publik, favicon, manifest PWA, service worker
+├── public/                     Aset publik, manifest PWA, service worker
 ├── src/
 │   ├── components/
-│   │   ├── anime/                  # Komponen anime (Player, Card, Shelf, Modal, Navigasi)
-│   │   └── ui/                     # Komponen primitif UI
-│   ├── hooks/                      # Custom React hooks
+│   │   ├── anime/              Pemutar, kartu, rak, modal, navigasi
+│   │   ├── social/             Avatar, badge, relasi, notifikasi sosial
+│   │   └── ui/                 Komponen primitif UI
+│   ├── hooks/
 │   ├── lib/
-│   │   ├── sources/                # Scraper per sumber dan pendukungnya
-│   │   │   ├── animein.server.ts
-│   │   │   ├── nontonanimeid.server.ts
-│   │   │   ├── gomunime.server.ts
-│   │   │   ├── aniwatch.server.ts
-│   │   │   ├── stucknime.server.ts
-│   │   │   ├── samehadaku.server.ts
-│   │   │   ├── kusonime.server.ts  # Pencarian batch unduhan
-│   │   │   ├── extras.server.ts    # Karakter, episode berikutnya, berita, top search
-│   │   │   ├── registry.server.ts  # Daftar sumber dan urutan prioritas
-│   │   │   ├── cache.server.ts     # Cache, request kembar, timeout
-│   │   │   ├── http.server.ts      # fetch dengan timeout dan helper teks
-│   │   │   ├── ids.ts              # Format ID dan normalisasi judul
-│   │   │   ├── token.server.ts     # Token server dan cek URL publik
-│   │   │   └── types.ts            # Antarmuka AnimeSource
-│   │   ├── social.ts               # Profil publik, follow, teman, pencarian pengguna
-│   │   ├── social-notifications.ts # Notifikasi sosial, pengumuman, notifier realtime
-│   │   ├── chat.ts                 # Chat antar pengguna
-│   │   ├── roles.ts                # Owner (email terverifikasi), level tampilan
-│   │   ├── profile-style.ts        # Daftar efek border dan syarat level
-│   │   ├── media-client.ts         # Kompres gambar di browser, kirim ke server
-│   │   ├── media-upload.server.ts  # Verifikasi token Firebase, simpan ke Supabase
-│   │   ├── search-query.ts         # Pembersih kueri pencarian dan deteksi season
-│   │   ├── extras.functions.ts     # Fitur dari hianime-api (karakter, berita, dll.)
-│   │   ├── anime-service.server.ts # Penggabung sumber, titik masuk backend
-│   │   ├── anime.functions.ts      # TanStack Start Server Functions
-│   │   ├── anime-types.ts          # Tipe yang dipakai frontend
-│   │   ├── queries.ts              # Konfigurasi TanStack Query
-│   │   ├── stream-proxy.server.ts  # Proxy video dengan Range
-│   │   ├── download-manager.ts     # Pengunduh per segmen dan IndexedDB
-│   │   ├── watchlist.ts            # Watchlist, ekspor dan impor
-│   │   ├── history.ts              # Riwayat dan posisi putar
-│   │   ├── gamification.ts         # EXP, level, badge
-│   │   └── site-config.ts          # Metadata dan SEO
-│   ├── routes/                     # Rute berbasis berkas TanStack Router
-│   ├── server.ts                   # Entrypoint server
-│   └── styles.css                  # Gaya global Tailwind v4
-├── supabase/setup.sql              # Membuat bucket avatars dan banners
-├── firestore.rules                 # Aturan keamanan Firestore (deploy ulang setelah update)
-├── package.json                    # Dependensi dan skrip
-└── README.md
+│   │   ├── sources/            Scraper per sumber dan pendukungnya
+│   │   ├── anime-service.server.ts
+│   │   ├── anime.functions.ts  TanStack Start Server Functions
+│   │   ├── stream-proxy.server.ts
+│   │   ├── embed-proxy.server.ts
+│   │   ├── nimegami-proxy.server.ts
+│   │   ├── image-proxy.server.ts
+│   │   ├── download-manager.ts Pengunduh per segmen dan IndexedDB
+│   │   ├── firebase.ts, social.ts, chat.ts, clan.ts
+│   │   └── watchlist.ts, history.ts, gamification.ts
+│   ├── routes/                 Rute berbasis berkas TanStack Router
+│   ├── server.ts
+│   └── styles.css
+├── supabase/setup.sql          Membuat bucket avatars dan banners
+├── firestore.rules
+├── providers.ts
+└── package.json
 ```
 
----
+## Menjalankan lokal
 
-## // Menjalankan Lokal
-
-### Prasyarat
-
-- Node.js 20.x atau 22.x
-- npm 10.x atau lebih baru
-
-### Langkah
+Prasyarat: Node.js 20.19 atau lebih baru, atau 22.12 atau lebih baru (syarat Vite), dan npm.
 
 ```bash
 git clone https://github.com/NimzzAI/nontonime.git
@@ -330,80 +208,93 @@ cp .env.example .env
 npm run dev
 ```
 
-Buka [http://localhost:3000](http://localhost:3000). Bagian anime tidak butuh pengaturan, jadi aplikasi langsung jalan dengan keenam sumbernya tanpa mengisi `.env`.
+Buka http://localhost:3000. Bagian anime tidak butuh pengaturan, jadi semua sumber langsung jalan tanpa mengisi `.env`.
 
-Untuk uji build produksi:
+Uji build produksi:
 
 ```bash
 npm run build
 npm run start
 ```
 
----
+## Variabel lingkungan
 
-## // Variabel Lingkungan
+Sumber anime tidak memakai variabel lingkungan. Alamat, daftar sumber, dan urutan prioritasnya ada di kode. Variabel di bawah untuk akun Firebase, fitur sosial, unggah gambar, dan notifikasi push, semuanya opsional untuk bagian anime.
 
-Sumber anime tidak memakai variabel lingkungan sama sekali. Alamat, daftar sumber, dan urutan prioritasnya tetap di kode, jadi aplikasi langsung jalan tanpa mengisi apa pun untuk bagian anime.
+| Variabel                              | Fungsi                                                                                                                   |
+| :------------------------------------ | :----------------------------------------------------------------------------------------------------------------------- |
+| `VITE_FIREBASE_API_KEY`               | API key Firebase. Server juga memakainya untuk memverifikasi login.                                                      |
+| `VITE_FIREBASE_AUTH_DOMAIN`           | Domain autentikasi Firebase.                                                                                             |
+| `VITE_FIREBASE_PROJECT_ID`            | ID proyek Firebase.                                                                                                      |
+| `VITE_FIREBASE_APP_ID`                | ID aplikasi web Firebase.                                                                                                |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID`   | Sender ID Firebase Cloud Messaging.                                                                                      |
+| `VITE_FIREBASE_STORAGE_BUCKET`        | Bucket penyimpanan Firebase.                                                                                             |
+| `VITE_FIREBASE_FIRESTORE_DATABASE_ID` | ID database Firestore.                                                                                                   |
+| `SUPABASE_URL`                        | URL proyek Supabase. Hanya server.                                                                                       |
+| `SUPABASE_SERVICE_ROLE_KEY`           | Service role key Supabase. Rahasia, hanya server, jangan diawali `VITE_`.                                                |
+| `VAPID_PRIVATE_KEY`                   | Kunci privat Web Push. Hanya server.                                                                                     |
+| `VITE_VAPID_PUBLIC_KEY`               | Kunci publik Web Push untuk browser.                                                                                     |
+| `EXTRAS_URL`, `EXTRAS_CDN_URL`        | Opsional. Alamat sumber fitur tambahan (karakter, hitung mundur, berita, top search). Kosong berarti fitur itu nonaktif. |
 
-Variabel di bawah untuk akun Firebase, fitur sosial, unggah gambar, dan notifikasi push. Semuanya opsional untuk bagian anime.
+Variabel berawalan `VITE_` ikut terkirim ke browser. Jangan menaruh rahasia di sana.
 
-| Variabel                         | Fungsi                                                                                      |
-| :------------------------------- | :------------------------------------------------------------------------------------------ |
-| `VITE_FIREBASE_API_KEY`          | API key Firebase untuk akun dan sosial. Server juga memakainya untuk memverifikasi login.   |
-| `VITE_FIREBASE_AUTH_DOMAIN`      | Domain autentikasi Firebase.                                                                |
-| `VITE_FIREBASE_PROJECT_ID`       | ID proyek Firebase.                                                                         |
-| `SUPABASE_URL`                   | URL proyek Supabase, misalnya `https://xxxx.supabase.co`. Hanya server.                     |
-| `SUPABASE_SERVICE_ROLE_KEY`      | Service role key Supabase. **Rahasia**, hanya server, jangan diawali `VITE_`.               |
-| `VAPID_PRIVATE_KEY`              | Kunci privat Web Push, hanya dipakai di server.                                             |
-| `VITE_VAPID_PUBLIC_KEY`          | Kunci publik Web Push untuk browser.                                                        |
-| `EXTRAS_URL`, `EXTRAS_CDN_URL`   | Opsional. `EXTRAS_URL` adalah alamat sumber fitur tambahan (karakter, hitung mundur, berita, top search); kosong berarti fitur itu nonaktif. |
+Kalau alamat sebuah sumber pindah, ubah konstanta di bagian atas file sumbernya di `src/lib/sources/`: `DEFAULT_BASE` untuk NontonAnimeID, NontonAnime, Gomunime, Aniwatch, Stucknime, dan Kusonime, `DEFAULT_DOMAINS` untuk Samehadaku, serta `BASE_URL` untuk Nimegami dan AnimeIn (AnimeIn juga punya `API_BASE`). Untuk mematikan sumber atau mengubah prioritasnya, ubah `DEFAULT_SOURCE_IDS` di `registry.server.ts`.
 
-Kalau suatu saat alamat sumber pindah, ubah konstanta di bagian atas file sumbernya di `src/lib/sources/`: `DEFAULT_BASE` untuk NontonAnimeID, Gomunime, Aniwatch, Stucknime, dan Kusonime, `DEFAULT_DOMAINS` untuk Samehadaku, serta `BASE_URL` dan `API_BASE` untuk AnimeIn. Untuk mematikan sumber atau mengubah prioritasnya, ubah `DEFAULT_SOURCE_IDS` di `registry.server.ts`.
+## Firebase dan Supabase
 
-> Jangan menaruh `VAPID_PRIVATE_KEY` atau rahasia server lain di variabel berawalan `VITE_`, karena variabel itu ikut terkirim ke browser.
+### Firebase (akun, komentar, sosial, notifikasi)
 
----
-
-## // Setup Firebase dan Supabase
-
-### 1. Firebase (akun, komentar, sosial, notifikasi)
-
-1. Aktifkan **Authentication** (Google dan Email/Password) dan **Firestore** di Firebase Console.
-2. Deploy aturan keamanan terbaru. File `firestore.rules` **berubah** di versi ini, jadi wajib dideploy ulang:
+1. Aktifkan Authentication (Google dan Email/Password) dan Firestore di Firebase Console.
+2. Deploy aturan keamanan:
 
    ```bash
    firebase deploy --only firestore:rules
    ```
 
-   Atau salin isinya ke Firebase Console, Firestore, Rules, lalu Publish.
-3. Jadikan akun owner: masuk dengan **Google** memakai `nimzz8444@gmail.com`. Email harus terverifikasi, dan aturan Firestore memeriksa hal yang sama, jadi orang lain tidak bisa mengaku owner. Ganti email di `src/lib/roles.ts` (`OWNER_EMAILS`) dan di fungsi `isOwner()` pada `firestore.rules` bila perlu.
-4. Login sebagai owner lalu buka halaman **Klan** sekali. Klan bawaan hanya boleh dibuat oleh owner, dan pengguna lain baru bisa bergabung setelah klannya ada.
+   Atau salin isi `firestore.rules` ke Firebase Console, Firestore, Rules, lalu Publish.
 
-### 2. Supabase (avatar dan banner)
+3. Akun owner ditentukan dari email terverifikasi. Daftarnya ada di `OWNER_EMAILS` pada `src/lib/roles.ts` dan di fungsi `isOwner()` pada `firestore.rules`. Ubah keduanya bersamaan.
+4. Login sebagai owner dan buka halaman Klan sekali. Klan bawaan hanya boleh dibuat owner, dan pengguna lain baru bisa bergabung setelah klannya ada.
 
-1. Buat proyek di Supabase, lalu jalankan `supabase/setup.sql` di SQL Editor. Skrip ini membuat bucket publik `avatars` dan `banners`.
-2. Isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` (Project Settings, API) di `.env` atau Environment Variables Vercel.
-3. Alur unggah: browser memperkecil gambar (avatar 512x512, banner 1600x600, WebP) lalu mengirimnya ke server bersama ID token Firebase. Server memverifikasi token lewat Identity Toolkit, mengecek tipe file dari isinya (bukan dari nama), menyimpan ke `avatars/<uid>/...` atau `banners/<uid>/...`, lalu menghapus file lama milik pengguna itu. Kunci Supabase tidak pernah sampai ke browser.
+Koleksi Firestore:
 
----
+| Koleksi                              | Isi                                                              | Akses                                             |
+| :----------------------------------- | :--------------------------------------------------------------- | :------------------------------------------------ |
+| `users/{uid}`                        | Data pribadi (termasuk email), watchlist, riwayat.               | Hanya pemiliknya.                                 |
+| `profiles/{uid}`                     | Salinan publik: nama, avatar, banner, border, level, klan, role. | Baca semua orang, tulis pemiliknya.               |
+| `follows/{a}_{b}`                    | Relasi follow.                                                   | Baca semua orang, buat dan hapus oleh pengikut.   |
+| `friendRequests/{a}_{b}`             | Permintaan teman.                                                | Dua pihak yang terlibat.                          |
+| `friendships/{a}_{b}`                | Pertemanan, ID berupa uid terurut.                               | Dibuat penerima, hanya bila permintaannya ada.    |
+| `chats/{a}_{b}/messages/{id}`        | Pesan chat.                                                      | Dua peserta.                                      |
+| `users/{uid}/notifications/{id}`     | Kotak masuk notifikasi.                                          | Pemilik membaca, orang lain hanya menambah.       |
+| `announcements/{id}`                 | Pengumuman update situs.                                         | Baca semua orang, tulis hanya owner.              |
+| `clans/{id}` dan `.../members/{uid}` | Klan dan anggotanya.                                             | Pemimpin mengelola, anggota bergabung dan keluar. |
+| `episodes/{id}/comments/{id}`        | Komentar dan balasan.                                            | Penulis, owner (moderasi), like oleh siapa pun.   |
 
-## // Deploy ke Vercel
+Notifikasi berjalan realtime lewat Firestore dan notifikasi sistem browser selama situs atau PWA terbuka. Push saat browser tertutup butuh Firebase Cloud Messaging dengan service account dan belum disertakan.
+
+### Supabase (avatar dan banner)
+
+1. Buat proyek, lalu jalankan `supabase/setup.sql` di SQL Editor. Skrip ini membuat bucket publik `avatars` dan `banners`.
+2. Isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` di `.env` atau Environment Variables Vercel.
+3. Alur unggah: browser memperkecil gambar (avatar 512x512, banner 1600x600, WebP) dan mengirimnya bersama ID token Firebase. Server memverifikasi token lewat Identity Toolkit, memeriksa tipe file dari isinya, menyimpan ke `avatars/<uid>/...` atau `banners/<uid>/...`, lalu menghapus file lama milik pengguna itu. Kunci Supabase tidak sampai ke browser.
+
+## Deploy ke Vercel
 
 1. Impor repositori di Vercel. Framework terdeteksi sebagai TanStack Start lewat `vercel.json`.
-2. Isi variabel Firebase, Supabase, dan VAPID kalau fitur itu dipakai. Bagian anime tidak butuh variabel apa pun.
-3. Deploy. Scraper berjalan di fungsi server yang sama dengan aplikasinya, tidak ada layanan kedua.
+2. Isi variabel Firebase, Supabase, dan VAPID kalau fitur itu dipakai.
+3. Deploy. Scraper berjalan di fungsi server yang sama dengan aplikasinya.
 
-Catatan untuk Vercel:
+Hal yang perlu diperhatikan:
 
-- Memuat detail anime dari AnimeIn bisa memakai beberapa request berurutan (episode diambil per halaman, sampai 10 halaman). Pastikan batas durasi fungsi di plan Anda cukup untuk anime dengan episode banyak.
-- Beberapa situs sumber membatasi IP datacenter. Kalau satu sumber selalu gagal di produksi tapi jalan di lokal, cek log fungsi untuk status HTTP-nya, lalu keluarkan sumber itu dari `DEFAULT_SOURCE_IDS` di `registry.server.ts` atau ganti alamatnya di file sumbernya.
-- Cache dalam memori tidak dibagi antar instance, jadi request pertama ke instance baru selalu lebih lambat.
+- Detail anime dari AnimeIn bisa memakai beberapa request berurutan (episode diambil per halaman, sampai 10 halaman). Pastikan batas durasi fungsi di plan cukup untuk anime dengan episode banyak.
+- Beberapa situs sumber memblokir IP datacenter. Kalau satu sumber selalu gagal di produksi tapi jalan di lokal, cek status HTTP di log fungsi, lalu keluarkan sumber itu dari `DEFAULT_SOURCE_IDS` atau ganti alamatnya.
+- Cache dalam memori tidak dibagi antar instance, jadi request pertama ke instance baru lebih lambat.
+- `/api/embed-proxy` membuffer respons non-HTML. Gunakan `/api/stream-proxy` untuk media.
 
----
+## Menambah sumber baru
 
-## // Menambah Sumber Baru
-
-1. Buat `src/lib/sources/namasumber.server.ts` dan ekspor objek bertipe `AnimeSource`:
+1. Buat `src/lib/sources/namasumber.server.ts` dan ekspor objek bertipe `AnimeSource`. Hanya `search`, `getDetail`, dan `getStream` yang wajib. `getHome`, `getLatest`, `getPopular`, `getGenres`, `getByGenre`, dan `getSchedule` opsional.
 
    ```ts
    import type { AnimeSource } from "./types";
@@ -412,82 +303,63 @@ Catatan untuk Vercel:
      id: "namasumber",
      label: "Nama Sumber",
      async search(keyword, page) {
-       /* kembalikan { items, hasNext } */
+       // kembalikan { items, hasNext }
      },
      async getDetail(slug) {
-       /* kembalikan SourceDetail */
+       // kembalikan SourceDetail
      },
      async getStream(slug) {
-       /* kembalikan SourceStream */
+       // kembalikan SourceStream
      },
-     // Metode berikut opsional: getHome, getLatest, getPopular,
-     // getGenres, getByGenre, getSchedule
    };
    ```
 
-2. Tambahkan ID barunya ke `SourceId` di `types.ts` dan awalan pendeknya ke `SOURCE_PREFIX` serta `PREFIX_TO_SOURCE` di `ids.ts`. Perbarui juga pola di `parseId`.
+2. Tambahkan ID baru ke `SourceId` di `types.ts`, awalan pendeknya ke `SOURCE_PREFIX` dan `PREFIX_TO_SOURCE` di `ids.ts`, lalu perbarui regex awalan di `parseId` dan `extractTitleAndEpisodeFromSlug`.
 3. Daftarkan di `registry.server.ts` pada `ALL_SOURCES` dan `DEFAULT_SOURCE_IDS`.
-4. Gunakan `makeItem`, `toAnimeId`, dan `toEpisodeId` agar ID dan skor terformat seragam, serta `fetchText` atau `fetchJson` dari `http.server.ts` agar timeout dan pesan error konsisten.
+4. Kalau sumbernya berbahasa Indonesia, tambahkan awalan ID dan nama hostnya ke `isServerSubIndo` di `anime-service.server.ts` supaya serverya diberi label dan prioritas `[SUB INDO]`.
+5. Pakai `makeItem`, `toAnimeId`, dan `toEpisodeId` agar ID dan skor seragam, serta `fetchText` atau `fetchJson` dari `http.server.ts` agar timeout dan pesan error konsisten.
+6. Kalau hoster sumber butuh `Referer` tertentu atau memasang frame-buster, arahkan servernya lewat `/api/stream-proxy?url=...&ref=...` untuk media atau `/api/embed-proxy?url=...&ref=...` untuk halaman embed. Contohnya ada di `nontonanime.server.ts`. Periksa host dengan `assertPublicHttpUrl` sebelum membentuk URL.
 
-Metode yang tidak diisi tidak menjadi masalah. Lapisan gabungan melewati sumber yang tidak memilikinya.
+Metode yang tidak diisi dilewati oleh lapisan gabungan.
 
----
+## Pemecahan masalah
 
-## // Migrasi dari Versi Sebelumnya
+| Gejala                                                      | Kemungkinan penyebab dan langkah                                                                                                                            |
+| :---------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beranda kosong                                              | Semua sumber gagal. Cari baris `[sources] ... gagal` di log server, lalu periksa alamat sumber di file masing-masing.                                       |
+| Satu sumber tidak pernah muncul                             | Domainnya pindah atau struktur HTML berubah. Ganti `DEFAULT_BASE` atau periksa selector di file sumbernya.                                                  |
+| Sumber hanya muncul di pencarian                            | Sumber itu tidak punya beranda atau daftar terbaru. Lihat tabel Sumber data. NontonAnime memang begitu.                                                     |
+| Server di pemutar kosong atau error                         | Token gagal diurai, host ditolak pemeriksaan keamanan, nonce NontonAnimeID kedaluwarsa, atau upstream menolak `Referer`. Muat ulang halaman episode.        |
+| Server "(Direct)" NontonAnime gagal, "(Bypass Embed)" jalan | URL hasil dekode butuh header yang tidak dikirim proxy. Cek respons `/api/stream-check` untuk URL itu.                                                      |
+| Halaman Tamat menampilkan daftar populer biasa              | Halaman ini menyaring daftar populer lewat status (`tamat`, `complete`, `finish`, `selesai`). Kalau tidak ada yang cocok, daftar populer tampil apa adanya. |
+| Detail anime lambat                                         | AnimeIn mengambil episode per halaman. Hasilnya di-cache 15 menit.                                                                                          |
+| Tombol batch tidak muncul                                   | Kusonime tidak menemukan judul yang cocok atau pencarian melewati batas 4 detik.                                                                            |
+| Unggah avatar atau banner gagal                             | Cek `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY`, pastikan `supabase/setup.sql` sudah dijalankan, dan akun yang dipakai bukan mode tamu.                  |
+| `Missing or insufficient permissions`                       | `firestore.rules` terbaru belum dideploy atau pengguna belum login. Mode tamu tidak bisa berkomentar, chat, atau berteman.                                  |
+| Error 403 dari satu sumber di produksi                      | IP datacenter diblokir situs sumber. Keluarkan sumber itu dari `DEFAULT_SOURCE_IDS` atau pakai alamat mirror.                                               |
 
-- **ID lama.** Anime yang tersimpan di watchlist atau riwayat memakai slug Otakudesu tanpa awalan. Saat halaman anime dibuka dengan ID seperti itu, server mencari ulang judulnya di semua sumber dan memakai hasil terbaik. Kalau judul tidak ditemukan, halaman menampilkan error.
-- **Episode lama.** ID episode lama tidak bisa dicari ulang. Buka episodenya lewat halaman anime supaya memakai ID baru.
-- **Riwayat tontonan** yang terkait ID lama tetap tersimpan, tetapi posisi putarnya hanya terpakai kalau ID-nya cocok dengan ID baru.
-- **Env lama.** `SANKA_API_BASE` dan `SANKA_API_FALLBACK` tidak dibaca lagi dan aman dihapus. Worker Cloudflare yang dulu dipakai sebagai proxy Sanka juga tidak diperlukan.
+## Batasan yang diketahui
 
----
+- Scraper membaca HTML situs pihak lain. Kalau tampilan situs berubah, selector bisa berhenti bekerja dan perlu diperbarui. Domain sumber juga bisa pindah.
+- Tidak ada tes otomatis terhadap situs asli. Pembacaan HTML tiap sumber perlu dicoba langsung setelah deploy.
+- NontonAnime hanya mendukung pencarian (halaman pertama), detail, dan stream. Pembacaan detailnya memakai pola label di HTML, sehingga field seperti studio atau genre bisa kosong kalau markup situs berbeda dari yang diperkirakan.
+- Daftar episode AnimeIn diambil per 30 episode dengan batas 10 halaman, jadi satu anime menampilkan paling banyak 300 episode (`MAX_EPISODE_PAGES` di `sources/animein.server.ts`).
+- Genre digabung berdasarkan nama. Penulisan berbeda antar situs bisa muncul sebagai dua genre.
+- Scraper Samehadaku asli tidak punya pencarian dan pemanggilan player AJAX. Keduanya ditambahkan di sini dengan pola umum situs WordPress, jadi perlu dicoba langsung. Genre Samehadaku tidak tersedia.
+- Item di beranda Samehadaku menaut ke halaman episode. Slug anime diturunkan dengan memotong `-episode-N`, yang bisa meleset untuk pola slug tidak biasa.
+- Playlist HLS yang dilewatkan `/api/stream-proxy` tidak ditulis ulang. Segmen dengan URL relatif tidak melewati proxy.
+- Fitur sosial belum punya rate limit di sisi server. Aturan Firestore mencegah pemalsuan identitas, bukan spam dari akun asli.
+- Level dan EXP tersimpan di dokumen pengguna sendiri dan bisa dimanipulasi pemiliknya. Level hanya dipakai untuk tampilan dan membuka border. Hak owner ditentukan dari email terverifikasi.
+- Chat belum punya fitur blokir atau laporan.
+- Fitur tambahan dari hianime-api mencocokkan anime dengan judul persis, jadi judul yang ditulis berbeda antar situs tidak mendapat karakter atau hitung mundur.
 
-## // Pemecahan Masalah
+## Catatan migrasi
 
-| Gejala                                         | Kemungkinan penyebab dan langkah                                                                                                                                              |
-| :--------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Beranda kosong                                 | Semua sumber gagal. Lihat log server untuk baris `[sources] ... gagal`, lalu periksa alamat sumber di file masing-masing.                                                     |
-| Satu sumber tidak pernah muncul                | Domainnya pindah atau struktur HTMLnya berubah. Ganti `DEFAULT_BASE` di file sumbernya, atau cek selector di file itu.                                                        |
-| Halaman Tamat menampilkan daftar populer biasa | Halaman ini menyaring daftar populer lewat kata `tamat`, `complete`, `finish`, atau `selesai` pada status. Kalau tidak ada yang cocok, daftar populer ditampilkan apa adanya. |
-| Server tertentu di pemutar kosong atau error   | Token server gagal diurai, host ditolak pemeriksaan keamanan, atau nonce NontonAnimeID kedaluwarsa. Muat ulang halaman episode.                                               |
-| Detail anime lambat                            | AnimeIn mengambil episode per halaman. Anime dengan banyak episode butuh beberapa request, hasilnya di-cache 15 menit.                                                        |
-| Tombol batch tidak muncul                      | Kusonime tidak menemukan judul yang cocok, atau pencarian melewati batas 4 detik. Batch bersifat tambahan, bukan kewajiban.                                                   |
-| Unggah avatar atau banner gagal                | Cek `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY`, pastikan `supabase/setup.sql` sudah dijalankan, dan akun yang dipakai bukan mode tamu. Pesan error menyebut penyebabnya.     |
-| `Missing or insufficient permissions`          | `firestore.rules` terbaru belum dideploy, atau pengguna belum login (mode tamu tidak bisa berkomentar, chat, atau berteman).                                                  |
-| Tidak bisa bergabung ke klan bawaan            | Klan bawaan dibuat oleh owner. Login sebagai owner dan buka halaman Klan sekali.                                                                                              |
-| Judul tidak muncul di pencarian                | Lihat bagian Pencarian. Coba kata inti saja (`yuru camp`), dan cek log server untuk baris `[sources] ... gagal`. Sumber yang domainnya pindah akan terus kosong.              |
-| Karakter, hitung mundur, atau berita kosong    | Fitur tambahan bergantung pada sumber eksternal dan sengaja disembunyikan saat gagal. Pastikan `EXTRAS_URL` terisi (kosong berarti nonaktif) dan cek log server.                                                      |
-| Error 403 dari satu sumber di produksi         | IP datacenter diblokir situs sumber. Keluarkan sumber itu dari `DEFAULT_SOURCE_IDS` atau pakai alamat mirror.                                                                 |
+- Anime di watchlist atau riwayat dengan ID lama (slug Otakudesu tanpa awalan) dicari ulang lewat judulnya di semua sumber saat dibuka. Kalau judul tidak ditemukan, halaman menampilkan error.
+- ID episode lama tidak bisa dicari ulang. Buka episodenya lewat halaman anime.
+- `SANKA_API_BASE` dan `SANKA_API_FALLBACK` tidak dibaca lagi dan aman dihapus.
 
----
-
-## // Catatan Streaming
-
-1. **Pemilihan server.** Server pertama pada daftar dicoba lebih dulu. Kalau gagal diputar, pemutar pindah ke server berikutnya.
-2. **HTTP Range.** Pemutar memakai `/api/stream-proxy` untuk meneruskan potongan byte, sehingga lompat waktu tidak menunggu video selesai diunduh.
-3. **Autoplay dan Sleep Timer.** Autoplay episode berikutnya punya hitung mundur 5 detik. Sleep Timer bisa diatur 15 sampai 60 menit.
-4. **Memori server.** Proxy meneruskan data sebagai stream, tidak menampung seluruh berkas di memori.
-
----
-
-## // Batasan yang Diketahui
-
-- Scraper membaca HTML situs pihak lain. Kalau situs mengubah tampilan, selector di file sumbernya bisa berhenti bekerja dan perlu diperbarui. Domain sumber juga bisa berpindah.
-- Scraper tidak punya tes otomatis terhadap situs aslinya. Bagian yang bisa diuji tanpa jaringan (format ID, token, cache, pemeriksaan URL) sudah dicoba, tetapi pembacaan HTML tiap sumber perlu dicoba langsung setelah deploy.
-- Hanya AnimeIn dan NontonAnimeID yang punya daftar terbaru dan populer bertingkat serta jadwal. Sumber lain muncul di halaman pertama, pencarian, dan genre.
-- Daftar episode dari AnimeIn diambil per 30 episode dengan batas 10 halaman, jadi satu anime menampilkan paling banyak 300 episode. Batas ada di `MAX_EPISODE_PAGES` pada `sources/animein.server.ts`.
-- Genre digabung berdasarkan nama. Nama genre yang ditulis berbeda antar situs bisa muncul sebagai dua genre.
-- Halaman daftar abjad (`getDirectory`) tidak lagi diisi, karena sumber baru tidak punya daftar semacam itu. Fungsinya masih ada dan mengembalikan daftar kosong.
-- Scraper Samehadaku asli tidak punya pencarian dan pemanggilan player AJAX. Dua hal itu ditambahkan di sini dengan pola umum situs WordPress, jadi perlu dicoba langsung. Genre Samehadaku tidak tersedia.
-- Fitur sosial belum punya pembatasan laju (rate limit) di sisi server. Aturan Firestore mencegah pemalsuan identitas, tapi belum mencegah spam pesan atau notifikasi dari akun asli.
-- Level dan EXP tersimpan di dokumen pengguna sendiri, jadi bisa dimanipulasi oleh pemiliknya. Karena itu level hanya dipakai untuk tampilan dan membuka border, bukan untuk hak akses. Hak owner ditentukan dari email terverifikasi.
-- Chat belum punya fitur blokir atau laporan, dan belum ada push saat browser tertutup.
-- Fitur tambahan dari hianime-api mencocokkan anime berdasarkan judul persis, jadi anime dengan judul yang ditulis berbeda antar situs tidak mendapat karakter atau hitung mundur.
-- Item di beranda Samehadaku menaut ke halaman episode. Slug anime diturunkan dengan memotong bagian `-episode-N`, yang bisa meleset untuk judul dengan pola slug tidak biasa.
-
----
-
-## // Perintah npm
+## Perintah npm
 
 ```bash
 npm run dev      # Server development lokal
@@ -497,13 +369,6 @@ npm run lint     # ESLint
 npm run format   # Prettier
 ```
 
----
+## Disclaimer
 
-## // Disclaimer dan Kredit
-
-nontonime tidak menyimpan atau meng-host berkas video. Semua konten berasal dari situs pihak ketiga, dan hak ciptanya dimiliki pemegang haknya masing-masing. Pemilik konten dapat meminta penghapusan lewat pengelola situs sumber.
-
-- **Pengembang**: [NimzzAI](https://github.com/NimzzAI)
-- **Fitur tambahan**: diadaptasi dari proyek hianime-api
-- **Basis logika scraper**: backend hwaverseB
-- **Lisensi**: [MIT License](./LICENSE)
+nontonime tidak menyimpan atau meng-host berkas video. Semua konten berasal dari situs pihak ketiga dan hak ciptanya dimiliki pemegang haknya masing-masing. Pemilik konten dapat meminta penghapusan lewat pengelola situs sumber.

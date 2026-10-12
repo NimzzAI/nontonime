@@ -34,27 +34,29 @@ export function Shelf({
   const IconComp = IconProp as React.ElementType | undefined;
 
   return (
-    <section className="relative z-10 space-y-4 my-3">
-      <div className="flex items-center justify-between">
+    <section className="relative z-10 space-y-4 my-5">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2.5 pb-2 border-b border-border/80">
         <div className="flex items-center gap-2.5">
           {IconComp ? (
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-xs shrink-0">
-              <IconComp className="h-4 w-4 text-primary" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary text-muted-foreground border border-border/80 shrink-0">
+              <IconComp className="h-3.5 w-3.5" />
             </span>
           ) : null}
-          <h2 className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">
-            {title}
-          </h2>
+          <div>
+            <h2 className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">
+              {title}
+            </h2>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between sm:justify-end gap-3">
           {viewAllTo ? (
             <Link
               to={viewAllTo as never}
               search={viewAllSearch as never}
-              className="group inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80 sm:text-sm"
+              className="group inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
             >
               <span>Lihat semua</span>
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 text-primary" />
             </Link>
           ) : null}
           <div className="hidden items-center gap-1 sm:flex">
@@ -62,17 +64,17 @@ export function Shelf({
               type="button"
               onClick={() => scroll("left")}
               aria-label="Gulir ke kiri"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/80 bg-secondary/50 text-foreground transition hover:bg-secondary active:scale-95"
+              className="noir-button-secondary flex h-7 w-7 items-center justify-center rounded-md border border-border/80 bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               onClick={() => scroll("right")}
               aria-label="Gulir ke kanan"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/80 bg-secondary/50 text-foreground transition hover:bg-secondary active:scale-95"
+              className="noir-button-secondary flex h-7 w-7 items-center justify-center rounded-md border border-border/80 bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
