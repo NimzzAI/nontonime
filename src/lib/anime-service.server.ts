@@ -910,11 +910,15 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
     }
     const matchSrc =
       html.match(/<(?:source|video)[^>]+src=["']([^"']+)["']/i) ||
-      html.match(/src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i);
+      html.match(
+        /src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i,
+      );
     if (matchSrc?.[1]) {
       const u = matchSrc[1].replace(/&amp;/g, "&");
       if (isDirectMediaUrl(u)) {
-        return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
+        return u.includes("berkasdrive.com")
+          ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}`
+          : u;
       }
     }
     const matchFile = html.match(/(?:file|source|src)\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
@@ -1014,13 +1018,21 @@ function serverPreferenceWeight(server: SourceServer, streamId?: string): number
     ) {
       bonus += 7000;
     }
-    if (url.includes("desudrive.com") || url.includes("yourupload.com") || url.includes("blogger.com")) {
+    if (
+      url.includes("desudrive.com") ||
+      url.includes("yourupload.com") ||
+      url.includes("blogger.com")
+    ) {
       bonus += 6000;
     }
     if (url.includes("mp4upload.com") || url.includes("mega.nz/embed")) {
       bonus += 4000;
     }
-    if (url.includes("storages.animein.net") || url.includes("uservideo") || url.includes("new.uservideo.xyz")) {
+    if (
+      url.includes("storages.animein.net") ||
+      url.includes("uservideo") ||
+      url.includes("new.uservideo.xyz")
+    ) {
       bonus -= 50000;
     }
     if (

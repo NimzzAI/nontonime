@@ -58,7 +58,8 @@ function isDirectSource(url: string): boolean {
   if (
     url.includes("berkasdrive.com") ||
     url.includes("nimegami") ||
-    url.includes("/hal/streaming/")
+    url.includes("/hal/streaming/") ||
+    url.includes("animekita.org")
   ) {
     return true;
   }
@@ -105,6 +106,9 @@ function getProxiedStreamUrl(originalUrl: string): string {
     originalUrl.includes("/hal/streaming/")
   ) {
     return `/api/nimegami-proxy?url=${encodeURIComponent(originalUrl)}`;
+  }
+  if (originalUrl.includes("animekita.org") || originalUrl.includes("nontonanime")) {
+    return `/api/stream-proxy?url=${encodeURIComponent(originalUrl)}&ref=https%3A%2F%2Fnontonanime.id%2F`;
   }
   return `/api/stream-proxy?url=${encodeURIComponent(originalUrl)}`;
 }

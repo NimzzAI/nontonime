@@ -502,6 +502,27 @@ export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
     },
     resolveEmbedUrl: (rawUrl) => rawUrl,
   },
+
+  animekita: {
+    key: "animekita",
+    name: "AnimeKita Storage",
+    baseUrl: "https://storage.animekita.org",
+    isActive: true,
+    category: "stream",
+    domains: ["animekita.org", "storage.animekita.org"],
+    priority: 10,
+    match: (input) => {
+      const str =
+        typeof input === "string"
+          ? input
+          : `${input.provider || ""} ${input.host || ""} ${input.url || ""} ${input.playUrl || ""}`;
+      return /animekita/i.test(str);
+    },
+    resolveEmbedUrl: (rawUrl) => {
+      if (!rawUrl) return "";
+      return `/api/stream-proxy?url=${encodeURIComponent(rawUrl)}&ref=https%3A%2F%2Fnontonanime.id%2F`;
+    },
+  },
 };
 
 /**

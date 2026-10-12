@@ -249,6 +249,12 @@ export async function handleStreamProxyRequest(request: Request): Promise<Respon
   } else if (parsedTarget.hostname.includes("nimegami")) {
     upstreamHeaders["Referer"] = "https://nimegami.id/";
     upstreamHeaders["Origin"] = "https://nimegami.id";
+  } else if (
+    parsedTarget.hostname.includes("storage.animekita.org") ||
+    parsedTarget.hostname.includes("animekita.org") ||
+    parsedTarget.hostname.includes("nontonanime")
+  ) {
+    upstreamHeaders["Referer"] = "https://nontonanime.id/";
   } else {
     upstreamHeaders["Referer"] = `${parsedTarget.protocol}//${parsedTarget.host}/`;
   }
@@ -324,7 +330,29 @@ export async function handleStreamProxyRequest(request: Request): Promise<Respon
 
     // Prepare response headers for client streaming
     const responseHeaders = new Headers();
-    responseHeaders.set("Content-Type", contentType || "video/mp4");
+    let finalContentType = contentType;
+    const lowerContent = (finalContentType || "").toLowerCase();
+    const targetUrlString = parsedTarget.toString().toLowerCase();
+    if (
+      !finalContentType ||
+      lowerContent.includes("octet-stream") ||
+      lowerContent.includes("text/plain") ||
+      lowerContent.includes("application/force-download") ||
+      lowerContent.includes("binary")
+    ) {
+      if (targetUrlString.includes(".m3u8")) {
+        finalContentType = "application/x-mpegURL";
+      } else if (targetUrlString.includes(".webm")) {
+        finalContentType = "video/webm";
+      } else if (targetUrlString.includes(".mp4")) {
+        finalContentType = "video/mp4";
+      } else if (targetUrlString.includes(".mkv")) {
+        finalContentType = "video/x-matroska";
+      } else {
+        finalContentType = "video/mp4";
+      }
+    }
+    responseHeaders.set("Content-Type", finalContentType);
     responseHeaders.set("Accept-Ranges", "bytes");
     for (const [k, v] of Object.entries(corsOrigin(request))) responseHeaders.set(k, v);
     responseHeaders.set("Access-Control-Allow-Headers", "Range, Content-Type, Accept, Origin");

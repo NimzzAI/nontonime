@@ -91,13 +91,41 @@ function embedProxyUrl(target: string): string {
   return `/api/embed-proxy?url=${encodeURIComponent(target)}&ref=${encodeURIComponent(siteReferer())}`;
 }
 
-function decodeStreamUrl(embedUrl: string): string | null {
+export function decodeStreamUrl(embedUrl: string): string | null {
   try {
     const parsed = new URL(embedUrl.replace(/&amp;/g, "&"), baseUrl());
-    const link = parsed.searchParams.get("link");
-    if (!link) return null;
-    const decoded = Buffer.from(link.replace(/ /g, "+"), "base64").toString("utf8").trim();
-    return /^https?:\/\//i.test(decoded) ? decoded : null;
+    let link = parsed.searchParams.get("link");
+    if (link) {
+      link = decodeURIComponent(link.replace(/ /g, "+"));
+      if (link.includes("%")) {
+        try {
+          link = decodeURIComponent(link);
+        } catch {
+          // ignore URI malformed
+        }
+      }
+      const decoded = Buffer.from(link, "base64").toString("utf8").trim();
+      if (/^https?:\/\//i.test(decoded)) return decoded;
+    }
+
+    const streamMatch = parsed.pathname.match(/\/stream(?:\/v\d+)?\/([a-zA-Z0-9+/=_-]+)/);
+    if (streamMatch && streamMatch[1]) {
+      const b64 = streamMatch[1].replace(/-/g, "+").replace(/_/g, "/");
+      let decoded = "";
+      try {
+        decoded = Buffer.from(b64, "base64").toString("utf8").trim();
+      } catch {
+        // ignore base64 decode failure
+      }
+      if (/^https?:\/\//i.test(decoded)) {
+        const search = parsed.search;
+        return search
+          ? `${decoded}${decoded.includes("?") ? "&" : "?"}${search.slice(1)}`
+          : decoded;
+      }
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -284,10 +312,14 @@ export const nontonanime: AnimeSource = {
       const parts = splitEpisodeSlug(epSlug);
       if (!parts || parts.animeSlug !== clean || seen.has(epSlug)) return;
       seen.add(epSlug);
+      let epTitle = cleanText($(el).text());
+      if (!epTitle || /^(watch|nonton|play|tonton|stream)$/i.test(epTitle)) {
+        epTitle = clean.toLowerCase().includes("movie") ? "Movie" : `Episode ${parts.number}`;
+      }
       episodes.push({
         id: toEpisodeId(SOURCE, epSlug),
         number: parts.number,
-        title: cleanText($(el).text()) || `Episode ${parts.number}`,
+        title: epTitle,
         date: null,
       });
     });

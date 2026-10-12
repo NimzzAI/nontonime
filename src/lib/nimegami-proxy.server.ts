@@ -77,7 +77,9 @@ export async function resolveNimegamiDirectMediaUrl(embedUrl: string): Promise<s
       html.match(/<(?:source|video)[^>]+src=["']([^"']+)["']/i) ||
       html.match(/data-(?:src|video|url)=["']([^"']+)["']/i) ||
       html.match(/videoURL\s*=\s*["']([^"']+)["']/i) ||
-      html.match(/src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i) ||
+      html.match(
+        /src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i,
+      ) ||
       html.match(/(https?:\/\/[^"'\s<>]+\.(?:mp4|m3u8)[^"'\s<>]*)/i) ||
       html.match(/(https?:\/\/[^"'\s<>]*videoplayback[^"'\s<>]*)/i);
 
@@ -301,7 +303,9 @@ export async function handleNimegamiStreamProxy(request: Request): Promise<Respo
         htmlText.match(/<(?:source|video)[^>]+src=["']([^"']+)["']/i) ||
         htmlText.match(/data-(?:src|video|url)=["']([^"']+)["']/i) ||
         htmlText.match(/videoURL\s*=\s*["']([^"']+)["']/i) ||
-        htmlText.match(/src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i) ||
+        htmlText.match(
+          /src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i,
+        ) ||
         htmlText.match(/(https?:\/\/[^"'\s<>]+\.(?:mp4|m3u8)[^"'\s<>]*)/i) ||
         htmlText.match(/(https?:\/\/[^"'\s<>]*videoplayback[^"'\s<>]*)/i);
 

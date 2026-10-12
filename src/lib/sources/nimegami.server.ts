@@ -105,11 +105,24 @@ function parseCards($: CheerioAPI): SourceItem[] {
     let type = "TV";
     const lowerTitle = title.toLowerCase();
     const lowerSlug = slug.toLowerCase();
-    if (lowerTitle.includes("season") || lowerSlug.includes("season") || cardText.includes("episode") || cardText.includes("eps")) {
+    if (
+      lowerTitle.includes("season") ||
+      lowerSlug.includes("season") ||
+      cardText.includes("episode") ||
+      cardText.includes("eps")
+    ) {
       type = "TV";
-    } else if (cardText.includes("movie") || lowerTitle.includes("movie") || lowerSlug.includes("movie")) {
+    } else if (
+      cardText.includes("movie") ||
+      lowerTitle.includes("movie") ||
+      lowerSlug.includes("movie")
+    ) {
       type = "Movie";
-    } else if (cardText.includes("ova") || lowerTitle.includes("ova") || lowerSlug.includes("ova")) {
+    } else if (
+      cardText.includes("ova") ||
+      lowerTitle.includes("ova") ||
+      lowerSlug.includes("ova")
+    ) {
       type = "OVA";
     }
 
@@ -307,9 +320,16 @@ export function extractAnimeDetail(text: string, slug: string): RawDetailBundle 
     type = "Movie";
   } else if (jsonLdType === "TVSeries" || jsonLdType === "CreativeWorkSeries") {
     type = "TV";
-  } else if (lowerSlug.includes("ova") || lowerTitle.includes("ova") || lowerSlug.includes("special")) {
+  } else if (
+    lowerSlug.includes("ova") ||
+    lowerTitle.includes("ova") ||
+    lowerSlug.includes("special")
+  ) {
     type = "OVA";
-  } else if ((lowerSlug.includes("movie") || lowerTitle.includes("movie") || lowerSlug.includes("film")) && episodes.length <= 1) {
+  } else if (
+    (lowerSlug.includes("movie") || lowerTitle.includes("movie") || lowerSlug.includes("film")) &&
+    episodes.length <= 1
+  ) {
     type = "Movie";
   }
 
@@ -588,7 +608,8 @@ export const nimegami: AnimeSource = {
       if (isAStream && !isBStream) return -1;
       if (!isAStream && isBStream) return 1;
 
-      const qWeight = (q: string) => (q.includes("1080") ? 1080 : q.includes("720") ? 720 : q.includes("480") ? 480 : 360);
+      const qWeight = (q: string) =>
+        q.includes("1080") ? 1080 : q.includes("720") ? 720 : q.includes("480") ? 480 : 360;
       return qWeight(b.quality) - qWeight(a.quality);
     });
 
