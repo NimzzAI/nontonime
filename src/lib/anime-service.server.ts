@@ -27,6 +27,7 @@ import { resolveNontonAnimeIdPlayer } from "./sources/nontonanimeid.server";
 import { enabledSources, getSource } from "./sources/registry.server";
 import { animein } from "./sources/animein.server";
 import { aniwatch } from "./sources/aniwatch.server";
+import { nontonanime } from "./sources/nontonanime.server";
 import { resolveSamehadakuPlayer, samehadaku } from "./sources/samehadaku.server";
 import { assertPublicHttpUrl, decodeServerRef, encodeServerRef } from "./sources/token.server";
 import { formatSafePoster } from "./sources/poster.server";
@@ -1005,12 +1006,51 @@ function isServerSubIndo(server: SourceServer, streamId?: string): boolean {
   return false;
 }
 
+export function isDownloadLockerUrl(url: string): boolean {
+  const u = (url || "").toLowerCase();
+  return (
+    u.includes("1024terabox.com") ||
+    u.includes("terabox.com") ||
+    u.includes("teraboxapp.com") ||
+    u.includes("usersdrive.com") ||
+    u.includes("mediafire.com") ||
+    u.includes("racaty.com") ||
+    u.includes("racaty.net") ||
+    u.includes("krakenfiles.com") ||
+    u.includes("mega4upload.com") ||
+    u.includes("files.im") ||
+    u.includes("letsupload.io") ||
+    u.includes("hxfile.co") ||
+    u.includes("zippyshare") ||
+    u.includes("gofile.io")
+  );
+}
+
+export function isServerStreamable(server: SourceServer): boolean {
+  if (server.ref.kind === "url") {
+    return !isDownloadLockerUrl(server.ref.url);
+  }
+  return true;
+}
+
 function serverPreferenceWeight(server: SourceServer, streamId?: string): number {
   const isSubIndo = isServerSubIndo(server, streamId);
   const subBonus = isSubIndo ? 10000 : 0;
   let bonus = 0;
   if (server.ref.kind === "url") {
     const url = server.ref.url.toLowerCase();
+    if (url.includes("/api/stream-proxy") || url.includes("storage.animekita.org")) {
+      bonus += 15000;
+    } else if (url.includes("/api/embed-proxy")) {
+      bonus += 12000;
+    }
+    if (
+      url.includes("megaplay.buzz") ||
+      url.includes("tryembed.us.cc") ||
+      url.includes("vidnest.fun")
+    ) {
+      bonus += 9000;
+    }
     if (
       url.includes("nimegami-proxy") ||
       url.includes("berkasdrive") ||
@@ -1035,14 +1075,8 @@ function serverPreferenceWeight(server: SourceServer, streamId?: string): number
     ) {
       bonus -= 50000;
     }
-    if (
-      url.includes("mega4upload.com") ||
-      url.includes("files.im") ||
-      url.includes("letsupload.io") ||
-      url.includes("1024terabox.com") ||
-      url.includes("usersdrive.com")
-    ) {
-      bonus -= 8000;
+    if (isDownloadLockerUrl(url)) {
+      bonus -= 40000;
     }
   }
   return subBonus + qualityWeight(server.quality || "Auto") + bonus;
@@ -1065,11 +1099,16 @@ function groupServers(stream: SourceStream): QualityServerGroup[] {
       group = { quality, serverList: [] };
       groups.set(quality, group);
     }
-    // Beri penanda bahasa jelas: [SUB INDO] atau [SUB ENG]
+    // Beri penanda bahasa jelas: [SUB INDO], [SUB ENG], atau [UNDUHAN]
     let title = server.name;
+    const isLocker = !isServerStreamable(server);
     const isSubIndo = isServerSubIndo(server, stream.id);
 
-    if (isSubIndo) {
+    if (isLocker) {
+      if (!title.includes("[UNDUHAN]")) {
+        title = `[UNDUHAN] ${title.replace(/\(Sub Indo [^)]+\)/i, "").trim()}`;
+      }
+    } else if (isSubIndo) {
       if (!title.includes("[SUB INDO]")) {
         title = `[SUB INDO] ${title.replace(/\(Sub Indo [^)]+\)/i, "").trim()}`;
       }
@@ -1093,10 +1132,19 @@ function groupServers(stream: SourceStream): QualityServerGroup[] {
     });
   }
 
-  // Urutkan grup kualitas: grup yang punya server Sub Indo atau resolusi tertinggi tampil duluan
+  // Urutkan grup kualitas: grup yang punya server streamable tampil duluan sebelum grup yang hanya unduhan
   return result.sort((a, b) => {
-    const aHasSubIndo = a.serverList.some((s) => s.title.includes("[SUB INDO]"));
-    const bHasSubIndo = b.serverList.some((s) => s.title.includes("[SUB INDO]"));
+    const aHasStreamable = a.serverList.some((s) => !s.title.includes("[UNDUHAN]"));
+    const bHasStreamable = b.serverList.some((s) => !s.title.includes("[UNDUHAN]"));
+    if (aHasStreamable && !bHasStreamable) return -1;
+    if (!aHasStreamable && bHasStreamable) return 1;
+
+    const aHasSubIndo = a.serverList.some(
+      (s) => s.title.includes("[SUB INDO]") && !s.title.includes("[UNDUHAN]"),
+    );
+    const bHasSubIndo = b.serverList.some(
+      (s) => s.title.includes("[SUB INDO]") && !s.title.includes("[UNDUHAN]"),
+    );
     if (aHasSubIndo && !bHasSubIndo) return -1;
     if (!aHasSubIndo && bHasSubIndo) return 1;
     return qualityWeight(b.quality) - qualityWeight(a.quality);
@@ -1142,7 +1190,76 @@ async function findCrossSourceAlternativeServers(
       }
     };
 
-    // 1. Coba cari di AnimeIn (Sub Indo: Rapsodi, Nanimex)
+    const matchesTarget = (itemTitle: string) => {
+      const norm = normalizeLoose(itemTitle);
+      const isTargetMovie = targetNormalized.includes("movie");
+      if (isTargetMovie && !norm.includes("movie")) return false;
+      return (
+        norm === targetNormalized ||
+        stripSeasonWords(norm) === targetCore ||
+        norm.includes(targetCore) ||
+        targetCore.includes(norm) ||
+        Boolean(aliasData?.english && norm.includes(normalizeLoose(aliasData.english))) ||
+        Boolean(aliasData?.romaji && norm.includes(normalizeLoose(aliasData.romaji)))
+      );
+    };
+
+    // 1. Coba cari di NontonAnime (Sub Indo: Direct MP4 & Bypass Embed)
+    for (const term of dedupeTerms.slice(0, 3)) {
+      try {
+        const res = await withTimeout(
+          nontonanime.search(term, 1),
+          4000,
+          "nontonanime.subIndoCheck",
+        );
+        if (res && res.items.length > 0) {
+          const candidate =
+            res.items.find((item) => normalizeLoose(item.title) === targetNormalized) ||
+            res.items.find((item) => stripSeasonWords(normalizeLoose(item.title)) === targetCore) ||
+            res.items.find((item) => matchesTarget(item.title));
+
+          if (candidate) {
+            const cleanSlug = candidate.id.replace(/^nn_/, "");
+            const detail = await withTimeout(
+              nontonanime.getDetail(cleanSlug),
+              4500,
+              "nontonanime.subIndoDetail",
+            );
+            const targetEp =
+              detail.episodes.find((e) => e.number === episodeNumber) ||
+              detail.episodes.find((e) => {
+                const match =
+                  e.title.match(/(?:episode|eps|ep)\s*(\d+)/i) || e.title.match(/\b(\d+)\b/);
+                return match ? parseInt(match[1], 10) === episodeNumber : false;
+              }) ||
+              (detail.episodes.length === 1 ? detail.episodes[0] : null);
+
+            if (targetEp) {
+              const epSlug = targetEp.id.replace(/^nn_ep_/, "");
+              const epStream = await withTimeout(
+                nontonanime.getStream(epSlug),
+                4000,
+                "nontonanime.subIndoStream",
+              );
+              if (epStream && epStream.servers.length > 0) {
+                for (const s of epStream.servers) {
+                  addServer({
+                    name: `[SUB INDO] ${s.name}`,
+                    quality: s.quality || "Auto",
+                    ref: s.ref,
+                  });
+                }
+                break;
+              }
+            }
+          }
+        }
+      } catch {
+        // continue
+      }
+    }
+
+    // 2. Coba cari di AnimeIn (Sub Indo: Rapsodi, Nanimex)
     for (const term of dedupeTerms.slice(0, 4)) {
       try {
         const res = await withTimeout(animein.search(term, 1), 4000, "animein.subIndoCheck");
@@ -1150,15 +1267,7 @@ async function findCrossSourceAlternativeServers(
           const candidate =
             res.items.find((item) => normalizeLoose(item.title) === targetNormalized) ||
             res.items.find((item) => stripSeasonWords(normalizeLoose(item.title)) === targetCore) ||
-            res.items.find((item) => {
-              const norm = normalizeLoose(item.title);
-              return (
-                !norm.includes("movie") &&
-                !norm.includes("special") &&
-                (norm.startsWith(targetNormalized) || targetNormalized.startsWith(norm))
-              );
-            }) ||
-            res.items[0];
+            res.items.find((item) => matchesTarget(item.title));
 
           if (candidate) {
             const cleanSlug = candidate.id.replace(/^ai_/, "");
@@ -1208,7 +1317,7 @@ async function findCrossSourceAlternativeServers(
       }
     }
 
-    // 2. Coba cari di Samehadaku (Sub Indo: Blogger, Google Drive)
+    // 3. Coba cari di Samehadaku (Sub Indo: Blogger, Google Drive)
     for (const term of dedupeTerms.slice(0, 3)) {
       try {
         const res = await withTimeout(samehadaku.search(term, 1), 4000, "samehadaku.subIndoCheck");
@@ -1216,7 +1325,7 @@ async function findCrossSourceAlternativeServers(
           const candidate =
             res.items.find((item) => normalizeLoose(item.title) === targetNormalized) ||
             res.items.find((item) => stripSeasonWords(normalizeLoose(item.title)) === targetCore) ||
-            res.items[0];
+            res.items.find((item) => matchesTarget(item.title));
 
           if (candidate) {
             const cleanSlug = candidate.id.replace(/^sh_/, "");
@@ -1258,7 +1367,7 @@ async function findCrossSourceAlternativeServers(
       }
     }
 
-    // 3. Coba cari di Aniwatch (Sub English: MegaPlay, VidNest, TryEmbed)
+    // 4. Coba cari di Aniwatch (Sub English: MegaPlay, VidNest, TryEmbed)
     const englishTerms = [aliasData?.english, animeTitle, targetCore, aliasData?.romaji].filter(
       Boolean,
     ) as string[];
@@ -1267,7 +1376,11 @@ async function findCrossSourceAlternativeServers(
       try {
         const res = await withTimeout(aniwatch.search(term, 1), 4000, "aniwatch.subEngCheck");
         if (res && res.items.length > 0) {
-          const candidate = res.items[0];
+          const candidate =
+            res.items.find((item) => normalizeLoose(item.title) === targetNormalized) ||
+            res.items.find((item) => stripSeasonWords(normalizeLoose(item.title)) === targetCore) ||
+            res.items.find((item) => matchesTarget(item.title));
+
           if (candidate) {
             const cleanSlug = candidate.id.replace(/^aw_/, "");
             const detail = await withTimeout(
@@ -1281,7 +1394,8 @@ async function findCrossSourceAlternativeServers(
                 const match =
                   e.title.match(/(?:episode|eps|ep)\s*(\d+)/i) || e.title.match(/\b(\d+)\b/);
                 return match ? parseInt(match[1], 10) === episodeNumber : false;
-              });
+              }) ||
+              (detail.episodes.length === 1 ? detail.episodes[0] : null);
 
             if (targetEp) {
               const epSlug = targetEp.id.replace(/^aw_ep_/, "");
@@ -1369,10 +1483,15 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
       parsed.slug.match(/(?:-episode-|-ep-|-)(\d+)/i);
     const epNumber = epMatch ? parseInt(epMatch[1], 10) : slugInfo.episodeNumber || 1;
 
-    const hasSubIndo = stream.servers.some((s) => isServerSubIndo(s, stream!.id));
-    const hasSubEng = stream.servers.some((s) => !isServerSubIndo(s, stream!.id));
+    const hasStreamableSubIndo = stream.servers.some(
+      (s) => isServerStreamable(s) && isServerSubIndo(s, stream!.id),
+    );
+    const hasStreamableSubEng = stream.servers.some(
+      (s) => isServerStreamable(s) && !isServerSubIndo(s, stream!.id),
+    );
+    const hasAnyStreamable = stream.servers.some(isServerStreamable);
 
-    if (!hasSubIndo || !hasSubEng) {
+    if (!hasStreamableSubIndo || !hasStreamableSubEng || !hasAnyStreamable) {
       const extraServers = await findCrossSourceAlternativeServers(
         stream.title,
         epNumber,
@@ -1401,7 +1520,8 @@ export async function getStream(episodeId: string, _provider = "otakudesu"): Pro
   const sortedServers = [...stream.servers].sort(
     (a, b) => serverPreferenceWeight(b, stream.id) - serverPreferenceWeight(a, stream.id),
   );
-  const preferredServer = sortedServers[0] || stream.servers[0];
+  const preferredServer =
+    sortedServers.find(isServerStreamable) || sortedServers[0] || stream.servers[0];
   const embedUrl =
     preferredServer && preferredServer.ref.kind === "url" ? preferredServer.ref.url : null;
   const directUrl = embedUrl ? await extractDirectStreamUrl(embedUrl) : null;

@@ -182,10 +182,10 @@ function buildServers(episode: RawEpisode): SourceServer[] {
   const bypass: SourceServer[] = [];
   const seen = new Set<string>();
 
-  const add = (list: SourceServer[], name: string, url: string) => {
+  const add = (list: SourceServer[], name: string, url: string, quality = "720p HD") => {
     if (seen.has(url)) return;
     seen.add(url);
-    list.push({ name, quality: "Auto", ref: { kind: "url", url } });
+    list.push({ name, quality, ref: { kind: "url", url } });
   };
 
   for (let slot = 1; slot <= SERVER_SLOTS; slot++) {
@@ -194,12 +194,19 @@ function buildServers(episode: RawEpisode): SourceServer[] {
     const label = text(episode[`server${slot}_name`]) || `Server ${slot}`;
     const embedUrl = absUrl(baseUrl(), rawEmbed.replace(/&amp;/g, "&"));
     const decoded = decodeStreamUrl(embedUrl);
+    const quality = label.includes("1080")
+      ? "1080p FHD"
+      : label.includes("720") || label.includes("HD")
+        ? "720p HD"
+        : "Auto";
 
     if (decoded && isPublicUrl(decoded)) {
-      if (isDirectMediaUrl(decoded)) add(direct, `${label} (Direct)`, streamProxyUrl(decoded));
-      else add(direct, `${label} (Embed)`, embedProxyUrl(decoded));
+      if (isDirectMediaUrl(decoded))
+        add(direct, `NontonAnime ${label} (Direct)`, streamProxyUrl(decoded), quality);
+      else add(direct, `NontonAnime ${label} (Embed)`, embedProxyUrl(decoded), quality);
     }
-    if (isPublicUrl(embedUrl)) add(bypass, `${label} (Bypass Embed)`, embedProxyUrl(embedUrl));
+    if (isPublicUrl(embedUrl))
+      add(bypass, `NontonAnime ${label} (Bypass Embed)`, embedProxyUrl(embedUrl), quality);
   }
 
   return [...direct, ...bypass];
@@ -262,13 +269,43 @@ export const nontonanime: AnimeSource = {
 
   async search(keyword, page): Promise<SourcePage> {
     if (page > 1) return { items: [], hasNext: false };
+    const term = keyword.trim();
     const response = await fetchJson<LiveSearchResponse>(
-      `${baseUrl()}/live-search?q=${encodeURIComponent(keyword)}`,
+      `${baseUrl()}/live-search?q=${encodeURIComponent(term)}`,
       { source: SOURCE, headers: { Referer: siteReferer() } },
     );
-    const items = (response.data ?? [])
-      .map(mapSearchItem)
-      .filter((item): item is SourceItem => item !== null);
+    let rawList = response.data ?? [];
+
+    if (rawList.length === 0) {
+      const cleaned = term
+        .replace(/[△▲★☆]/g, " ")
+        .replace(/\s+(?:the\s+)?movie\b/gi, "")
+        .replace(/\s+(?:season|s)\s*\d+/gi, "")
+        .replace(/\s+(?:sub|dub|ova|special).*/gi, "")
+        .trim();
+      if (cleaned && cleaned.toLowerCase() !== term.toLowerCase()) {
+        const fbResponse = await fetchJson<LiveSearchResponse>(
+          `${baseUrl()}/live-search?q=${encodeURIComponent(cleaned)}`,
+          { source: SOURCE, headers: { Referer: siteReferer() } },
+        );
+        if (fbResponse.data?.length) {
+          rawList = fbResponse.data;
+        }
+      }
+    }
+
+    const isMovieQuery = /movie/i.test(term);
+    if (isMovieQuery && rawList.length > 0) {
+      rawList.sort((a, b) => {
+        const aMovie = /movie/i.test(`${a.title || ""} ${a.slug || ""}`);
+        const bMovie = /movie/i.test(`${b.title || ""} ${b.slug || ""}`);
+        if (aMovie && !bMovie) return -1;
+        if (!aMovie && bMovie) return 1;
+        return 0;
+      });
+    }
+
+    const items = rawList.map(mapSearchItem).filter((item): item is SourceItem => item !== null);
     return { items, hasNext: false };
   },
 

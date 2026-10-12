@@ -377,10 +377,14 @@ export const aniwatch: AnimeSource = {
       });
     });
     if (episodes.length === 0) {
+      const watchLink =
+        $("a[href*='-watch-'], a[href*='/watch/'], a:contains('Watch Now')").first().attr("href") ||
+        "";
+      const watchSlug = watchLink ? lastSegment(watchLink) : null;
       episodes.push({
-        id: toEpisodeId("aniwatch", `${clean}-1`),
+        id: toEpisodeId("aniwatch", watchSlug || `${clean}-1`),
         number: 1,
-        title: "Episode 1",
+        title: type && type.toLowerCase().includes("movie") ? "Movie" : "Episode 1",
         date: null,
       });
     }
@@ -415,15 +419,44 @@ export const aniwatch: AnimeSource = {
     try {
       page = await html(`${baseUrl()}/episode/${clean}`);
     } catch (err) {
-      // Try alternative slug formats (e.g. name-episode-1-hash vs name-1-hash)
+      // 1. Try alternative slug formats (e.g. name-episode-1-hash vs name-1-hash)
       const simplified = clean.replace(/-(?:episode|eps?)-(\d+)-/i, "-$1-");
+      let found = false;
       if (simplified !== clean) {
         try {
           page = await html(`${baseUrl()}/episode/${simplified}`);
+          found = true;
         } catch {
-          throw err;
+          // ignore
         }
-      } else {
+      }
+      // 2. Try direct root slug (e.g. 414eb-watch-laid-back-camp-the-movie or anime slug)
+      if (!found) {
+        try {
+          page = await html(`${baseUrl()}/${clean}`);
+          found = true;
+        } catch {
+          // ignore
+        }
+      }
+      // 3. Try removing trailing -1 or -ep-1 (movie fallback)
+      if (!found && /-\d+$/.test(clean)) {
+        const withoutEp = clean.replace(/-\d+$/, "");
+        try {
+          const ownerHtml = await html(`${baseUrl()}/anime/${withoutEp}`);
+          const $owner = cheerio.load(ownerHtml);
+          const watchHref = $owner("a[href*='-watch-'], a:contains('Watch Now')")
+            .first()
+            .attr("href");
+          if (watchHref) {
+            page = await html(absUrl(baseUrl(), watchHref));
+            found = true;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (!found) {
         throw err;
       }
     }
