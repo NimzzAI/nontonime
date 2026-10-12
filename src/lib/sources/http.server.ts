@@ -107,9 +107,13 @@ export function parseNumber(value: unknown): number | null {
 export function isDirectMediaUrl(url: string): boolean {
   if (!url) return false;
   if (url.includes("/hal/streaming/")) return false;
+  if (url.includes("videoplayback") || url.includes("mime=video")) return true;
   try {
     const parsed = new URL(url);
-    return /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(parsed.pathname);
+    return (
+      /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(parsed.pathname) ||
+      parsed.searchParams.get("mime")?.startsWith("video/") === true
+    );
   } catch {
     return /\.(m3u8|mp4|webm|mkv|mov)(\?|$)/i.test(url);
   }

@@ -43,9 +43,11 @@ export function buildNimegamiProxyUrl(
 export async function resolveNimegamiDirectMediaUrl(embedUrl: string): Promise<string> {
   if (!embedUrl) return "";
 
-  // If already a direct mp4 URL
+  // If already a direct media URL
   if (
     embedUrl.includes("direct-stor.berkasdrive.com") ||
+    embedUrl.includes("videoplayback") ||
+    embedUrl.includes("googlevideo.com") ||
     /\.(mp4|m3u8|webm)(\?|$)/i.test(embedUrl)
   ) {
     return embedUrl;
@@ -70,15 +72,17 @@ export async function resolveNimegamiDirectMediaUrl(embedUrl: string): Promise<s
 
     const html = await upstream.text();
 
-    // Look for data-src in <main id="player" data-src="..."> or <video src="...">
+    // Look for video element src, data-src, or script videoURL
     const match =
+      html.match(/<(?:source|video)[^>]+src=["']([^"']+)["']/i) ||
       html.match(/data-(?:src|video|url)=["']([^"']+)["']/i) ||
-      html.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i) ||
       html.match(/videoURL\s*=\s*["']([^"']+)["']/i) ||
-      html.match(/(https?:\/\/[^"'\s<>]+\.mp4[^"'\s<>]*)/i);
+      html.match(/src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i) ||
+      html.match(/(https?:\/\/[^"'\s<>]+\.(?:mp4|m3u8)[^"'\s<>]*)/i) ||
+      html.match(/(https?:\/\/[^"'\s<>]*videoplayback[^"'\s<>]*)/i);
 
     if (match?.[1]) {
-      const directUrl = match[1];
+      const directUrl = match[1].replace(/&amp;/g, "&");
       resolvedMediaCache.set(embedUrl, {
         url: directUrl,
         expiresAt: Date.now() + 60 * 60 * 1000,
@@ -233,7 +237,10 @@ export async function handleNimegamiStreamProxy(request: Request): Promise<Respo
   let effectiveTarget = parsedTarget.toString();
   if (
     effectiveTarget.includes("vsys-srv.berkasdrive.com/hal/streaming") ||
-    effectiveTarget.includes("/hal/streaming/")
+    effectiveTarget.includes("/hal/streaming/") ||
+    effectiveTarget.includes("workers-anime.berkasdrive.com") ||
+    effectiveTarget.includes("desustream.net") ||
+    effectiveTarget.includes("desudrive.com")
   ) {
     effectiveTarget = await resolveNimegamiDirectMediaUrl(effectiveTarget);
   }
@@ -254,6 +261,12 @@ export async function handleNimegamiStreamProxy(request: Request): Promise<Respo
 
   // Security checks: set exact Referer and Origin for Berkasdrive & Nimegami
   if (
+    effectiveParsed.hostname.includes("googlevideo.com") ||
+    effectiveParsed.hostname.includes("workers-anime")
+  ) {
+    upstreamHeaders["Referer"] = "https://workers-anime.berkasdrive.com/";
+    upstreamHeaders["Origin"] = "https://workers-anime.berkasdrive.com";
+  } else if (
     effectiveParsed.hostname.includes("berkasdrive.com") ||
     effectiveParsed.hostname.includes("direct-stor") ||
     effectiveParsed.hostname.includes("vsys-srv")
@@ -285,12 +298,15 @@ export async function handleNimegamiStreamProxy(request: Request): Promise<Respo
     if (contentType.includes("text/html") && !effectiveTarget.includes("direct-stor")) {
       const htmlText = await upstreamRes.text();
       const match =
+        htmlText.match(/<(?:source|video)[^>]+src=["']([^"']+)["']/i) ||
         htmlText.match(/data-(?:src|video|url)=["']([^"']+)["']/i) ||
-        htmlText.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i) ||
-        htmlText.match(/(https?:\/\/[^"'\s<>]+\.mp4[^"'\s<>]*)/i);
+        htmlText.match(/videoURL\s*=\s*["']([^"']+)["']/i) ||
+        htmlText.match(/src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i) ||
+        htmlText.match(/(https?:\/\/[^"'\s<>]+\.(?:mp4|m3u8)[^"'\s<>]*)/i) ||
+        htmlText.match(/(https?:\/\/[^"'\s<>]*videoplayback[^"'\s<>]*)/i);
 
       if (match?.[1]) {
-        const nextUrl = match[1];
+        const nextUrl = match[1].replace(/&amp;/g, "&");
         const redirectedReq = new Request(
           `${reqUrl.origin}/api/nimegami-proxy?url=${encodeURIComponent(nextUrl)}&raw=1`,
           {
@@ -300,6 +316,17 @@ export async function handleNimegamiStreamProxy(request: Request): Promise<Respo
         );
         return handleNimegamiStreamProxy(redirectedReq);
       }
+
+      // If no direct video found, return clean bypass player html
+      const bypassHtml = renderNimegamiBypassPlayerHtml(effectiveTarget, "Nimegami Player");
+      return new Response(bypassHtml, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          ...getCorsHeaders(request),
+          "Content-Security-Policy": "frame-ancestors *",
+        },
+      });
     }
 
     if (!upstreamRes.ok && upstreamRes.status !== 206) {

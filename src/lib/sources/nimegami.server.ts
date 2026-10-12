@@ -103,8 +103,15 @@ function parseCards($: CheerioAPI): SourceItem[] {
     }
 
     let type = "TV";
-    if (cardText.includes("movie")) type = "Movie";
-    else if (cardText.includes("ova")) type = "OVA";
+    const lowerTitle = title.toLowerCase();
+    const lowerSlug = slug.toLowerCase();
+    if (lowerTitle.includes("season") || lowerSlug.includes("season") || cardText.includes("episode") || cardText.includes("eps")) {
+      type = "TV";
+    } else if (cardText.includes("movie") || lowerTitle.includes("movie") || lowerSlug.includes("movie")) {
+      type = "Movie";
+    } else if (cardText.includes("ova") || lowerTitle.includes("ova") || lowerSlug.includes("ova")) {
+      type = "OVA";
+    }
 
     items.push(
       makeItem("nimegami", slug, {
@@ -290,10 +297,20 @@ export function extractAnimeDetail(text: string, slug: string): RawDetailBundle 
   }
 
   let type = "TV";
-  if (watchPanel?.movie || text.toLowerCase().includes("movie")) {
+  const jsonLdType = (jsonLdWork as Record<string, unknown> | null)?.["@type"];
+  const lowerTitle = title.toLowerCase();
+  const lowerSlug = slug.toLowerCase();
+
+  if (episodes.length > 1 || lowerTitle.includes("season") || lowerSlug.includes("season")) {
+    type = "TV";
+  } else if (jsonLdType === "Movie" || watchPanel?.movie) {
     type = "Movie";
-  } else if (text.toLowerCase().includes("ova")) {
+  } else if (jsonLdType === "TVSeries" || jsonLdType === "CreativeWorkSeries") {
+    type = "TV";
+  } else if (lowerSlug.includes("ova") || lowerTitle.includes("ova") || lowerSlug.includes("special")) {
     type = "OVA";
+  } else if ((lowerSlug.includes("movie") || lowerTitle.includes("movie") || lowerSlug.includes("film")) && episodes.length <= 1) {
+    type = "Movie";
   }
 
   // Score
@@ -555,6 +572,25 @@ export const nimegami: AnimeSource = {
         ref: { kind: "url", url: playUrl },
       });
     }
+
+    // Sort servers: prioritize real streaming players (BerkasDrive, DesuDrive, MP4Upload, Mega embed) and higher resolutions
+    servers.sort((a, b) => {
+      const isAStream =
+        a.name.includes("BerkasDrive") ||
+        a.name.includes("DesuDrive") ||
+        a.name.includes("MP4Upload") ||
+        a.name.includes("Komikcast");
+      const isBStream =
+        b.name.includes("BerkasDrive") ||
+        b.name.includes("DesuDrive") ||
+        b.name.includes("MP4Upload") ||
+        b.name.includes("Komikcast");
+      if (isAStream && !isBStream) return -1;
+      if (!isAStream && isBStream) return 1;
+
+      const qWeight = (q: string) => (q.includes("1080") ? 1080 : q.includes("720") ? 720 : q.includes("480") ? 480 : 360);
+      return qWeight(b.quality) - qWeight(a.quality);
+    });
 
     // Group downloads by quality
     const downloadGroups = new Map<string, Array<{ title: string; url: string }>>();

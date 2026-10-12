@@ -825,6 +825,14 @@ export async function getDetail(id: string, _provider = "otakudesu"): Promise<An
       batch = null;
     }
 
+    const rawType = detail.type ?? "TV";
+    const lowerTitle = (detail.title || "").toLowerCase();
+    const episodeCount = detail.episodes ? detail.episodes.length : 0;
+    let finalType = rawType;
+    if (episodeCount > 1 || lowerTitle.includes("season")) {
+      finalType = "TV";
+    }
+
     const result: AnimeDetail = {
       id: canonicalId,
       title: detail.title,
@@ -832,7 +840,7 @@ export async function getDetail(id: string, _provider = "otakudesu"): Promise<An
       cover: formatSafePoster(detail.cover || detail.poster, detail.title),
       score: detail.score,
       status: detail.status,
-      type: detail.type ?? "TV",
+      type: finalType,
       genres: detail.genres,
       synopsis: detail.synopsis,
       year: detail.year,
@@ -900,26 +908,35 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
         ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}`
         : u;
     }
-    const matchSrc = html.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
-    if (matchSrc?.[1] && isDirectMediaUrl(matchSrc[1])) {
-      const u = matchSrc[1];
-      return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
+    const matchSrc =
+      html.match(/<(?:source|video)[^>]+src=["']([^"']+)["']/i) ||
+      html.match(/src=["'](https?:\/\/[^"']*(?:videoplayback|googlevideo|\.mp4|\.m3u8)[^"']*)["']/i);
+    if (matchSrc?.[1]) {
+      const u = matchSrc[1].replace(/&amp;/g, "&");
+      if (isDirectMediaUrl(u)) {
+        return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
+      }
     }
     const matchFile = html.match(/(?:file|source|src)\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
     if (matchFile?.[1] && isDirectMediaUrl(matchFile[1])) {
-      const u = matchFile[1];
+      const u = matchFile[1].replace(/&amp;/g, "&");
       return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
     }
     // If it's a vsys-srv embed page, route through nimegami-proxy
     if (
       target.hostname.includes("vsys-srv.berkasdrive.com") ||
-      target.hostname.includes("berkasdrive.com")
+      target.hostname.includes("berkasdrive.com") ||
+      target.hostname.includes("desustream.net")
     ) {
       return `/api/nimegami-proxy?url=${encodeURIComponent(embedUrl)}`;
     }
     return null;
   } catch {
-    if (embedUrl.includes("vsys-srv.berkasdrive.com") || embedUrl.includes("berkasdrive.com")) {
+    if (
+      embedUrl.includes("vsys-srv.berkasdrive.com") ||
+      embedUrl.includes("berkasdrive.com") ||
+      embedUrl.includes("desustream.net")
+    ) {
       return `/api/nimegami-proxy?url=${encodeURIComponent(embedUrl)}`;
     }
     return null;
@@ -966,12 +983,14 @@ function isServerSubIndo(server: SourceServer, streamId?: string): boolean {
     const url = (server.ref.url || "").toLowerCase();
     if (
       url.includes("animein") ||
-      url.includes("uservideo") ||
       url.includes("blogger") ||
-      url.includes("storages.animein") ||
       url.includes("samehadaku") ||
       url.includes("gomunime") ||
-      url.includes("stucknime")
+      url.includes("stucknime") ||
+      url.includes("berkasdrive") ||
+      url.includes("desustream") ||
+      url.includes("desudrive") ||
+      url.includes("nimegami")
     ) {
       return true;
     }
@@ -990,20 +1009,38 @@ function serverPreferenceWeight(server: SourceServer, streamId?: string): number
       url.includes("berkasdrive") ||
       url.includes("/hal/streaming/")
     ) {
-      bonus += 5000;
+      bonus += 7000;
     }
-    if (url.includes("storages.animein.net")) {
-      bonus -= 20000;
+    if (url.includes("desudrive.com") || url.includes("yourupload.com") || url.includes("blogger.com")) {
+      bonus += 6000;
     }
-    if (url.includes("1024terabox.com") || url.includes("usersdrive.com")) {
-      bonus -= 3000;
+    if (url.includes("mp4upload.com") || url.includes("mega.nz/embed")) {
+      bonus += 4000;
+    }
+    if (url.includes("storages.animein.net") || url.includes("uservideo") || url.includes("new.uservideo.xyz")) {
+      bonus -= 50000;
+    }
+    if (
+      url.includes("mega4upload.com") ||
+      url.includes("files.im") ||
+      url.includes("letsupload.io") ||
+      url.includes("1024terabox.com") ||
+      url.includes("usersdrive.com")
+    ) {
+      bonus -= 8000;
     }
   }
   return subBonus + qualityWeight(server.quality || "Auto") + bonus;
 }
 
 function groupServers(stream: SourceStream): QualityServerGroup[] {
-  const groups = new Map<string, QualityServerGroup>();
+  interface ServerOptionWithWeight {
+    title: string;
+    serverId: string;
+    weight: number;
+  }
+  const groups = new Map<string, { quality: string; serverList: ServerOptionWithWeight[] }>();
+
   for (const server of stream.servers) {
     let quality = server.quality || "Auto";
     if (quality === "1080p") quality = "1080p FHD";
@@ -1027,22 +1064,22 @@ function groupServers(stream: SourceStream): QualityServerGroup[] {
       }
     }
 
-    group.serverList.push({ title, serverId: encodeServerRef(server.ref) });
+    const weight = serverPreferenceWeight(server, stream.id);
+    group.serverList.push({ title, serverId: encodeServerRef(server.ref), weight });
   }
 
-  // Di tiap group kualitas, server Sub Indo selalu diletakkan paling atas
+  // Di tiap group kualitas, server dengan weight tertinggi (Sub Indo aktif & streaming player) tampil di paling atas
+  const result: QualityServerGroup[] = [];
   for (const group of groups.values()) {
-    group.serverList.sort((a, b) => {
-      const aIsSubIndo = a.title.includes("[SUB INDO]") || /sub\s*indo/i.test(a.title);
-      const bIsSubIndo = b.title.includes("[SUB INDO]") || /sub\s*indo/i.test(b.title);
-      if (aIsSubIndo && !bIsSubIndo) return -1;
-      if (!aIsSubIndo && bIsSubIndo) return 1;
-      return 0;
+    group.serverList.sort((a, b) => b.weight - a.weight);
+    result.push({
+      quality: group.quality,
+      serverList: group.serverList.map((s) => ({ title: s.title, serverId: s.serverId })),
     });
   }
 
   // Urutkan grup kualitas: grup yang punya server Sub Indo atau resolusi tertinggi tampil duluan
-  return [...groups.values()].sort((a, b) => {
+  return result.sort((a, b) => {
     const aHasSubIndo = a.serverList.some((s) => s.title.includes("[SUB INDO]"));
     const bHasSubIndo = b.serverList.some((s) => s.title.includes("[SUB INDO]"));
     if (aHasSubIndo && !bHasSubIndo) return -1;
