@@ -88,20 +88,22 @@ export function AnimeDetailPage() {
   }, [anime?.episodes]);
 
   const sortedEpisodes = useMemo(() => {
-    return [...episodes].sort((a, b) => a.number - b.number);
+    return [...(episodes || [])].sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
   }, [episodes]);
 
   const filteredEpisodes = useMemo(() => {
     if (!episodeSearch.trim()) return sortedEpisodes;
     const q = episodeSearch.toLowerCase().trim();
     return sortedEpisodes.filter(
-      (ep) => String(ep.number).includes(q) || ep.title.toLowerCase().includes(q),
+      (ep) => String(ep.number ?? "").includes(q) || (ep.title || "").toLowerCase().includes(q),
     );
   }, [sortedEpisodes, episodeSearch]);
 
   const firstEpisode = sortedEpisodes[0] ?? null;
   const continueEpisode = historyItem
-    ? episodes.find((ep) => ep.id === historyItem.episodeId)
+    ? Array.isArray(episodes)
+      ? episodes.find((ep) => ep.id === historyItem.episodeId)
+      : undefined
     : undefined;
 
   const targetEpisode = continueEpisode ?? firstEpisode;

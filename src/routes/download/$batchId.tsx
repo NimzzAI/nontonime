@@ -77,41 +77,41 @@ function BatchPage() {
 
         {/* Formats and Qualities */}
         <div className="space-y-6">
-          {(batchData.downloadUrl?.formats || []).map((fmt, idx) => (
+          {(batchData?.downloadUrl?.formats || []).map((fmt, idx) => (
             <div
-              key={fmt.title || idx}
+              key={fmt?.title || idx}
               className="rounded-2xl border border-border/80 bg-card p-5 space-y-4 shadow-sm"
             >
               <h2 className="font-display text-base font-bold text-foreground border-b border-border/60 pb-2.5">
-                {fmt.title}
+                {fmt?.title || "Format Unduhan"}
               </h2>
 
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                {(fmt?.qualities || []).map((q) => (
+                {(fmt?.qualities || []).map((q, qIdx) => (
                   <div
-                    key={q.title}
+                    key={q?.title || qIdx}
                     className="rounded-xl border border-border/70 bg-background/70 p-3.5 space-y-2.5"
                   >
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-foreground bg-primary/15 text-primary px-2 py-0.5 rounded-md">
-                        {q.title}
+                        {q?.title || "Kualitas"}
                       </span>
-                      {q.size ? (
+                      {q?.size ? (
                         <span className="font-semibold text-muted-foreground">{q.size}</span>
                       ) : null}
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
-                      {(q?.urls || []).map((link) => (
+                      {(q?.urls || []).map((link, linkIdx) => (
                         <a
-                          key={(link.title || "") + (link.url || "")}
-                          href={link.url}
+                          key={(link?.title || "") + (link?.url || linkIdx)}
+                          href={link?.url || "#"}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="press-soft inline-flex items-center gap-1 rounded-lg border border-border/80 bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent hover:border-primary/50"
                         >
                           <Download className="h-3 w-3 text-primary" />
-                          {link.title || "Unduh"}
+                          {link?.title || "Unduh"}
                         </a>
                       ))}
                     </div>

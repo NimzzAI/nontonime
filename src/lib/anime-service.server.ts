@@ -862,9 +862,10 @@ export async function getDetail(id: string, _provider = "otakudesu"): Promise<An
 
 export async function extractDirectStreamUrl(embedUrl: string): Promise<string | null> {
   if (!embedUrl) return null;
+  if (embedUrl.startsWith("/api/nimegami-proxy")) return embedUrl;
   if (embedUrl.startsWith("/api/stream-proxy")) return embedUrl;
   if (embedUrl.includes("direct-stor.berkasdrive.com")) {
-    return `/api/stream-proxy?url=${encodeURIComponent(embedUrl)}`;
+    return `/api/nimegami-proxy?url=${encodeURIComponent(embedUrl)}`;
   }
   if (isDirectMediaUrl(embedUrl)) return embedUrl;
   try {
@@ -882,36 +883,36 @@ export async function extractDirectStreamUrl(embedUrl: string): Promise<string |
     const matchVar = html.match(/videoURL\s*=\s*["']([^"']+)["']/i);
     if (matchVar?.[1]) {
       const u = matchVar[1];
-      return u.includes("berkasdrive.com") ? `/api/stream-proxy?url=${encodeURIComponent(u)}` : u;
+      return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
     }
     const matchDataSrc = html.match(/data-(?:src|video|url)=["']([^"']+)["']/i);
     if (matchDataSrc?.[1]) {
       const u = matchDataSrc[1];
       return u.includes("berkasdrive.com") || !u.includes("cors")
-        ? `/api/stream-proxy?url=${encodeURIComponent(u)}`
+        ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}`
         : u;
     }
     const matchSrc = html.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
     if (matchSrc?.[1]) {
       const u = matchSrc[1];
-      return u.includes("berkasdrive.com") ? `/api/stream-proxy?url=${encodeURIComponent(u)}` : u;
+      return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
     }
     const matchFile = html.match(/(?:file|source|src)\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
     if (matchFile?.[1]) {
       const u = matchFile[1];
-      return u.includes("berkasdrive.com") ? `/api/stream-proxy?url=${encodeURIComponent(u)}` : u;
+      return u.includes("berkasdrive.com") ? `/api/nimegami-proxy?url=${encodeURIComponent(u)}` : u;
     }
-    // If it's a vsys-srv embed page, route through stream-proxy
+    // If it's a vsys-srv embed page, route through nimegami-proxy
     if (
       target.hostname.includes("vsys-srv.berkasdrive.com") ||
       target.hostname.includes("berkasdrive.com")
     ) {
-      return `/api/stream-proxy?url=${encodeURIComponent(embedUrl)}`;
+      return `/api/nimegami-proxy?url=${encodeURIComponent(embedUrl)}`;
     }
     return null;
   } catch {
     if (embedUrl.includes("vsys-srv.berkasdrive.com") || embedUrl.includes("berkasdrive.com")) {
-      return `/api/stream-proxy?url=${encodeURIComponent(embedUrl)}`;
+      return `/api/nimegami-proxy?url=${encodeURIComponent(embedUrl)}`;
     }
     return null;
   }

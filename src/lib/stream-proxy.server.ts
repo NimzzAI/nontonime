@@ -81,13 +81,14 @@ export async function resolvesToPrivateAddress(hostname: string): Promise<boolea
   }
 }
 
-/** Header CORS hanya untuk asal yang sama dengan situs sendiri. Pemutar memakai URL relatif, jadi tidak butuh `*`. */
-export function corsOrigin(request: Request): Record<string, string> {
-  const origin = request.headers.get("origin");
-  if (origin && origin === new URL(request.url).origin) {
-    return { "Access-Control-Allow-Origin": origin, Vary: "Origin" };
-  }
-  return {};
+/** Header CORS lengkap untuk pemutar media Video.js, HTML5 video, dan cross-origin iframe */
+export function corsOrigin(request?: Request): Record<string, string> {
+  const origin = request?.headers.get("origin");
+  return {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Credentials": "true",
+    Vary: "Origin",
+  };
 }
 
 function isAllowedPort(port: string): boolean {
@@ -219,14 +220,19 @@ export async function handleStreamProxyRequest(request: Request): Promise<Respon
     upstreamHeaders["Range"] = clientRange;
   }
 
-  // Set appropriate Referer header
+  // Set appropriate Referer and Origin headers to satisfy target server security checks
   if (parsedTarget.hostname.includes("odcloud") || parsedTarget.hostname.includes("desustream")) {
     upstreamHeaders["Referer"] = "https://otakudesu.cloud/";
   } else if (
     parsedTarget.hostname.includes("berkasdrive.com") ||
-    parsedTarget.hostname.includes("nimegami")
+    parsedTarget.hostname.includes("direct-stor") ||
+    parsedTarget.hostname.includes("vsys-srv")
   ) {
+    upstreamHeaders["Referer"] = "https://vsys-srv.berkasdrive.com/";
+    upstreamHeaders["Origin"] = "https://vsys-srv.berkasdrive.com";
+  } else if (parsedTarget.hostname.includes("nimegami")) {
     upstreamHeaders["Referer"] = "https://nimegami.id/";
+    upstreamHeaders["Origin"] = "https://nimegami.id";
   } else {
     upstreamHeaders["Referer"] = `${parsedTarget.protocol}//${parsedTarget.host}/`;
   }

@@ -241,9 +241,9 @@ function WatchPage() {
   // Episodes list from either anime detail query or stream info with accurate numbering
   const episodeList = useMemo(() => {
     const rawList =
-      anime.data?.episodes && anime.data.episodes.length > 0
+      Array.isArray(anime.data?.episodes) && anime.data.episodes.length > 0
         ? anime.data.episodes
-        : stream.data?.info?.episodeList && stream.data.info.episodeList.length > 0
+        : Array.isArray(stream.data?.info?.episodeList) && stream.data.info.episodeList.length > 0
           ? stream.data.info.episodeList.map((ep) => ({
               id: ep.episodeId,
               number: ep.eps,
@@ -251,7 +251,7 @@ function WatchPage() {
             }))
           : [];
 
-    return rawList.map((ep) => {
+    return (rawList || []).map((ep) => {
       let num = ep.number;
       if (!num || num <= 0) {
         const match =
@@ -269,14 +269,14 @@ function WatchPage() {
   }, [anime.data?.episodes, stream.data?.info?.episodeList]);
 
   const sortedEpisodes = useMemo(() => {
-    return [...episodeList].sort((a, b) => a.number - b.number);
+    return [...(episodeList || [])].sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
   }, [episodeList]);
 
   const filteredEpisodes = useMemo(() => {
     if (!episodeFilter.trim()) return sortedEpisodes;
     const q = episodeFilter.toLowerCase().trim();
     return sortedEpisodes.filter(
-      (ep) => String(ep.number).includes(q) || ep.title.toLowerCase().includes(q),
+      (ep) => String(ep.number ?? "").includes(q) || (ep.title || "").toLowerCase().includes(q),
     );
   }, [sortedEpisodes, episodeFilter]);
 
@@ -751,8 +751,12 @@ function WatchPage() {
 
                 {/* Language Filter Tabs (Sub Indo vs Semua Server) */}
                 {activeGroup &&
-                activeGroup.serverList.some((s) => s.title.includes("[SUB INDO]")) &&
-                activeGroup.serverList.some((s) => !s.title.includes("[SUB INDO]")) ? (
+                (activeGroup.serverList || []).some((s) =>
+                  (s?.title || "").includes("[SUB INDO]"),
+                ) &&
+                (activeGroup.serverList || []).some(
+                  (s) => !(s?.title || "").includes("[SUB INDO]"),
+                ) ? (
                   <div className="flex items-center gap-2 border-b border-border/40 pb-1.5 text-xs">
                     <button
                       type="button"
@@ -765,7 +769,12 @@ function WatchPage() {
                       )}
                     >
                       🇮🇩 Server Sub Indo (
-                      {activeGroup.serverList.filter((s) => s.title.includes("[SUB INDO]")).length})
+                      {
+                        (activeGroup.serverList || []).filter((s) =>
+                          (s?.title || "").includes("[SUB INDO]"),
+                        ).length
+                      }
+                      )
                     </button>
                     <button
                       type="button"
@@ -777,29 +786,32 @@ function WatchPage() {
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >
-                      Semua Server ({activeGroup.serverList.length})
+                      Semua Server ({activeGroup.serverList?.length ?? 0})
                     </button>
                   </div>
                 ) : null}
 
                 {/* Server list inside active quality */}
-                {activeGroup && activeGroup.serverList.length > 0 ? (
+                {activeGroup && (activeGroup.serverList?.length ?? 0) > 0 ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    {activeGroup.serverList
+                    {(activeGroup.serverList || [])
                       .filter((srv) => {
+                        if (!srv) return false;
                         if (
                           serverLanguageFilter === "sub-indo" &&
-                          activeGroup.serverList.some((s) => s.title.includes("[SUB INDO]"))
+                          activeGroup.serverList.some((s) =>
+                            (s?.title || "").includes("[SUB INDO]"),
+                          )
                         ) {
-                          return srv.title.includes("[SUB INDO]");
+                          return (srv.title || "").includes("[SUB INDO]");
                         }
                         return true;
                       })
                       .map((srv) => {
                         const isSelected = selectedServerId === srv.serverId;
-                        const isSubIndoServer = srv.title.includes("[SUB INDO]");
-                        const isSubEngServer = srv.title.includes("[SUB ENG]");
-                        const cleanTitle = srv.title
+                        const isSubIndoServer = (srv.title || "").includes("[SUB INDO]");
+                        const isSubEngServer = (srv.title || "").includes("[SUB ENG]");
+                        const cleanTitle = (srv.title || "")
                           .replace(/^\[SUB INDO\]\s*/i, "")
                           .replace(/^\[SUB ENG\]\s*/i, "");
 
@@ -950,16 +962,16 @@ function WatchPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {(episodeData.downloads || []).map((dl) => (
+                {(episodeData?.downloads || []).map((dl, dlIdx) => (
                   <div
-                    key={dl.quality}
+                    key={dl?.quality || dlIdx}
                     className="rounded-xl border border-border/70 bg-background/60 p-3 space-y-2.5"
                   >
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-foreground bg-primary/15 text-primary px-2 py-0.5 rounded-md">
-                        {dl.quality}
+                        {dl?.quality || "Download"}
                       </span>
-                      {dl.size ? (
+                      {dl?.size ? (
                         <span className="font-semibold text-muted-foreground">{dl.size}</span>
                       ) : null}
                     </div>
@@ -968,24 +980,24 @@ function WatchPage() {
                       {/* Direct Segmented Download for this quality if stream available */}
                       <button
                         type="button"
-                        onClick={() => handleStartOfflineDownload(undefined, dl.quality)}
+                        onClick={() => handleStartOfflineDownload(undefined, dl?.quality || "720p")}
                         className="press-soft inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/15 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition cursor-pointer"
-                        title={`Simpan ${dl.quality} ke penyimpanan offline`}
+                        title={`Simpan ${dl?.quality || "video"} ke penyimpanan offline`}
                       >
                         <DownloadCloud className="h-3 w-3" />
                         <span>Range Offline</span>
                       </button>
 
-                      {(dl.urls || []).map((link) => (
+                      {(dl?.urls || []).map((link, linkIdx) => (
                         <a
-                          key={(link.title || "") + (link.url || "")}
-                          href={link.url}
+                          key={(link?.title || "") + (link?.url || linkIdx)}
+                          href={link?.url || "#"}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="press-soft inline-flex items-center gap-1 rounded-lg border border-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-accent hover:border-primary/50"
                         >
                           <i className="fa-solid fa-cloud-arrow-down text-[10px] text-primary" />
-                          {link.title || "Unduh"}
+                          {link?.title || "Unduh"}
                         </a>
                       ))}
                     </div>

@@ -49,6 +49,7 @@ export interface FailedServerLog {
 
 function isDirectSource(url: string): boolean {
   if (!url) return false;
+  if (url.startsWith("/api/nimegami-proxy")) return true;
   if (url.startsWith("/api/stream-proxy")) return true;
   if (url.includes("/hal/streaming/")) return false;
   try {
@@ -68,13 +69,27 @@ function isMegaSource(url: string): boolean {
 }
 
 function getProxiedStreamUrl(originalUrl: string): string {
-  if (!originalUrl || originalUrl.startsWith("/api/stream-proxy")) return originalUrl;
+  if (!originalUrl) return originalUrl;
+  if (
+    originalUrl.startsWith("/api/nimegami-proxy") ||
+    originalUrl.startsWith("/api/stream-proxy")
+  ) {
+    return originalUrl;
+  }
+  if (originalUrl.includes("berkasdrive.com") || originalUrl.includes("nimegami")) {
+    return `/api/nimegami-proxy?url=${encodeURIComponent(originalUrl)}`;
+  }
   return `/api/stream-proxy?url=${encodeURIComponent(originalUrl)}`;
 }
 
 function formatIframeAutoplayUrl(url: string, shouldAutoplay: boolean): string {
-  if (!shouldAutoplay || !url) return url;
-  if (url.startsWith("/api/stream-proxy")) return url;
+  if (!url) return url;
+  if (url.startsWith("/api/nimegami-proxy") || url.startsWith("/api/stream-proxy")) return url;
+  // Route Nimegami / BerkasDrive embed iframes through nimegami-proxy embed mode so they never get refused connection
+  if (url.includes("berkasdrive.com") || url.includes("nimegami.id")) {
+    return `/api/nimegami-proxy?url=${encodeURIComponent(url)}&format=embed`;
+  }
+  if (!shouldAutoplay) return url;
   try {
     const parsed = new URL(url);
     if (!parsed.searchParams.has("autoplay") && !parsed.searchParams.has("autoPlay")) {

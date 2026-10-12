@@ -5,6 +5,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { handleStreamProxyRequest, handleStreamCheckRequest } from "./lib/stream-proxy.server";
 import { handleImageProxyRequest } from "./lib/image-proxy.server";
 import { handleEmbedProxyRequest } from "./lib/embed-proxy.server";
+import { handleNimegamiStreamProxy } from "./lib/nimegami-proxy.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -60,6 +61,9 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/api/stream-proxy") {
       return handleStreamProxyRequest(request);
+    }
+    if (url.pathname === "/api/nimegami-proxy") {
+      return handleNimegamiStreamProxy(request);
     }
     if (url.pathname === "/api/stream-check") {
       return handleStreamCheckRequest(request);

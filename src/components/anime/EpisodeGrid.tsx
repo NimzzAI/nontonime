@@ -3,22 +3,23 @@ import { cn } from "@/lib/utils";
 import type { EpisodeSummary } from "@/lib/anime-types";
 
 export function EpisodeGrid({
-  episodes,
+  episodes = [],
   animeId,
   activeEpisodeId,
 }: {
-  episodes: EpisodeSummary[];
+  episodes?: EpisodeSummary[];
   animeId: string;
   activeEpisodeId?: string;
 }) {
-  if (episodes.length === 0) {
+  const safeEpisodes = Array.isArray(episodes) ? episodes : [];
+  if (safeEpisodes.length === 0) {
     return <p className="text-sm text-muted-foreground">Belum ada episode tersedia.</p>;
   }
 
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-2">
-      {[...episodes]
-        .sort((a, b) => a.number - b.number)
+      {[...safeEpisodes]
+        .sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
         .map((episode) => {
           const isActive = episode.id === activeEpisodeId;
           return (

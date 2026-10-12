@@ -46,6 +46,59 @@ export async function handleEmbedProxyRequest(request: Request): Promise<Respons
 
     let html = await upstream.text();
 
+    // Special handling for BerkasDrive / Nimegami: render clean HTML5 bypass player
+    if (parsed.hostname.includes("berkasdrive.com") || parsed.hostname.includes("nimegami")) {
+      const match =
+        html.match(/data-(?:src|video|url)=["']([^"']+)["']/i) ||
+        html.match(/<(?:source|video)[^>]+src=["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i) ||
+        html.match(/(https?:\/\/[^"'\s<>]+\.mp4[^"'\s<>]*)/i);
+
+      const mediaUrl = match?.[1] || targetUrl;
+      const proxiedStreamUrl = `/api/nimegami-proxy?url=${encodeURIComponent(mediaUrl)}&raw=1`;
+      const cleanPlayerHtml = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nimegami Player Bypass</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; }
+    .player-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    video { width: 100%; height: 100%; object-fit: contain; outline: none; }
+  </style>
+</head>
+<body>
+  <div class="player-container">
+    <video
+      id="video"
+      controls
+      autoplay
+      playsinline
+      webkit-playsinline
+      crossorigin="anonymous"
+      src="${proxiedStreamUrl}"
+    ></video>
+  </div>
+  <script>
+    const v = document.getElementById("video");
+    v.addEventListener("ended", () => {
+      try { window.parent.postMessage({ type: "ended" }, "*"); } catch(e) {}
+    });
+  </script>
+</body>
+</html>`;
+      return new Response(cleanPlayerHtml, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Access-Control-Allow-Origin": "*",
+          "X-Frame-Options": "ALLOWALL",
+          "Cache-Control": "public, max-age=1800",
+        },
+      });
+    }
+
     // Special handling for Aniwatch episode page: extract the clean player stream if present
     if (parsed.hostname.includes("aniwatch.cx") && parsed.pathname.includes("/episode/")) {
       const hianimeMatch = html.match(/currentHianimeEpId\s*=\s*['"]([^'"]+)['"]/);

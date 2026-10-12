@@ -372,7 +372,12 @@ export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
     baseUrl: "https://nimegami.id",
     isActive: true,
     category: "hybrid",
-    domains: ["nimegami.id"],
+    domains: [
+      "nimegami.id",
+      "berkasdrive.com",
+      "vsys-srv.berkasdrive.com",
+      "direct-stor.berkasdrive.com",
+    ],
     priority: 10,
     match: (input) => {
       const str =
@@ -383,8 +388,12 @@ export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
     },
     resolveEmbedUrl: (rawUrl) => {
       if (!rawUrl) return "";
-      if (rawUrl.includes("vsys-srv.berkasdrive.com") || rawUrl.includes("berkasdrive.com")) {
-        return `/api/stream-proxy?url=${encodeURIComponent(rawUrl)}`;
+      if (
+        rawUrl.includes("vsys-srv.berkasdrive.com") ||
+        rawUrl.includes("berkasdrive.com") ||
+        rawUrl.includes("direct-stor.berkasdrive.com")
+      ) {
+        return `/api/nimegami-proxy?url=${encodeURIComponent(rawUrl)}`;
       }
       return rawUrl;
     },
@@ -407,8 +416,12 @@ export const STREAMING_PROVIDERS: Record<string, StreamingProviderConfig> = {
     },
     resolveEmbedUrl: (rawUrl) => {
       if (!rawUrl) return "";
-      if (rawUrl.includes("vsys-srv.berkasdrive.com") || rawUrl.includes("berkasdrive.com")) {
-        return `/api/stream-proxy?url=${encodeURIComponent(rawUrl)}`;
+      if (
+        rawUrl.includes("vsys-srv.berkasdrive.com") ||
+        rawUrl.includes("berkasdrive.com") ||
+        rawUrl.includes("direct-stor.berkasdrive.com")
+      ) {
+        return `/api/nimegami-proxy?url=${encodeURIComponent(rawUrl)}`;
       }
       return rawUrl;
     },

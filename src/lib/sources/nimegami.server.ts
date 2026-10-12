@@ -533,14 +533,15 @@ export const nimegami: AnimeSource = {
       const formattedQuality =
         quality === "1080p" ? "1080p FHD" : quality === "720p" ? "720p HD" : quality;
 
-      // Ensure BerkasDrive / Nimegami embed stream pages are bypassed through stream-proxy
+      // Ensure BerkasDrive / Nimegami embed stream pages are bypassed through nimegami-proxy
       if (
         (playUrl.includes("vsys-srv.berkasdrive.com") ||
           playUrl.includes("berkasdrive.com") ||
-          playUrl.includes("direct-stor.berkasdrive.com")) &&
-        !playUrl.startsWith("/api/stream-proxy")
+          playUrl.includes("direct-stor.berkasdrive.com") ||
+          provider.toLowerCase().includes("nimegami")) &&
+        !playUrl.startsWith("/api/nimegami-proxy")
       ) {
-        playUrl = `/api/stream-proxy?url=${encodeURIComponent(playUrl)}`;
+        playUrl = `/api/nimegami-proxy?url=${encodeURIComponent(playUrl)}`;
       }
 
       const key = `${provider}-${formattedQuality}-${playUrl}`;
