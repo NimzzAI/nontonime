@@ -3,7 +3,7 @@ import { z } from "zod";
 import { uploadProfileMediaServer } from "./media-upload.server";
 
 export const uploadProfileMedia = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
+  .validator((data: unknown) =>
     z
       .object({
         kind: z.enum(["avatar", "banner"]),
